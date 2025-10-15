@@ -628,7 +628,7 @@ document.getElementById('daily-entry-form').addEventListener('submit', async (e)
             });
         });
         // ==================== 請複製這段完整的下載功能程式碼 ====================
-document.getElementById('download-report-btn').addEventListener('click', () => {
+    document.getElementById('download-report-btn').addEventListener('click', () => {
     console.log("下載報表按鈕點擊。");
     
     // 取得處理過的最新機台數據
@@ -649,7 +649,7 @@ document.getElementById('download-report-btn').addEventListener('click', () => {
     ];
     
     // 將標頭轉換為 CSV 格式的一行文字
-    let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
+    let csvContent = "data:text/csv;charset=utf-8," + "\uFEFF" + headers.join(",") + "\n";
 
     // 處理每一台機台的資料
     processedMachines.forEach(item => {
