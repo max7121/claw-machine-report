@@ -500,7 +500,64 @@
             });
         }
         
-        function renderChartsTab() { /* ... Chart rendering logic ... */ }
+        // ==================== 請複製這段完整的圖表功能程式碼 ====================
+function renderChartsTab() {
+    const revenueChartEl = document.getElementById('revenue-chart');
+    const costChartEl = document.getElementById('cost-chart');
+    const trendChartEl = document.getElementById('trend-chart'); // 趨勢圖的容器
+
+    // 清空現有圖表
+    revenueChartEl.innerHTML = '';
+    costChartEl.innerHTML = '';
+    trendChartEl.innerHTML = '<p class="text-center text-gray-500">此圖表功能待開發。</p>'; // 暫時保留趨勢圖
+
+    const processedMachines = appData.machines.map(m => {
+        const revenue = m.plays * COIN_VALUE;
+        const cost = m.payouts > 0 ? revenue / m.payouts : 0;
+        return { ...m, revenue, cost };
+    });
+
+    if (processedMachines.length === 0) {
+        revenueChartEl.innerHTML = '<p class="text-center text-gray-500">尚無資料可繪製圖表</p>';
+        costChartEl.innerHTML = '<p class="text-center text-gray-500">尚無資料可繪製圖表</p>';
+        return;
+    }
+
+    // --- 繪製營收長條圖 ---
+    const maxRevenue = Math.max(...processedMachines.map(m => m.revenue));
+    processedMachines.forEach(machine => {
+        const barWidth = maxRevenue > 0 ? (machine.revenue / maxRevenue * 100) : 0;
+        const chartItem = `
+            <div class="flex items-center space-x-4">
+                <div class="w-28 text-sm font-medium text-gray-300 truncate">${machine.id} - ${machine.location}</div>
+                <div class="flex-grow bg-gray-700 rounded-full h-6">
+                    <div class="chart-bar bg-blue-500 h-6 rounded-full text-xs font-medium text-white text-right pr-2 leading-6" style="width: ${barWidth}%">
+                       ${machine.revenue.toLocaleString()} 元
+                    </div>
+                </div>
+            </div>
+        `;
+        revenueChartEl.innerHTML += chartItem;
+    });
+
+    // --- 繪製成本長條圖 ---
+    const maxCost = Math.max(...processedMachines.map(m => m.cost));
+     processedMachines.forEach(machine => {
+        const barWidth = maxCost > 0 ? (machine.cost / maxCost * 100) : 0;
+        const chartItem = `
+            <div class="flex items-center space-x-4">
+                <div class="w-28 text-sm font-medium text-gray-300 truncate">${machine.id} - ${machine.location}</div>
+                <div class="flex-grow bg-gray-700 rounded-full h-6">
+                     <div class="chart-bar bg-yellow-500 h-6 rounded-full text-xs font-medium text-gray-900 text-right pr-2 leading-6" style="width: ${barWidth}%">
+                       ${machine.cost.toFixed(2)} 元/次
+                    </div>
+                </div>
+            </div>
+        `;
+        costChartEl.innerHTML += chartItem;
+    });
+}
+// =====================================================================
         function updateFooterAndHeader() { /* ... Footer rendering logic ... */ }
         function showFeedback(message, isError = false) {
             const feedbackEl = document.getElementById('form-feedback');
