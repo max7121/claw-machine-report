@@ -253,9 +253,17 @@
         // --- END: Firebase Initialization ---
 
         // --- GLOBAL VARIABLES ---
-        const COIN_VALUE = 10;
+         const COIN_VALUE = 10;
         let appData = { machines: [], history: [], startDate: '2025-10-10' };
         let currentSort = { key: 'id', direction: 'asc' };
+
+        // ==================== 請將以下程式碼貼在這裡 ====================
+        const allTabs = document.querySelectorAll('.tab-btn');
+        const allTabContents = document.querySelectorAll('.tab-content');
+        const searchInput = document.getElementById('searchInput');
+        const sortableHeaders = document.querySelectorAll('.table-header-sortable');
+        const statsControls = document.getElementById('stats-controls');
+        // ===============================================================
 
         // --- DATA FUNCTIONS (Firestore Version) ---
         async function loadDataFromFirestore() {
