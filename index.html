@@ -627,8 +627,61 @@ document.getElementById('daily-entry-form').addEventListener('submit', async (e)
                 updateUI();
             });
         });
-        document.getElementById('download-report-btn').addEventListener('click', () => { /* Download logic */ });
+        // ==================== 請複製這段完整的下載功能程式碼 ====================
+document.getElementById('download-report-btn').addEventListener('click', () => {
+    console.log("下載報表按鈕點擊。");
+    
+    // 取得處理過的最新機台數據
+    const processedMachines = appData.machines.map(m => {
+        const revenue = m.plays * 10; // COIN_VALUE
+        const cost = m.payouts > 0 ? revenue / m.payouts : 0;
+        return { ...m, revenue, cost };
+    });
 
+    if (processedMachines.length === 0) {
+        alert("目前沒有資料可供下載。");
+        return;
+    }
+
+    // CSV 檔案的標頭
+    const headers = [
+        "機台編號", "位置", "累積投幣次數", "累積投幣金額", "累積出貨數量", "平均出貨成本(元/次)"
+    ];
+    
+    // 將標頭轉換為 CSV 格式的一行文字
+    let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
+
+    // 處理每一台機台的資料
+    processedMachines.forEach(item => {
+        const row = [
+            item.id,
+            item.location,
+            item.plays,
+            item.revenue,
+            item.payouts,
+            item.cost.toFixed(2)
+        ];
+        // 將每一行的資料陣列轉換為 CSV 格式的一行文字
+        csvContent += row.join(",") + "\n";
+    });
+
+    // 建立一個隱藏的下載連結來觸發下載
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    
+    // 設定下載檔案的名稱
+    const today = new Date();
+    const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+    link.setAttribute("download", `娃娃機營業報告-${dateString}.csv`);
+    
+    document.body.appendChild(link); // 需要將連結加入到頁面中才能點擊
+    link.click(); // 模擬點擊連結
+    document.body.removeChild(link); // 下載後移除連結
+    
+    console.log("報表已觸發下載。");
+});
+// =====================================================================
         // --- INITIAL LOAD ---
         loadDataFromFirestore();
     });
