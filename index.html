@@ -530,59 +530,85 @@
                 renderStatisticsTab();
             }
         });
+// ==================== 請複製這段完整的偵錯版程式碼 ====================
+document.getElementById('daily-entry-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    console.log("偵錯日誌：『新增紀錄』按鈕被點擊，開始執行。");
 
-        document.getElementById('daily-entry-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const date = document.getElementById('entry-date').value;
-            const machineIndex = parseInt(document.getElementById('machine-selector').value);
-            const cumulativePlaysInput = parseInt(document.getElementById('cumulative-plays').value);
-            const cumulativePayoutsInput = parseInt(document.getElementById('cumulative-payouts').value);
+    const date = document.getElementById('entry-date').value;
+    const machineIndex = parseInt(document.getElementById('machine-selector').value);
+    const cumulativePlaysInput = parseInt(document.getElementById('cumulative-plays').value);
+    const cumulativePayoutsInput = parseInt(document.getElementById('cumulative-payouts').value);
 
-            if (isNaN(machineIndex) || isNaN(cumulativePlaysInput) || isNaN(cumulativePayoutsInput)) {
-                return showFeedback('錯誤：請填寫所有欄位。', true);
-            }
+    console.log("偵錯日誌：從表單讀取到的值：", { date, machineIndex, cumulativePlaysInput, cumulativePayoutsInput });
 
-            const selectedMachine = appData.machines[machineIndex];
-            const machineDocId = selectedMachine.docId;
+    if (isNaN(machineIndex) || isNaN(cumulativePlaysInput) || isNaN(cumulativePayoutsInput)) {
+        console.log("偵錯日誌：執行中斷！原因：有欄位不是數字或未填寫。");
+        return showFeedback('錯誤：請填寫所有欄位。', true);
+    }
 
-            if (cumulativePlaysInput < selectedMachine.plays || cumulativePayoutsInput < selectedMachine.payouts) {
-                return showFeedback('錯誤：輸入的累積數值小於上次紀錄，請確認抄表數值是否正確。', true);
-            }
+    const selectedMachine = appData.machines[machineIndex];
+    console.log("偵錯日誌：根據選擇的 index 找到的機台資料：", selectedMachine);
 
-            const dailyPlays = cumulativePlaysInput - selectedMachine.plays;
-            const dailyPayouts = cumulativePayoutsInput - selectedMachine.payouts;
+    if (!selectedMachine) {
+        console.log("偵錯日誌：執行中斷！原因：找不到對應的機台資料。");
+        return showFeedback('錯誤：無法識別所選機台。', true);
+    }
 
-            if (dailyPlays === 0 && dailyPayouts === 0) {
-                return showFeedback('數據未變更，無需新增紀錄。');
-            }
+    console.log("偵錯日誌：檢查輸入的累積數值是否小於舊紀錄...");
+    console.log(`偵錯日誌：比較投幣數 -> 輸入值: ${cumulativePlaysInput}, 舊紀錄: ${selectedMachine.plays}`);
+    console.log(`偵錯日誌：比較出貨數 -> 輸入值: ${cumulativePayoutsInput}, 舊紀錄: ${selectedMachine.payouts}`);
 
-            try {
-                const machineRef = db.collection('machines').doc(machineDocId);
-                await machineRef.update({
-                    plays: cumulativePlaysInput,
-                    payouts: cumulativePayoutsInput
-                });
+    if (cumulativePlaysInput < selectedMachine.plays || cumulativePayoutsInput < selectedMachine.payouts) {
+        console.log("偵錯日誌：執行中斷！原因：輸入的累積數值小於上次紀錄。");
+        return showFeedback('錯誤：輸入的累積數值小於上次紀錄，請確認抄表數值是否正確。', true);
+    }
 
-                await db.collection('history').add({
-                    date: date,
-                    machineId: selectedMachine.id,
-                    location: selectedMachine.location,
-                    newPlays: dailyPlays,
-                    newPayouts: dailyPayouts
-                });
+    const dailyPlays = cumulativePlaysInput - selectedMachine.plays;
+    const dailyPayouts = cumulativePayoutsInput - selectedMachine.payouts;
+    console.log("偵錯日誌：計算出的當日新增數：", { dailyPlays, dailyPayouts });
 
-                await loadDataFromFirestore(); // Reload data after successful write
-                e.target.reset();
-                document.getElementById('entry-date').valueAsDate = new Date();
-                const successMessage = `紀錄已雲端同步！本日 ${selectedMachine.id} (${selectedMachine.location}) 新增：<strong class="text-white">${dailyPlays}</strong> 投幣、<strong class="text-white">${dailyPayouts}</strong> 出貨。`;
-                showFeedback(successMessage);
+    if (dailyPlays === 0 && dailyPayouts === 0) {
+        console.log("偵錯日誌：執行中斷！原因：數據未變更。");
+        return showFeedback('數據未變更，無需新增紀錄。');
+    }
 
-            } catch (error) {
-                console.error("寫入 Firestore 時發生錯誤: ", error);
-                showFeedback("無法將紀錄同步至雲端，請稍後再試。", true);
-            }
+    console.log("偵錯日誌：所有檢查通過，準備開始寫入 Firestore...");
+    try {
+        const machineDocId = selectedMachine.docId;
+        console.log(`偵錯日誌：準備更新 machines 集合中的文件 ID: ${machineDocId}`);
+        
+        const machineRef = db.collection('machines').doc(machineDocId);
+        await machineRef.update({
+            plays: cumulativePlaysInput,
+            payouts: cumulativePayoutsInput
         });
+        console.log("偵錯日誌：machines 集合更新成功！");
 
+        console.log("偵錯日誌：準備新增一筆紀錄到 history 集合...");
+        await db.collection('history').add({
+            date: date,
+            machineId: selectedMachine.id,
+            location: selectedMachine.location,
+            newPlays: dailyPlays,
+            newPayouts: dailyPayouts
+        });
+        console.log("偵錯日誌：history 集合新增成功！");
+        
+        console.log("偵錯日誌：重新從 Firestore 載入所有資料...");
+        await loadDataFromFirestore();
+        e.target.reset();
+        document.getElementById('entry-date').valueAsDate = new Date();
+        const successMessage = `紀錄已雲端同步！本日 ${selectedMachine.id} (${selectedMachine.location}) 新增：<strong class="text-white">${dailyPlays}</strong> 投幣、<strong class="text-white">${dailyPayouts}</strong> 出貨。`;
+        showFeedback(successMessage);
+        console.log("偵錯日誌：流程執行完畢！");
+
+    } catch (error) {
+        console.error("【嚴重錯誤】寫入 Firestore 時發生錯誤: ", error);
+        showFeedback("無法將紀錄同步至雲端，請稍後再試。", true);
+    }
+});
+// =====================================================================
         searchInput.addEventListener('input', () => updateUI());
         sortableHeaders.forEach(header => {
             header.addEventListener('click', () => {
