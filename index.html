@@ -37,14 +37,26 @@
             </form>
         </div>
         <div class="bg-gray-800 rounded-xl shadow-lg p-6">
-            <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-                <h2 class="text-2xl font-bold text-white">選擇要管理的門市</h2>
-                <button id="download-all-stores-report-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0 w-full sm:w-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
-                    </svg>
-                    <span>下載全門市總報表</span>
-                </button>
+            <h2 class="text-2xl font-bold text-white mb-4">選擇要管理的門市</h2>
+            <div class="bg-gray-900/50 p-4 rounded-lg mb-6">
+                <h3 class="text-lg font-semibold text-white mb-3">下載全門市總報表</h3>
+                <div class="flex flex-col sm:flex-row items-center gap-4 w-full">
+                    <select id="report-period-selector" class="bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 w-full sm:w-auto">
+                        <option value="all">總和</option>
+                        <option value="daily">單日</option>
+                        <option value="weekly">本週</option>
+                        <option value="monthly">本月</option>
+                        <option value="quarterly">本季</option>
+                        <option value="yearly">本年度</option>
+                    </select>
+                    <input type="date" id="report-date-picker" class="bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 w-full sm:w-auto hidden">
+                    <button id="download-all-stores-report-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0 w-full sm:w-auto justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
+                        </svg>
+                        <span>下載報表</span>
+                    </button>
+                </div>
             </div>
             <div id="store-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- 門市卡片將會動態插入這裡 -->
@@ -208,8 +220,12 @@
                         </div>
                     </div>
                     <div class="chart-container mt-8">
-                        <h3 class="text-xl font-bold text-white mb-4">每日投幣與出貨趨勢</h3>
-                        <div id="trend-chart" class="h-80 w-full"></div>
+                        <h3 class="text-xl font-bold text-white mb-4">單日各機台表現</h3>
+                        <div class="flex items-center gap-4 mb-4">
+                            <label for="trend-chart-date-picker" class="text-gray-300 shrink-0">選擇日期：</label>
+                            <input type="date" id="trend-chart-date-picker" class="bg-gray-700 text-white border border-gray-600 rounded-lg py-1 px-2 w-full sm:w-auto">
+                        </div>
+                        <div id="trend-chart-content" class="w-full"></div>
                     </div>
                 </div>
                 <div id="statistics" class="tab-content hidden">
@@ -364,6 +380,8 @@
         const storeListContainer = document.getElementById('store-list');
         const createStoreForm = document.getElementById('create-store-form');
         const backToStoresBtn = document.getElementById('back-to-stores-btn');
+        const reportPeriodSelector = document.getElementById('report-period-selector');
+        const reportDatePicker = document.getElementById('report-date-picker');
         const downloadAllStoresBtn = document.getElementById('download-all-stores-report-btn');
         const allTabs = document.querySelectorAll('.tab-btn');
         const allTabContents = document.querySelectorAll('.tab-content');
@@ -374,6 +392,7 @@
         const addMachineForm = document.getElementById('add-machine-form');
         const machineListTableBody = document.getElementById('machine-list-table-body');
         const historyTableBody = document.getElementById('history-table-body');
+        const trendChartDatePicker = document.getElementById('trend-chart-date-picker');
         
         // Modal selectors
         const confirmationModal = document.getElementById('confirmation-modal');
@@ -966,11 +985,9 @@
         function renderChartsTab() {
             const revenueChartEl = document.getElementById('revenue-chart');
             const costChartEl = document.getElementById('cost-chart');
-            const trendChartEl = document.getElementById('trend-chart');
 
             revenueChartEl.innerHTML = '';
             costChartEl.innerHTML = '';
-            trendChartEl.innerHTML = '<p class="text-center text-gray-500">此圖表功能待開發。</p>';
 
             const processedMachines = appData.machines.map(m => {
                 const revenue = m.plays * COIN_VALUE;
@@ -981,41 +998,152 @@
             if (processedMachines.length === 0) {
                 revenueChartEl.innerHTML = '<p class="text-center text-gray-500">尚無資料可繪製圖表</p>';
                 costChartEl.innerHTML = '<p class="text-center text-gray-500">尚無資料可繪製圖表</p>';
+            } else {
+                const maxRevenue = Math.max(...processedMachines.map(m => m.revenue), 1);
+                processedMachines.sort((a,b) => b.revenue - a.revenue).forEach(machine => {
+                    const barWidth = (machine.revenue / maxRevenue * 100);
+                    const chartItem = `
+                        <div class="flex items-center space-x-4">
+                            <div class="w-40 text-sm font-medium text-gray-300 truncate">${machine.id} - ${machine.location}</div>
+                            <div class="flex-grow bg-gray-700 rounded-full h-6">
+                                <div class="chart-bar bg-blue-500 h-6 rounded-full text-xs font-medium text-white text-right pr-2 leading-6" style="width: ${barWidth}%">
+                                   ${machine.revenue.toLocaleString()} 元
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    revenueChartEl.innerHTML += chartItem;
+                });
+
+                const maxCost = Math.max(...processedMachines.map(m => m.cost), 1);
+                 processedMachines.sort((a,b) => b.cost - a.cost).forEach(machine => {
+                    const barWidth = (machine.cost / maxCost * 100);
+                    const chartItem = `
+                        <div class="flex items-center space-x-4">
+                            <div class="w-40 text-sm font-medium text-gray-300 truncate">${machine.id} - ${machine.location}</div>
+                            <div class="flex-grow bg-gray-700 rounded-full h-6">
+                                 <div class="chart-bar bg-yellow-500 h-6 rounded-full text-xs font-medium text-gray-900 text-right pr-2 leading-6" style="width: ${barWidth}%">
+                                   ${machine.cost.toFixed(2)} 元/次
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    costChartEl.innerHTML += chartItem;
+                });
+            }
+            
+            const trendChartDatePicker = document.getElementById('trend-chart-date-picker');
+            if (appData.history.length > 0) {
+                const latestDate = appData.history.reduce((max, h) => h.date > max ? h.date : max, appData.history[0].date);
+                trendChartDatePicker.value = latestDate;
+            } else {
+                trendChartDatePicker.valueAsDate = new Date();
+            }
+            
+            renderTrendChartByDate(); 
+        }
+
+        function renderTrendChartByDate() {
+            const trendChartContentEl = document.getElementById('trend-chart-content');
+            const selectedDate = trendChartDatePicker.value;
+
+            trendChartContentEl.innerHTML = '';
+
+            if (!selectedDate) {
+                trendChartContentEl.innerHTML = '<p class="text-center text-gray-500">請選擇一個日期來查看數據</p>';
                 return;
             }
 
-            const maxRevenue = Math.max(...processedMachines.map(m => m.revenue));
-            processedMachines.forEach(machine => {
-                const barWidth = maxRevenue > 0 ? (machine.revenue / maxRevenue * 100) : 0;
-                const chartItem = `
-                    <div class="flex items-center space-x-4">
-                        <div class="w-28 text-sm font-medium text-gray-300 truncate">${machine.id} - ${machine.location}</div>
-                        <div class="flex-grow bg-gray-700 rounded-full h-6">
-                            <div class="chart-bar bg-blue-500 h-6 rounded-full text-xs font-medium text-white text-right pr-2 leading-6" style="width: ${barWidth}%">
-                               ${machine.revenue.toLocaleString()} 元
-                            </div>
-                        </div>
-                    </div>
-                `;
-                revenueChartEl.innerHTML += chartItem;
+            const dailyRecords = appData.history.filter(h => h.date === selectedDate);
+
+            if (dailyRecords.length === 0) {
+                trendChartContentEl.innerHTML = '<p class="text-center text-gray-500">該日期沒有記帳紀錄</p>';
+                return;
+            }
+            
+            const aggregatedData = dailyRecords.reduce((acc, record) => {
+                const key = `${record.machineId}|${record.location}`;
+                if (!acc[key]) {
+                    acc[key] = {
+                        machineId: record.machineId,
+                        location: record.location,
+                        newPlays: 0,
+                        newPayouts: 0
+                    };
+                }
+                acc[key].newPlays += record.newPlays;
+                acc[key].newPayouts += record.newPayouts;
+                return acc;
+            }, {});
+            const aggregatedRecords = Object.values(aggregatedData);
+
+            const recordsWithCalc = aggregatedRecords.map(r => {
+                const revenue = r.newPlays * COIN_VALUE;
+                const cost = r.newPayouts > 0 ? revenue / r.newPayouts : 0;
+                return {...r, revenue, cost };
             });
 
-            const maxCost = Math.max(...processedMachines.map(m => m.cost));
-             processedMachines.forEach(machine => {
-                const barWidth = maxCost > 0 ? (machine.cost / maxCost * 100) : 0;
-                const chartItem = `
+            const maxRevenue = Math.max(...recordsWithCalc.map(r => r.revenue), 1);
+            const maxCost = Math.max(...recordsWithCalc.map(r => r.cost), 1);
+            
+            let totalDayRevenue = 0;
+            let totalDayPayouts = 0;
+            
+            recordsWithCalc.forEach(record => {
+                totalDayRevenue += record.revenue;
+                totalDayPayouts += record.newPayouts;
+            });
+
+            const revenueCharts = [...recordsWithCalc].sort((a,b) => b.revenue - a.revenue).map(record => {
+                const barWidth = (record.revenue / maxRevenue) * 100;
+                return `
                     <div class="flex items-center space-x-4">
-                        <div class="w-28 text-sm font-medium text-gray-300 truncate">${machine.id} - ${machine.location}</div>
+                        <div class="w-40 text-sm font-medium text-gray-300 truncate">${record.machineId} - ${record.location}</div>
                         <div class="flex-grow bg-gray-700 rounded-full h-6">
-                             <div class="chart-bar bg-yellow-500 h-6 rounded-full text-xs font-medium text-gray-900 text-right pr-2 leading-6" style="width: ${barWidth}%">
-                               ${machine.cost.toFixed(2)} 元/次
+                            <div class="chart-bar bg-blue-500 h-6 rounded-full text-xs font-medium text-white text-right pr-2 leading-6" style="width: ${barWidth}%">
+                                ${record.revenue.toLocaleString()} 元
                             </div>
                         </div>
                     </div>
                 `;
-                costChartEl.innerHTML += chartItem;
-            });
+            }).join('');
+
+            const costCharts = [...recordsWithCalc].sort((a,b) => b.cost - a.cost).map(record => {
+                const barWidth = (record.cost / maxCost) * 100;
+                return `
+                    <div class="flex items-center space-x-4">
+                        <div class="w-40 text-sm font-medium text-gray-300 truncate">${record.machineId} - ${record.location}</div>
+                        <div class="flex-grow bg-gray-700 rounded-full h-6">
+                            <div class="chart-bar bg-yellow-500 h-6 rounded-full text-xs font-medium text-gray-900 text-right pr-2 leading-6" style="width: ${barWidth}%">
+                                ${record.cost.toFixed(2)} 元/次
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            const totalDayCost = totalDayPayouts > 0 ? totalDayRevenue / totalDayPayouts : 0;
+
+            trendChartContentEl.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 max-h-80 overflow-y-auto pr-2">
+                    <div>
+                        <div class="flex justify-between items-baseline mb-3">
+                           <h4 class="text-lg font-semibold text-white">當日營收</h4>
+                           <p class="text-sm text-blue-300">總計：${totalDayRevenue.toLocaleString()} 元</p>
+                        </div>
+                        <div class="space-y-4">${revenueCharts}</div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-baseline mb-3">
+                           <h4 class="text-lg font-semibold text-white">當日出貨成本</h4>
+                           <p class="text-sm text-yellow-300">平均：${totalDayCost.toFixed(2)} 元/次</p>
+                        </div>
+                        <div class="space-y-4">${costCharts}</div>
+                    </div>
+                </div>
+            `;
         }
+
         function updateFooterAndHeader() { /* ... Footer rendering logic ... */ }
         function showFeedback(message, isError = false) {
             const feedbackEl = document.getElementById('form-feedback');
@@ -1024,11 +1152,92 @@
             setTimeout(() => { feedbackEl.style.opacity = '0'; }, 5000);
         }
 
+        function getPeriodDateRange(period, dateStr) {
+            const today = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
+            today.setHours(0, 0, 0, 0);
+            let startDate, endDate;
+
+            const toYYYYMMDD = (d) => d.toISOString().split('T')[0];
+
+            switch (period) {
+                case 'daily':
+                    startDate = new Date(today);
+                    endDate = new Date(today);
+                    break;
+                case 'weekly':
+                    const day = today.getDay();
+                    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+                    startDate = new Date(new Date(today).setDate(diff));
+                    endDate = new Date(startDate);
+                    endDate.setDate(startDate.getDate() + 6);
+                    break;
+                case 'monthly':
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                    endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    break;
+                case 'quarterly':
+                    const quarter = Math.floor(today.getMonth() / 3);
+                    startDate = new Date(today.getFullYear(), quarter * 3, 1);
+                    endDate = new Date(today.getFullYear(), quarter * 3 + 3, 0);
+                    break;
+                case 'yearly':
+                    startDate = new Date(today.getFullYear(), 0, 1);
+                    endDate = new Date(today.getFullYear(), 11, 31);
+                    break;
+            }
+            return {
+                startDate: toYYYYMMDD(startDate),
+                endDate: toYYYYMMDD(endDate)
+            };
+        }
+
+        async function getStoreSummaryForPeriod(storeId, period, date) {
+            if (period === 'all') {
+                const machinesSnapshot = await db.collection('stores').doc(storeId).collection('machines').get();
+                const machines = machinesSnapshot.docs.map(doc => doc.data());
+                return calculateSummaryData(machines);
+            }
+
+            const { startDate, endDate } = getPeriodDateRange(period, date);
+            
+            const historySnapshot = await db.collection('stores').doc(storeId).collection('history').where('date', '>=', startDate).where('date', '<=', endDate).get();
+            const filteredHistory = historySnapshot.docs.map(doc => doc.data());
+
+            if (filteredHistory.length === 0) return [];
+
+            const summary = filteredHistory.reduce((acc, curr) => {
+                const key = `${curr.machineId}|${curr.location}`;
+                if (!acc[key]) {
+                     acc[key] = { id: curr.machineId, location: curr.location, plays: 0, payouts: 0 };
+                }
+                acc[key].plays += curr.newPlays;
+                acc[key].payouts += curr.newPayouts;
+                return acc;
+            }, {});
+            
+            return Object.values(summary).map(s => {
+                const revenue = s.plays * COIN_VALUE;
+                const cost = s.payouts > 0 ? revenue / s.payouts : 0;
+                return { ...s, revenue, cost };
+            });
+        }
+
         async function handleDownloadAllStoresReport() {
             const btn = document.getElementById('download-all-stores-report-btn');
             const originalText = btn.innerHTML;
             btn.innerHTML = `<span>處理中...</span>`;
             btn.disabled = true;
+
+            const period = reportPeriodSelector.value;
+            const date = reportDatePicker.value;
+            const periodText = reportPeriodSelector.options[reportPeriodSelector.selectedIndex].text;
+
+            if (period === 'daily' && !date) {
+                alert('請選擇一個日期！');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                return;
+            }
 
             try {
                 const storeSnapshot = await db.collection('stores').get();
@@ -1040,31 +1249,59 @@
                 }
 
                 const csvRows = [];
-                csvRows.push(`全門市營運概況總報表`);
+                csvRows.push(`全門市營運概況總報表 - ${periodText}${period === 'daily' ? ' (' + date + ')' : ''}`);
                 csvRows.push(`報表產生日期: ${new Date().toLocaleString()}`);
 
                 for (const store of stores) {
-                    const machinesSnapshot = await db.collection('stores').doc(store.id).collection('machines').get();
-                    const machines = machinesSnapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
+                    const summaryData = await getStoreSummaryForPeriod(store.id, period, date);
                     
-                    const summaryData = calculateSummaryData(machines);
-
                     csvRows.push("");
                     csvRows.push(`--- ${store.name} ---`);
-                    const summaryTableHeaders = ["機台編號", "總投幣金額", "總出貨數量", "平均出貨成本(元/次)"];
+                    const summaryTableHeaders = ["機台編號", "位置", "期間營收", "期間出貨數", "期間出貨成本(元/次)"];
                     csvRows.push(summaryTableHeaders.join(","));
 
                     if (summaryData.length > 0) {
                         summaryData.forEach(item => {
                             csvRows.push([
                                 item.id,
+                                `"${item.location}"`,
                                 item.revenue,
                                 item.payouts,
                                 item.cost.toFixed(2)
                             ].join(","));
                         });
+                        
+                        // Add Store Total and PSD
+                        const storeTotalRevenue = summaryData.reduce((sum, item) => sum + item.revenue, 0);
+                        const storeTotalPayouts = summaryData.reduce((sum, item) => sum + item.payouts, 0);
+                        const storeAvgCost = storeTotalPayouts > 0 ? storeTotalRevenue / storeTotalPayouts : 0;
+                        
+                        csvRows.push(""); // blank line
+                        csvRows.push([`門市總計`, "", storeTotalRevenue, storeTotalPayouts, storeAvgCost.toFixed(2)].join(","));
+
+                        let psd = 0;
+                        if (period === 'all') {
+                            if (store.createdAt && store.createdAt.toDate) {
+                                const storeStartDate = store.createdAt.toDate();
+                                const today = new Date();
+                                const diffTime = Math.abs(today - storeStartDate);
+                                const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+                                const totalCumulativeRevenue = await getStoreSummaryForPeriod(store.id, 'all', null).then(data => data.reduce((sum, item) => sum + item.revenue, 0));
+                                psd = totalCumulativeRevenue / diffDays;
+                            }
+                        } else {
+                            const { startDate, endDate } = getPeriodDateRange(period, date);
+                            const d1 = new Date(startDate);
+                            const d2 = new Date(endDate);
+                            const diffTime = Math.abs(d2 - d1);
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                            psd = storeTotalRevenue / diffDays;
+                        }
+                         csvRows.push([`門市PSD (每日平均營收)`, "", `"${psd.toFixed(2)} 元/天"`].join(","));
+
+
                     } else {
-                        csvRows.push("此門市尚無機台數據");
+                        csvRows.push("此期間尚無數據");
                     }
                 }
                 
@@ -1076,7 +1313,7 @@
                 link.setAttribute("href", encodedUri);
                 const today = new Date();
                 const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-                link.setAttribute("download", `全門市營運概況總報表-${dateString}.csv`);
+                link.setAttribute("download", `全門市營運報表-${periodText}-${dateString}.csv`);
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -1089,6 +1326,7 @@
                 btn.disabled = false;
             }
         }
+
 
         // --- EVENT LISTENERS ---
 
@@ -1115,6 +1353,18 @@
         createStoreForm.addEventListener('submit', handleCreateStore);
         addMachineForm.addEventListener('submit', handleAddMachine);
         downloadAllStoresBtn.addEventListener('click', handleDownloadAllStoresReport);
+        trendChartDatePicker.addEventListener('change', renderTrendChartByDate);
+
+        reportPeriodSelector.addEventListener('change', () => {
+            if (reportPeriodSelector.value === 'daily') {
+                reportDatePicker.classList.remove('hidden');
+                if (!reportDatePicker.value) {
+                    reportDatePicker.valueAsDate = new Date();
+                }
+            } else {
+                reportDatePicker.classList.add('hidden');
+            }
+        });
         
         modalConfirmBtn.addEventListener('click', () => {
             if(confirmCallback) confirmCallback();
