@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>互動式查帳系統 - 娃娃機營業報告 (雲端版)</title>
+    <title>互動式查帳系統 - 娃娃機營業報告 (多門市雲端版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -19,18 +19,44 @@
         input, select { color-scheme: dark; }
         .chart-container { background-color: #1f2937; padding: 1.5rem; border-radius: 0.75rem; }
         .chart-bar { transition: width 0.5s ease-in-out; }
+        .store-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .store-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3), 0 4px 6px -2px rgba(59, 130, 246, 0.1); }
     </style>
 </head>
 <body class="p-4 sm:p-6 md:p-8">
 
-    <div class="max-w-7xl mx-auto">
+    <!-- 門市選擇頁面 -->
+    <div id="store-selection-page" class="max-w-4xl mx-auto">
+        <h1 class="text-4xl font-bold text-white text-center mb-8">娃娃機查帳系統</h1>
+        <div class="bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold text-white mb-4">建立新門市</h2>
+            <form id="create-store-form" class="flex flex-col sm:flex-row gap-4">
+                <input type="text" id="new-store-name" class="flex-grow w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="請輸入門市名稱 (例如：台中逢甲店)" required>
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition shrink-0">建立門市</button>
+            </form>
+        </div>
+        <div class="bg-gray-800 rounded-xl shadow-lg p-6">
+            <h2 class="text-2xl font-bold text-white mb-4">選擇要管理的門市</h2>
+            <div id="store-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 門市卡片將會動態插入這裡 -->
+                <p class="text-gray-400 col-span-full text-center py-8">正在讀取門市列表...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 報表主頁面 (預設隱藏) -->
+    <div id="report-page" class="max-w-7xl mx-auto hidden">
         <header class="mb-8">
-            <div class="flex flex-col sm:flex-row justify-between items-center text-center sm:text-left gap-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 class="text-3xl sm:text-4xl font-bold text-white mb-2">娃娃機營業報告 (雲端版)</h1>
+                     <button id="back-to-stores-btn" class="text-blue-400 hover:text-blue-300 transition mb-2 flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                        <span>返回門市列表</span>
+                    </button>
+                    <h1 id="report-title-main" class="text-3xl sm:text-4xl font-bold text-white mb-2">娃娃機營業報告</h1>
                     <p class="text-lg text-gray-400" id="report-period">統計期間：2025/10/10 ～ 現在</p>
                 </div>
-                <button id="download-report-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0">
+                <button id="download-report-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0 self-end sm:self-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                     <span>下載報表 (CSV)</span>
                 </button>
@@ -79,6 +105,7 @@
         <div class="bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
             <div class="flex border-b border-gray-700 mb-6 flex-wrap">
                 <button class="tab-btn active text-lg py-3 px-6 font-semibold transition" data-tab="accounting">每日記帳</button>
+                <button class="tab-btn text-lg py-3 px-6 font-semibold transition text-gray-400" data-tab="machines">機台管理</button>
                 <button class="tab-btn text-lg py-3 px-6 font-semibold transition text-gray-400" data-tab="charts">圖表分析</button>
                 <button class="tab-btn text-lg py-3 px-6 font-semibold transition text-gray-400" data-tab="statistics">統計彙整</button>
                 <button class="tab-btn text-lg py-3 px-6 font-semibold transition text-gray-400" data-tab="details">機台營業明細</button>
@@ -88,7 +115,7 @@
 
             <div>
                 <div id="accounting" class="tab-content">
-                    <h3 class="text-xl font-bold text-white mb-4">新增每日紀錄</h3>
+                     <h3 class="text-xl font-bold text-white mb-4">新增每日紀錄</h3>
                     <div class="relative">
                         <form id="daily-entry-form" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end bg-gray-900/50 p-4 rounded-lg mb-4">
                             <div>
@@ -98,7 +125,7 @@
                             <div>
                                 <label for="machine-selector" class="block text-sm font-medium text-gray-300 mb-1">機台位置</label>
                                 <select id="machine-selector" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required>
-                                    </select>
+                                </select>
                             </div>
                             <div>
                                 <label for="cumulative-plays" class="block text-sm font-medium text-gray-300 mb-1">累積投幣數 (抄表)</label>
@@ -123,14 +150,45 @@
                                     <th class="p-4">位置</th>
                                     <th class="p-4 text-right">當日投幣數</th>
                                     <th class="p-4 text-right">當日出貨數</th>
+                                    <th class="p-4 text-right">操作</th>
                                 </tr>
                             </thead>
                             <tbody id="history-table-body" class="divide-y divide-gray-700"></tbody>
                         </table>
                     </div>
                 </div>
+                <div id="machines" class="tab-content hidden">
+                    <h3 class="text-xl font-bold text-white mb-4">建立新機台</h3>
+                    <form id="add-machine-form" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-gray-900/50 p-4 rounded-lg mb-6">
+                        <div>
+                            <label for="new-machine-id" class="block text-sm font-medium text-gray-300 mb-1">機台編號</label>
+                            <input type="text" id="new-machine-id" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" placeholder="例如：A01" required>
+                        </div>
+                        <div>
+                            <label for="new-machine-location" class="block text-sm font-medium text-gray-300 mb-1">位置/內容物</label>
+                            <input type="text" id="new-machine-location" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" placeholder="例如：門口/大娃娃" required>
+                        </div>
+                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition">建立機台</button>
+                    </form>
+                    
+                    <h3 class="text-xl font-bold text-white mb-4 mt-4">現有機台列表</h3>
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-700/50 text-gray-300 uppercase text-sm sticky top-0">
+                                <tr>
+                                    <th class="p-4">機台編號</th>
+                                    <th class="p-4">位置</th>
+                                    <th class="p-4 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="machine-list-table-body" class="divide-y divide-gray-700">
+                                <!-- 機台列表將動態插入 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 <div id="charts" class="tab-content hidden">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div class="chart-container">
                             <h3 class="text-xl font-bold text-white mb-4">各機台總營收比較</h3>
                             <div id="revenue-chart" class="space-y-4"></div>
@@ -146,7 +204,7 @@
                     </div>
                 </div>
                 <div id="statistics" class="tab-content hidden">
-                    <div class="flex justify-center mb-6 bg-gray-900/50 p-2 rounded-lg">
+                     <div class="flex justify-center mb-6 bg-gray-900/50 p-2 rounded-lg">
                         <div id="stats-controls" class="inline-flex rounded-md shadow-sm" role="group">
                             <button type="button" class="stats-period-btn active py-2 px-4 text-sm font-medium text-gray-300 bg-transparent rounded-l-lg border border-gray-600 hover:bg-gray-700 hover:text-white" data-period="daily">每日</button>
                             <button type="button" class="stats-period-btn py-2 px-4 text-sm font-medium text-gray-300 bg-transparent border-t border-b border-gray-600 hover:bg-gray-700 hover:text-white" data-period="weekly">每週</button>
@@ -190,7 +248,7 @@
                     </div>
                 </div>
                 <div id="summary" class="tab-content hidden">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                         <div class="overflow-x-auto">
                             <h3 class="text-xl font-bold text-white mb-4">營運概況總表</h3>
                              <table class="w-full text-left">
@@ -230,6 +288,31 @@
         </footer>
     </div>
 
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-lg p-8 max-w-sm w-full mx-4">
+            <h3 id="modal-title" class="text-xl font-bold text-white mb-4">確認操作</h3>
+            <p id="modal-message" class="text-gray-300 mb-6">您確定要執行此操作嗎？</p>
+            <div class="flex justify-end gap-4">
+                <button id="modal-cancel-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">取消</button>
+                <button id="modal-confirm-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prompt Modal -->
+    <div id="prompt-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-lg p-8 max-w-sm w-full mx-4">
+            <h3 id="prompt-title" class="text-xl font-bold text-white mb-4">更改名稱</h3>
+            <input type="text" id="prompt-input" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 mb-6">
+            <div class="flex justify-end gap-4">
+                <button id="prompt-cancel-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">取消</button>
+                <button id="prompt-confirm-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">確認</button>
+            </div>
+        </div>
+    </div>
+
+
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
@@ -245,50 +328,290 @@
           messagingSenderId: "751999178093",
           appId: "1:751999178093:web:d7e64343ebf14d0cebf664"
         };
-
-        // Initialize Firebase App and Firestore
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        console.log("Firebase 初始化成功！");
         // --- END: Firebase Initialization ---
 
-        // --- GLOBAL VARIABLES ---
-         const COIN_VALUE = 10;
+        // --- GLOBAL STATE ---
+        const COIN_VALUE = 10;
         let appData = { machines: [], history: [], startDate: '2025-10-10' };
         let currentSort = { key: 'id', direction: 'asc' };
+        let selectedStoreId = null; 
+        let selectedStoreName = ''; 
+        let confirmCallback = null;
+        let promptCallback = null;
 
-        // ==================== 請將以下程式碼貼在這裡 ====================
+        // --- PAGE & ELEMENT SELECTORS ---
+        const storeSelectionPage = document.getElementById('store-selection-page');
+        const reportPage = document.getElementById('report-page');
+        const storeListContainer = document.getElementById('store-list');
+        const createStoreForm = document.getElementById('create-store-form');
+        const backToStoresBtn = document.getElementById('back-to-stores-btn');
         const allTabs = document.querySelectorAll('.tab-btn');
         const allTabContents = document.querySelectorAll('.tab-content');
         const searchInput = document.getElementById('searchInput');
         const sortableHeaders = document.querySelectorAll('.table-header-sortable');
         const statsControls = document.getElementById('stats-controls');
-        // ===============================================================
+        const addMachineForm = document.getElementById('add-machine-form');
+        const machineListTableBody = document.getElementById('machine-list-table-body');
+        const historyTableBody = document.getElementById('history-table-body');
+        
+        // Modal selectors
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const modalMessage = document.getElementById('modal-message');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const promptModal = document.getElementById('prompt-modal');
+        const promptTitle = document.getElementById('prompt-title');
+        const promptInput = document.getElementById('prompt-input');
+        const promptConfirmBtn = document.getElementById('prompt-confirm-btn');
+        const promptCancelBtn = document.getElementById('prompt-cancel-btn');
 
-        // --- DATA FUNCTIONS (Firestore Version) ---
-        async function loadDataFromFirestore() {
-            console.log("正在從 Firestore 讀取資料...");
-            const machinesCollection = db.collection('machines');
-            const historyCollection = db.collection('history').orderBy('date', 'desc'); // 讓歷史紀錄預設最新
+        // --- MODAL FUNCTIONS ---
+        function showConfirmationModal(message, onConfirm) {
+            modalMessage.textContent = message;
+            confirmCallback = onConfirm;
+            confirmationModal.classList.remove('hidden');
+        }
+
+        function hideConfirmationModal() {
+            confirmationModal.classList.add('hidden');
+            confirmCallback = null;
+        }
+
+        function showPromptModal(title, currentValue, onConfirm) {
+            promptTitle.textContent = title;
+            promptInput.value = currentValue;
+            promptCallback = onConfirm;
+            promptModal.classList.remove('hidden');
+            promptInput.focus();
+        }
+
+        function hidePromptModal() {
+            promptModal.classList.add('hidden');
+            promptCallback = null;
+        }
+
+
+        // --- NAVIGATION & PAGE CONTROL ---
+        
+        function showReportPage(storeId, storeName) {
+            selectedStoreId = storeId;
+            selectedStoreName = storeName;
+            
+            document.getElementById('report-title-main').textContent = `${selectedStoreName} - 營業報告`;
+            storeSelectionPage.classList.add('hidden');
+            reportPage.classList.remove('hidden');
+            
+            appData = { machines: [], history: [], startDate: '2025-10-10' };
+            document.querySelector('.tab-btn[data-tab="accounting"]').click();
+            updateUI(); 
+            
+            loadStoreData(storeId);
+        }
+
+        function showStoreSelectionPage() {
+            selectedStoreId = null;
+            selectedStoreName = '';
+            
+            reportPage.classList.add('hidden');
+            storeSelectionPage.classList.remove('hidden');
+            loadStores(); 
+        }
+
+        // --- DATA FUNCTIONS (Multi-store Version) ---
+
+        async function loadStores() {
+            try {
+                const storeSnapshot = await db.collection('stores').orderBy('createdAt', 'desc').get();
+                const stores = storeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderStores(stores);
+            } catch (error) {
+                console.error("讀取門市列表失敗:", error);
+                storeListContainer.innerHTML = '<p class="text-red-400 col-span-full text-center py-8">無法讀取門市列表，請檢查網路連線或 Firebase 設定。</p>';
+            }
+        }
+        
+        async function loadStoreData(storeId) {
+            if (!storeId) return;
+            console.log(`正在從 Firestore 讀取門市 [${storeId}] 的資料...`);
+            const machinesCollection = db.collection('stores').doc(storeId).collection('machines');
+            const historyCollection = db.collection('stores').doc(storeId).collection('history').orderBy('date', 'desc');
             
             try {
                 const machineSnapshot = await machinesCollection.get();
                 const historySnapshot = await historyCollection.get();
 
                 const machines = machineSnapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
-                const history = historySnapshot.docs.map(doc => doc.data());
+                const history = historySnapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
 
                 appData.machines = machines;
                 appData.history = history;
                 
                 console.log("資料讀取成功!", appData);
-                updateUI(); // 讀取成功後，更新整個頁面
+                updateUI();
 
             } catch (error) {
-                console.error("從 Firestore 讀取資料時發生錯誤: ", error);
+                console.error(`從 Firestore 讀取門市 [${storeId}] 資料時發生錯誤:`, error);
                 showFeedback("無法從雲端讀取資料，請檢查網路連線。", true);
             }
         }
+
+        async function handleCreateStore(e) {
+            e.preventDefault();
+            const newStoreNameInput = document.getElementById('new-store-name');
+            const storeName = newStoreNameInput.value.trim();
+            if (!storeName) {
+                alert('門市名稱不可空白！');
+                return;
+            }
+            try {
+                await db.collection('stores').add({
+                    name: storeName,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                newStoreNameInput.value = '';
+                loadStores(); 
+            } catch (error) {
+                console.error("建立門市失敗:", error);
+                alert('建立門市失敗，請稍後再試。');
+            }
+        }
+
+        async function handleRenameStore(storeId, currentName) {
+            showPromptModal('更改門市名稱', currentName, async (newName) => {
+                if (newName && newName.trim() !== '' && newName.trim() !== currentName) {
+                    try {
+                        await db.collection('stores').doc(storeId).update({ name: newName.trim() });
+                        hidePromptModal();
+                        loadStores();
+                    } catch(error) {
+                        console.error('更新門市名稱失敗:', error);
+                        alert('更新失敗，請稍後再試。');
+                    }
+                } else {
+                    hidePromptModal();
+                }
+            });
+        }
+        
+        async function handleDeleteStore(storeId, storeName) {
+            const message = `您確定要刪除「${storeName}」嗎？\n\n警告：此操作將會永久刪除該門市及其底下的所有機台與記帳紀錄，且無法復原。`;
+            showConfirmationModal(message, async () => {
+                console.log(`開始刪除門市: ${storeId}`);
+                try {
+                    const storeRef = db.collection('stores').doc(storeId);
+                    
+                    // 批次刪除 machines 子集合
+                    const machinesSnapshot = await storeRef.collection('machines').get();
+                    const batch1 = db.batch();
+                    machinesSnapshot.docs.forEach(doc => batch1.delete(doc.ref));
+                    await batch1.commit();
+
+                    // 批次刪除 history 子集合
+                    const historySnapshot = await storeRef.collection('history').get();
+                    const batch2 = db.batch();
+                    historySnapshot.docs.forEach(doc => batch2.delete(doc.ref));
+                    await batch2.commit();
+
+                    // 刪除主文件
+                    await storeRef.delete();
+
+                    console.log(`門市 ${storeId} 已成功刪除。`);
+                    hideConfirmationModal();
+                    loadStores();
+
+                } catch(error) {
+                    console.error('刪除門市失敗:', error);
+                    alert('刪除失敗，請稍後再試。');
+                    hideConfirmationModal();
+                }
+            });
+        }
+
+        async function handleAddMachine(e) {
+            e.preventDefault();
+            if (!selectedStoreId) return alert('沒有選擇有效的門市。');
+
+            const idInput = document.getElementById('new-machine-id');
+            const locationInput = document.getElementById('new-machine-location');
+            const machineId = idInput.value.trim();
+            const machineLocation = locationInput.value.trim();
+
+            if (!machineId || !machineLocation) {
+                return alert('機台編號和位置不能為空！');
+            }
+
+            try {
+                await db.collection('stores').doc(selectedStoreId).collection('machines').add({
+                    id: machineId,
+                    location: machineLocation,
+                    plays: 0,
+                    payouts: 0
+                });
+                idInput.value = '';
+                locationInput.value = '';
+                loadStoreData(selectedStoreId); // 重新載入資料
+            } catch(error) {
+                console.error("新增機台失敗：", error);
+                alert('新增機台失敗，請稍後再試。');
+            }
+        }
+
+        async function handleDeleteMachine(docId) {
+            if(!selectedStoreId || !docId) return;
+            showConfirmationModal('您確定要刪除這台機器嗎？此操作無法復原。', async () => {
+                try {
+                    await db.collection('stores').doc(selectedStoreId).collection('machines').doc(docId).delete();
+                    hideConfirmationModal();
+                    loadStoreData(selectedStoreId);
+                } catch (error) {
+                    console.error("刪除機台失敗：", error);
+                    alert('刪除機台失敗，請稍後再試。');
+                    hideConfirmationModal();
+                }
+            });
+        }
+
+        async function handleDeleteHistory(historyDocId, machineId, dailyPlays, dailyPayouts) {
+            if(!selectedStoreId || !historyDocId || !machineId) return;
+
+            const machineToUpdate = appData.machines.find(m => m.id === machineId);
+            if (!machineToUpdate) {
+                alert('錯誤：找不到對應的機台來回滾數據。');
+                return;
+            }
+            
+            showConfirmationModal('您確定要刪除這筆記帳紀錄嗎？系統將自動回滾機台數據。', async () => {
+                const revertedPlays = machineToUpdate.plays - dailyPlays;
+                const revertedPayouts = machineToUpdate.payouts - dailyPayouts;
+
+                if(revertedPlays < 0 || revertedPayouts < 0) {
+                    alert('錯誤：刪除此紀錄會導致機台累積數變為負數，操作已取消。');
+                    hideConfirmationModal();
+                    return;
+                }
+
+                try {
+                    const machineRef = db.collection('stores').doc(selectedStoreId).collection('machines').doc(machineToUpdate.docId);
+                    await machineRef.update({
+                        plays: revertedPlays,
+                        payouts: revertedPayouts
+                    });
+                    await db.collection('stores').doc(selectedStoreId).collection('history').doc(historyDocId).delete();
+                    
+                    hideConfirmationModal();
+                    showFeedback("記帳紀錄已刪除並成功回滾數據！", false);
+                    loadStoreData(selectedStoreId);
+
+                } catch (error) {
+                    console.error("刪除記帳紀錄失敗：", error);
+                    alert('刪除紀錄失敗，請稍後再試。');
+                    hideConfirmationModal();
+                }
+            });
+        }
+
 
         function getSummaryData() {
             const summary = {};
@@ -306,8 +629,31 @@
                 return { ...s, revenue, cost };
             });
         }
-
+        
         // --- UI RENDERING FUNCTIONS ---
+        
+        function renderStores(stores) {
+            storeListContainer.innerHTML = ''; 
+            if (stores.length === 0) {
+                storeListContainer.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">尚未建立任何門市，請由上方建立您的第一個門市。</p>';
+                return;
+            }
+            stores.forEach(store => {
+                const storeCard = `
+                    <div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between">
+                        <div class="store-card-main cursor-pointer mb-3" data-store-id="${store.id}" data-store-name="${store.name}">
+                            <h3 class="text-xl font-bold text-white truncate">${store.name}</h3>
+                        </div>
+                        <div class="flex justify-end gap-2 border-t border-gray-600 pt-3">
+                            <button class="rename-store-btn text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}">改名</button>
+                            <button class="delete-store-btn text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}">刪除</button>
+                        </div>
+                    </div>
+                `;
+                storeListContainer.innerHTML += storeCard;
+            });
+        }
+        
         function updateUI() {
             if (!appData || !appData.machines) return;
             const processedMachines = appData.machines.map(m => {
@@ -320,9 +666,30 @@
             renderSummaryTab();
             renderAnalysisTab(processedMachines);
             renderAccountingTab();
+            renderMachineManagementTab(); 
             renderChartsTab();
             renderStatisticsTab();
             updateFooterAndHeader();
+        }
+
+        function renderMachineManagementTab() {
+            machineListTableBody.innerHTML = '';
+            if (!appData.machines || appData.machines.length === 0) {
+                machineListTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-gray-400">此門市尚無機台，請先建立一台。</td></tr>`;
+                return;
+            }
+            appData.machines.forEach(machine => {
+                const row = `
+                    <tr class="hover:bg-gray-700/50">
+                        <td class="p-4 font-medium text-white">${machine.id}</td>
+                        <td class="p-4">${machine.location}</td>
+                        <td class="p-4 text-right">
+                            <button class="delete-machine-btn bg-red-600 hover:bg-red-700 text-white text-sm font-bold py-1 px-3 rounded" data-doc-id="${machine.docId}">刪除</button>
+                        </td>
+                    </tr>
+                `;
+                machineListTableBody.innerHTML += row;
+            });
         }
         
         function renderMainStats(data) {
@@ -368,23 +735,35 @@
         function renderAccountingTab() {
             const machineSelector = document.getElementById('machine-selector');
             machineSelector.innerHTML = '<option value="" disabled selected>請選擇...</option>';
-            appData.machines.forEach((m, index) => {
-                machineSelector.innerHTML += `<option value="${index}">${m.id} - ${m.location}</option>`;
-            });
+            if(appData.machines.length === 0) {
+                machineSelector.innerHTML = '<option value="" disabled selected>請先至「機台管理」建立機台</option>';
+            } else {
+                appData.machines.forEach((m, index) => {
+                    machineSelector.innerHTML += `<option value="${index}">${m.id} - ${m.location}</option>`;
+                });
+            }
             document.getElementById('entry-date').valueAsDate = new Date();
             
-            const historyTableBody = document.getElementById('history-table-body');
             historyTableBody.innerHTML = '';
             if (appData.history.length === 0) {
-                historyTableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-400">尚無記帳紀錄</td></tr>`;
+                historyTableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-400">尚無記帳紀錄</td></tr>`;
             } else {
                 appData.history.forEach(h => {
-                    historyTableBody.innerHTML += `<tr>
+                    historyTableBody.innerHTML += `<tr class="hover:bg-gray-700/50">
                         <td class="p-4">${h.date}</td>
                         <td class="p-4 font-medium text-white">${h.machineId || '未知'}</td>
                         <td class="p-4">${h.location || '未知'}</td>
                         <td class="p-4 text-right">${h.newPlays}</td>
                         <td class="p-4 text-right">${h.newPayouts}</td>
+                        <td class="p-4 text-right">
+                           <button class="delete-history-btn bg-red-600 hover:bg-red-700 text-white text-sm font-bold py-1 px-3 rounded" 
+                                data-doc-id="${h.docId}" 
+                                data-machine-id="${h.machineId}"
+                                data-plays="${h.newPlays}"
+                                data-payouts="${h.newPayouts}">
+                                刪除
+                           </button>
+                        </td>
                     </tr>`;
                 });
             }
@@ -428,22 +807,28 @@
             const diffTime = Math.abs(today - startDate);
             const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
             const totalRevenue = processedMachines.reduce((sum, m) => sum + m.revenue, 0);
-            const psd = totalRevenue / diffDays;
+            const psd = totalRevenue > 0 && diffDays > 0 ? totalRevenue / diffDays : 0;
             document.getElementById('psd-display').innerHTML = `<strong>${psd.toLocaleString('en-US', {maximumFractionDigits: 0})} 元 / 天</strong> 
                 <span class="text-sm text-gray-400">(${totalRevenue.toLocaleString()} 元 ÷ ${diffDays} 天)</span>`;
             
             const sortedByRevenue = [...processedMachines].sort((a,b) => b.revenue - a.revenue);
             const sortedByCost = [...processedMachines].sort((a,b) => b.cost - a.cost);
-            const bestPerformer = sortedByRevenue[0] || {id: 'N/A', location: ''};
-            const highestCost = sortedByCost[0] || {id: 'N/A', location: ''};
-            document.getElementById('analysis-observation').innerHTML = `
-                <li><strong>收益冠軍：</strong><span class="font-semibold text-white">${bestPerformer.id} (${bestPerformer.location})</span> 累積營收最高。</li>
-                <li><strong>成本最高：</strong><span class="font-semibold text-white">${highestCost.id} (${highestCost.location})</span> 平均出貨成本最高，建議觀察。</li>
-            `;
-            document.getElementById('analysis-suggestion').innerHTML = `
-                <li>針對 <span class="font-semibold text-white">${highestCost.id} (${highestCost.location})</span> 檢討難度與獎品設定，以優化成本。</li>
-                <li>每週持續追蹤 <span class="font-semibold text-white">PSD 指標變化</span>，可有效掌握營運成長趨勢。</li>
-            `;
+            const bestPerformer = sortedByRevenue[0];
+            const highestCost = sortedByCost[0];
+            
+            if (processedMachines.length > 0) {
+                 document.getElementById('analysis-observation').innerHTML = `
+                    <li><strong>收益冠軍：</strong><span class="font-semibold text-white">${bestPerformer.id} (${bestPerformer.location})</span> 累積營收最高。</li>
+                    <li><strong>成本最高：</strong><span class="font-semibold text-white">${highestCost.id} (${highestCost.location})</span> 平均出貨成本最高，建議觀察。</li>
+                `;
+                document.getElementById('analysis-suggestion').innerHTML = `
+                    <li>針對 <span class="font-semibold text-white">${highestCost.id} (${highestCost.location})</span> 檢討難度與獎品設定，以優化成本。</li>
+                    <li>每週持續追蹤 <span class="font-semibold text-white">PSD 指標變化</span>，可有效掌握營運成長趨勢。</li>
+                `;
+            } else {
+                 document.getElementById('analysis-observation').innerHTML = '<li>尚無機台數據可進行分析。</li>';
+                 document.getElementById('analysis-suggestion').innerHTML = '<li>請先至「機台管理」建立機台，並在「每日記帳」新增紀錄。</li>';
+            }
         }
 
         function getAggregatedData(period) {
@@ -500,64 +885,59 @@
             });
         }
         
-        // ==================== 請複製這段完整的圖表功能程式碼 ====================
-function renderChartsTab() {
-    const revenueChartEl = document.getElementById('revenue-chart');
-    const costChartEl = document.getElementById('cost-chart');
-    const trendChartEl = document.getElementById('trend-chart'); // 趨勢圖的容器
+        function renderChartsTab() {
+            const revenueChartEl = document.getElementById('revenue-chart');
+            const costChartEl = document.getElementById('cost-chart');
+            const trendChartEl = document.getElementById('trend-chart');
 
-    // 清空現有圖表
-    revenueChartEl.innerHTML = '';
-    costChartEl.innerHTML = '';
-    trendChartEl.innerHTML = '<p class="text-center text-gray-500">此圖表功能待開發。</p>'; // 暫時保留趨勢圖
+            revenueChartEl.innerHTML = '';
+            costChartEl.innerHTML = '';
+            trendChartEl.innerHTML = '<p class="text-center text-gray-500">此圖表功能待開發。</p>';
 
-    const processedMachines = appData.machines.map(m => {
-        const revenue = m.plays * COIN_VALUE;
-        const cost = m.payouts > 0 ? revenue / m.payouts : 0;
-        return { ...m, revenue, cost };
-    });
+            const processedMachines = appData.machines.map(m => {
+                const revenue = m.plays * COIN_VALUE;
+                const cost = m.payouts > 0 ? revenue / m.payouts : 0;
+                return { ...m, revenue, cost };
+            });
 
-    if (processedMachines.length === 0) {
-        revenueChartEl.innerHTML = '<p class="text-center text-gray-500">尚無資料可繪製圖表</p>';
-        costChartEl.innerHTML = '<p class="text-center text-gray-500">尚無資料可繪製圖表</p>';
-        return;
-    }
+            if (processedMachines.length === 0) {
+                revenueChartEl.innerHTML = '<p class="text-center text-gray-500">尚無資料可繪製圖表</p>';
+                costChartEl.innerHTML = '<p class="text-center text-gray-500">尚無資料可繪製圖表</p>';
+                return;
+            }
 
-    // --- 繪製營收長條圖 ---
-    const maxRevenue = Math.max(...processedMachines.map(m => m.revenue));
-    processedMachines.forEach(machine => {
-        const barWidth = maxRevenue > 0 ? (machine.revenue / maxRevenue * 100) : 0;
-        const chartItem = `
-            <div class="flex items-center space-x-4">
-                <div class="w-28 text-sm font-medium text-gray-300 truncate">${machine.id} - ${machine.location}</div>
-                <div class="flex-grow bg-gray-700 rounded-full h-6">
-                    <div class="chart-bar bg-blue-500 h-6 rounded-full text-xs font-medium text-white text-right pr-2 leading-6" style="width: ${barWidth}%">
-                       ${machine.revenue.toLocaleString()} 元
+            const maxRevenue = Math.max(...processedMachines.map(m => m.revenue));
+            processedMachines.forEach(machine => {
+                const barWidth = maxRevenue > 0 ? (machine.revenue / maxRevenue * 100) : 0;
+                const chartItem = `
+                    <div class="flex items-center space-x-4">
+                        <div class="w-28 text-sm font-medium text-gray-300 truncate">${machine.id} - ${machine.location}</div>
+                        <div class="flex-grow bg-gray-700 rounded-full h-6">
+                            <div class="chart-bar bg-blue-500 h-6 rounded-full text-xs font-medium text-white text-right pr-2 leading-6" style="width: ${barWidth}%">
+                               ${machine.revenue.toLocaleString()} 元
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        `;
-        revenueChartEl.innerHTML += chartItem;
-    });
+                `;
+                revenueChartEl.innerHTML += chartItem;
+            });
 
-    // --- 繪製成本長條圖 ---
-    const maxCost = Math.max(...processedMachines.map(m => m.cost));
-     processedMachines.forEach(machine => {
-        const barWidth = maxCost > 0 ? (machine.cost / maxCost * 100) : 0;
-        const chartItem = `
-            <div class="flex items-center space-x-4">
-                <div class="w-28 text-sm font-medium text-gray-300 truncate">${machine.id} - ${machine.location}</div>
-                <div class="flex-grow bg-gray-700 rounded-full h-6">
-                     <div class="chart-bar bg-yellow-500 h-6 rounded-full text-xs font-medium text-gray-900 text-right pr-2 leading-6" style="width: ${barWidth}%">
-                       ${machine.cost.toFixed(2)} 元/次
+            const maxCost = Math.max(...processedMachines.map(m => m.cost));
+             processedMachines.forEach(machine => {
+                const barWidth = maxCost > 0 ? (machine.cost / maxCost * 100) : 0;
+                const chartItem = `
+                    <div class="flex items-center space-x-4">
+                        <div class="w-28 text-sm font-medium text-gray-300 truncate">${machine.id} - ${machine.location}</div>
+                        <div class="flex-grow bg-gray-700 rounded-full h-6">
+                             <div class="chart-bar bg-yellow-500 h-6 rounded-full text-xs font-medium text-gray-900 text-right pr-2 leading-6" style="width: ${barWidth}%">
+                               ${machine.cost.toFixed(2)} 元/次
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        `;
-        costChartEl.innerHTML += chartItem;
-    });
-}
-// =====================================================================
+                `;
+                costChartEl.innerHTML += chartItem;
+            });
+        }
         function updateFooterAndHeader() { /* ... Footer rendering logic ... */ }
         function showFeedback(message, isError = false) {
             const feedbackEl = document.getElementById('form-feedback');
@@ -567,6 +947,60 @@ function renderChartsTab() {
         }
 
         // --- EVENT LISTENERS ---
+
+        storeListContainer.addEventListener('click', (e) => {
+            const mainCard = e.target.closest('.store-card-main');
+            const renameBtn = e.target.closest('.rename-store-btn');
+            const deleteBtn = e.target.closest('.delete-store-btn');
+
+            if (mainCard) {
+                const storeId = mainCard.dataset.storeId;
+                const storeName = mainCard.dataset.storeName;
+                showReportPage(storeId, storeName);
+            } else if (renameBtn) {
+                const storeId = renameBtn.dataset.storeId;
+                const storeName = renameBtn.dataset.storeName;
+                handleRenameStore(storeId, storeName);
+            } else if (deleteBtn) {
+                const storeId = deleteBtn.dataset.storeId;
+                const storeName = deleteBtn.dataset.storeName;
+                handleDeleteStore(storeId, storeName);
+            }
+        });
+        
+        createStoreForm.addEventListener('submit', handleCreateStore);
+        addMachineForm.addEventListener('submit', handleAddMachine);
+        
+        modalConfirmBtn.addEventListener('click', () => {
+            if(confirmCallback) confirmCallback();
+        });
+        modalCancelBtn.addEventListener('click', hideConfirmationModal);
+
+        promptConfirmBtn.addEventListener('click', () => {
+            if(promptCallback) promptCallback(promptInput.value);
+        });
+        promptCancelBtn.addEventListener('click', hidePromptModal);
+
+        machineListTableBody.addEventListener('click', (e) => {
+            if(e.target.classList.contains('delete-machine-btn')) {
+                const docId = e.target.dataset.docId;
+                handleDeleteMachine(docId);
+            }
+        });
+
+        historyTableBody.addEventListener('click', (e) => {
+            if(e.target.classList.contains('delete-history-btn')) {
+                const button = e.target;
+                const docId = button.dataset.docId;
+                const machineId = button.dataset.machineId;
+                const plays = parseInt(button.dataset.plays, 10);
+                const payouts = parseInt(button.dataset.payouts, 10);
+                handleDeleteHistory(docId, machineId, plays, payouts);
+            }
+        });
+
+        backToStoresBtn.addEventListener('click', showStoreSelectionPage);
+
         allTabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 allTabs.forEach(t => t.classList.remove('active'));
@@ -578,7 +1012,6 @@ function renderChartsTab() {
                 if (tab.dataset.tab === 'statistics') { renderStatisticsTab(); }
             });
         });
-        document.querySelector('.tab-btn[data-tab="accounting"]').click();
 
         statsControls.addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON') {
@@ -587,85 +1020,62 @@ function renderChartsTab() {
                 renderStatisticsTab();
             }
         });
-// ==================== 請複製這段完整的偵錯版程式碼 ====================
-document.getElementById('daily-entry-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    console.log("偵錯日誌：『新增紀錄』按鈕被點擊，開始執行。");
-
-    const date = document.getElementById('entry-date').value;
-    const machineIndex = parseInt(document.getElementById('machine-selector').value);
-    const cumulativePlaysInput = parseInt(document.getElementById('cumulative-plays').value);
-    const cumulativePayoutsInput = parseInt(document.getElementById('cumulative-payouts').value);
-
-    console.log("偵錯日誌：從表單讀取到的值：", { date, machineIndex, cumulativePlaysInput, cumulativePayoutsInput });
-
-    if (isNaN(machineIndex) || isNaN(cumulativePlaysInput) || isNaN(cumulativePayoutsInput)) {
-        console.log("偵錯日誌：執行中斷！原因：有欄位不是數字或未填寫。");
-        return showFeedback('錯誤：請填寫所有欄位。', true);
-    }
-
-    const selectedMachine = appData.machines[machineIndex];
-    console.log("偵錯日誌：根據選擇的 index 找到的機台資料：", selectedMachine);
-
-    if (!selectedMachine) {
-        console.log("偵錯日誌：執行中斷！原因：找不到對應的機台資料。");
-        return showFeedback('錯誤：無法識別所選機台。', true);
-    }
-
-    console.log("偵錯日誌：檢查輸入的累積數值是否小於舊紀錄...");
-    console.log(`偵錯日誌：比較投幣數 -> 輸入值: ${cumulativePlaysInput}, 舊紀錄: ${selectedMachine.plays}`);
-    console.log(`偵錯日誌：比較出貨數 -> 輸入值: ${cumulativePayoutsInput}, 舊紀錄: ${selectedMachine.payouts}`);
-
-    if (cumulativePlaysInput < selectedMachine.plays || cumulativePayoutsInput < selectedMachine.payouts) {
-        console.log("偵錯日誌：執行中斷！原因：輸入的累積數值小於上次紀錄。");
-        return showFeedback('錯誤：輸入的累積數值小於上次紀錄，請確認抄表數值是否正確。', true);
-    }
-
-    const dailyPlays = cumulativePlaysInput - selectedMachine.plays;
-    const dailyPayouts = cumulativePayoutsInput - selectedMachine.payouts;
-    console.log("偵錯日誌：計算出的當日新增數：", { dailyPlays, dailyPayouts });
-
-    if (dailyPlays === 0 && dailyPayouts === 0) {
-        console.log("偵錯日誌：執行中斷！原因：數據未變更。");
-        return showFeedback('數據未變更，無需新增紀錄。');
-    }
-
-    console.log("偵錯日誌：所有檢查通過，準備開始寫入 Firestore...");
-    try {
-        const machineDocId = selectedMachine.docId;
-        console.log(`偵錯日誌：準備更新 machines 集合中的文件 ID: ${machineDocId}`);
         
-        const machineRef = db.collection('machines').doc(machineDocId);
-        await machineRef.update({
-            plays: cumulativePlaysInput,
-            payouts: cumulativePayoutsInput
-        });
-        console.log("偵錯日誌：machines 集合更新成功！");
+        document.getElementById('daily-entry-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!selectedStoreId) {
+                return showFeedback('錯誤：未選擇任何門市。', true);
+            }
+            
+            const date = document.getElementById('entry-date').value;
+            const machineIndex = parseInt(document.getElementById('machine-selector').value);
+            const cumulativePlaysInput = parseInt(document.getElementById('cumulative-plays').value);
+            const cumulativePayoutsInput = parseInt(document.getElementById('cumulative-payouts').value);
 
-        console.log("偵錯日誌：準備新增一筆紀錄到 history 集合...");
-        await db.collection('history').add({
-            date: date,
-            machineId: selectedMachine.id,
-            location: selectedMachine.location,
-            newPlays: dailyPlays,
-            newPayouts: dailyPayouts
+            if (isNaN(machineIndex) || isNaN(cumulativePlaysInput) || isNaN(cumulativePayoutsInput)) {
+                return showFeedback('錯誤：請填寫所有欄位。', true);
+            }
+
+            const selectedMachine = appData.machines[machineIndex];
+            if (!selectedMachine) { return showFeedback('錯誤：無法識別所選機台。', true); }
+            if (cumulativePlaysInput < selectedMachine.plays || cumulativePayoutsInput < selectedMachine.payouts) {
+                return showFeedback('錯誤：輸入的累積數值小於上次紀錄，請確認抄表數值是否正確。', true);
+            }
+
+            const dailyPlays = cumulativePlaysInput - selectedMachine.plays;
+            const dailyPayouts = cumulativePayoutsInput - selectedMachine.payouts;
+            if (dailyPlays === 0 && dailyPayouts === 0) {
+                return showFeedback('數據未變更，無需新增紀錄。');
+            }
+
+            try {
+                const machineDocId = selectedMachine.docId;
+                const machineRef = db.collection('stores').doc(selectedStoreId).collection('machines').doc(machineDocId);
+                await machineRef.update({
+                    plays: cumulativePlaysInput,
+                    payouts: cumulativePayoutsInput
+                });
+                
+                await db.collection('stores').doc(selectedStoreId).collection('history').add({
+                    date: date,
+                    machineId: selectedMachine.id,
+                    location: selectedMachine.location,
+                    newPlays: dailyPlays,
+                    newPayouts: dailyPayouts
+                });
+                
+                await loadStoreData(selectedStoreId); 
+                e.target.reset();
+                document.getElementById('entry-date').valueAsDate = new Date();
+                const successMessage = `紀錄已同步至 [${selectedStoreName}]！本日 ${selectedMachine.id} 新增：<strong class="text-white">${dailyPlays}</strong> 投幣、<strong class="text-white">${dailyPayouts}</strong> 出貨。`;
+                showFeedback(successMessage);
+
+            } catch (error) {
+                console.error("寫入 Firestore 時發生錯誤: ", error);
+                showFeedback("無法將紀錄同步至雲端，請稍後再試。", true);
+            }
         });
-        console.log("偵錯日誌：history 集合新增成功！");
         
-        console.log("偵錯日誌：重新從 Firestore 載入所有資料...");
-        await loadDataFromFirestore();
-        e.target.reset();
-        document.getElementById('entry-date').valueAsDate = new Date();
-        const successMessage = `紀錄已雲端同步！本日 ${selectedMachine.id} (${selectedMachine.location}) 新增：<strong class="text-white">${dailyPlays}</strong> 投幣、<strong class="text-white">${dailyPayouts}</strong> 出貨。`;
-        showFeedback(successMessage);
-        console.log("偵錯日誌：流程執行完畢！");
-
-    } catch (error) {
-        console.error("【嚴重錯誤】寫入 Firestore 時發生錯誤: ", error);
-        showFeedback("無法將紀錄同步至雲端，請稍後再試。", true);
-    }
-});
-// =====================================================================
         searchInput.addEventListener('input', () => updateUI());
         sortableHeaders.forEach(header => {
             header.addEventListener('click', () => {
@@ -684,64 +1094,75 @@ document.getElementById('daily-entry-form').addEventListener('submit', async (e)
                 updateUI();
             });
         });
-        // ==================== 請複製這段完整的下載功能程式碼 ====================
-    document.getElementById('download-report-btn').addEventListener('click', () => {
-    console.log("下載報表按鈕點擊。");
-    
-    // 取得處理過的最新機台數據
-    const processedMachines = appData.machines.map(m => {
-        const revenue = m.plays * 10; // COIN_VALUE
-        const cost = m.payouts > 0 ? revenue / m.payouts : 0;
-        return { ...m, revenue, cost };
-    });
+        
+        document.getElementById('download-report-btn').addEventListener('click', () => {
+            if (!selectedStoreId) return;
 
-    if (processedMachines.length === 0) {
-        alert("目前沒有資料可供下載。");
-        return;
-    }
+            const processedMachines = appData.machines.map(m => {
+                const revenue = m.plays * COIN_VALUE;
+                const cost = m.payouts > 0 ? revenue / m.payouts : 0;
+                return { ...m, revenue, cost };
+            });
 
-    // CSV 檔案的標頭
-    const headers = [
-        "機台編號", "位置", "累積投幣次數", "累積投幣金額", "累積出貨數量", "平均出貨成本(元/次)"
-    ];
-    
-    // 將標頭轉換為 CSV 格式的一行文字
-    let csvContent = "data:text/csv;charset=utf-8," + "\uFEFF" + headers.join(",") + "\n";
+            if (processedMachines.length === 0 && appData.history.length === 0) {
+                showFeedback("目前沒有資料可供下載。", true);
+                return;
+            }
+            
+            const csvRows = [];
+            let csvContent = "\uFEFF";
 
-    // 處理每一台機台的資料
-    processedMachines.forEach(item => {
-        const row = [
-            item.id,
-            item.location,
-            item.plays,
-            item.revenue,
-            item.payouts,
-            item.cost.toFixed(2)
-        ];
-        // 將每一行的資料陣列轉換為 CSV 格式的一行文字
-        csvContent += row.join(",") + "\n";
-    });
+            csvRows.push(`娃娃機營業報告 - ${selectedStoreName}`);
+            const summaryHeaders = ["機台編號", "位置", "累積投幣次數", "累積投幣金額", "累積出貨數量", "平均出貨成本(元/次)"];
+            csvRows.push(summaryHeaders.join(","));
 
-    // 建立一個隱藏的下載連結來觸發下載
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    
-    // 設定下載檔案的名稱
-    const today = new Date();
-    const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-    link.setAttribute("download", `娃娃機營業報告-${dateString}.csv`);
-    
-    document.body.appendChild(link); // 需要將連結加入到頁面中才能點擊
-    link.click(); // 模擬點擊連結
-    document.body.removeChild(link); // 下載後移除連結
-    
-    console.log("報表已觸發下載。");
-});
-// =====================================================================
+            processedMachines.forEach(item => {
+                csvRows.push([item.id, `"${item.location}"`, item.plays, item.revenue, item.payouts, item.cost.toFixed(2)].join(","));
+            });
+
+            if (appData.history.length > 0) {
+                csvRows.push("");
+                csvRows.push("每日記帳明細");
+                const historyHeaders = ["日期", "機台編號", "位置", "當日投幣數", "當日出貨數"];
+                csvRows.push(historyHeaders.join(","));
+                const sortedHistory = [...appData.history].sort((a, b) => b.date.localeCompare(a.date));
+                sortedHistory.forEach(item => {
+                    csvRows.push([item.date, item.machineId, `"${item.location}"`, item.newPlays, item.newPayouts].join(","));
+                });
+            }
+
+            if (processedMachines.length > 0) {
+                csvRows.push("");
+                csvRows.push("圖表分析原始數據");
+                csvRows.push("各機台總營收比較");
+                csvRows.push(["機台編號", "位置", "總營收(元)"].join(","));
+                [...processedMachines].sort((a, b) => b.revenue - a.revenue).forEach(item => {
+                    csvRows.push([item.id, `"${item.location}"`, item.revenue].join(","));
+                });
+                csvRows.push("");
+                csvRows.push("各機台平均出貨成本");
+                csvRows.push(["機台編號", "位置", "平均出貨成本(元/次)"].join(","));
+                [...processedMachines].sort((a, b) => b.cost - a.cost).forEach(item => {
+                    csvRows.push([item.id, `"${item.location}"`, item.cost.toFixed(2)].join(","));
+                });
+            }
+
+            csvContent += csvRows.join("\n");
+            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            const today = new Date();
+            const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+            link.setAttribute("download", `${selectedStoreName}-全方位報告-${dateString}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
         // --- INITIAL LOAD ---
-        loadDataFromFirestore();
+        loadStores(); 
     });
     </script>
 </body>
 </html>
+
