@@ -21,6 +21,7 @@
         .chart-bar { transition: width 0.5s ease-in-out; }
         .store-card { transition: transform 0.2s, box-shadow 0.2s; }
         .store-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3), 0 4px 6px -2px rgba(59, 130, 246, 0.1); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body class="p-4 sm:p-6 md:p-8">
@@ -36,7 +37,15 @@
             </form>
         </div>
         <div class="bg-gray-800 rounded-xl shadow-lg p-6">
-            <h2 class="text-2xl font-bold text-white mb-4">選擇要管理的門市</h2>
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                <h2 class="text-2xl font-bold text-white">選擇要管理的門市</h2>
+                <button id="download-all-stores-report-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0 w-full sm:w-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
+                    </svg>
+                    <span>下載全門市總報表</span>
+                </button>
+            </div>
             <div id="store-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- 門市卡片將會動態插入這裡 -->
                 <p class="text-gray-400 col-span-full text-center py-8">正在讀取門市列表...</p>
@@ -248,6 +257,14 @@
                     </div>
                 </div>
                 <div id="summary" class="tab-content hidden">
+                    <div class="flex justify-center mb-6 bg-gray-900/50 p-2 rounded-lg">
+                        <div id="summary-controls" class="inline-flex rounded-md shadow-sm" role="group">
+                            <button type="button" class="stats-period-btn active py-2 px-4 text-sm font-medium text-gray-300 bg-transparent rounded-l-lg border border-gray-600 hover:bg-gray-700 hover:text-white" data-period="all">總計</button>
+                            <button type="button" class="stats-period-btn py-2 px-4 text-sm font-medium text-gray-300 bg-transparent border-t border-b border-gray-600 hover:bg-gray-700 hover:text-white" data-period="weekly">本週</button>
+                            <button type="button" class="stats-period-btn py-2 px-4 text-sm font-medium text-gray-300 bg-transparent border-t border-b border-r border-gray-600 hover:bg-gray-700 hover:text-white" data-period="monthly">本月</button>
+                            <button type="button" class="stats-period-btn py-2 px-4 text-sm font-medium text-gray-300 bg-transparent rounded-r-md border border-gray-600 hover:bg-gray-700 hover:text-white" data-period="quarterly">本季</button>
+                        </div>
+                    </div>
                      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                         <div class="overflow-x-auto">
                             <h3 class="text-xl font-bold text-white mb-4">營運概況總表</h3>
@@ -347,11 +364,13 @@
         const storeListContainer = document.getElementById('store-list');
         const createStoreForm = document.getElementById('create-store-form');
         const backToStoresBtn = document.getElementById('back-to-stores-btn');
+        const downloadAllStoresBtn = document.getElementById('download-all-stores-report-btn');
         const allTabs = document.querySelectorAll('.tab-btn');
         const allTabContents = document.querySelectorAll('.tab-content');
         const searchInput = document.getElementById('searchInput');
         const sortableHeaders = document.querySelectorAll('.table-header-sortable');
         const statsControls = document.getElementById('stats-controls');
+        const summaryControls = document.getElementById('summary-controls');
         const addMachineForm = document.getElementById('add-machine-form');
         const machineListTableBody = document.getElementById('machine-list-table-body');
         const historyTableBody = document.getElementById('history-table-body');
@@ -612,13 +631,12 @@
             });
         }
 
-
-        function getSummaryData() {
+        function calculateSummaryData(machines) {
+            if (!machines) return [];
             const summary = {};
-            if (!appData.machines) return [];
-            appData.machines.forEach(m => {
+            machines.forEach(m => {
                 if (!summary[m.id]) {
-                    summary[m.id] = { id: m.id, plays: 0, payouts: 0 };
+                    summary[m.id] = { id: m.id, location: m.location, plays: 0, payouts: 0 };
                 }
                 summary[m.id].plays += m.plays;
                 summary[m.id].payouts += m.payouts;
@@ -630,6 +648,52 @@
             });
         }
         
+        function getAggregatedSummaryData(period = 'all') {
+            if (period === 'all') {
+                return calculateSummaryData(appData.machines); 
+            }
+
+            const now = new Date();
+            let startDate;
+
+            switch(period) {
+                case 'weekly':
+                    const day = now.getDay();
+                    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                    startDate = new Date(now.setDate(diff));
+                    startDate.setHours(0, 0, 0, 0);
+                    break;
+                case 'monthly':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                    break;
+                case 'quarterly':
+                    const quarter = Math.floor(now.getMonth() / 3);
+                    startDate = new Date(now.getFullYear(), quarter * 3, 1);
+                    break;
+            }
+
+            const filteredHistory = appData.history.filter(h => {
+                const recordDate = new Date(h.date);
+                return recordDate >= startDate;
+            });
+
+            const summary = filteredHistory.reduce((acc, curr) => {
+                if (!acc[curr.machineId]) {
+                    const machineInfo = appData.machines.find(m => m.id === curr.machineId);
+                    acc[curr.machineId] = { id: curr.machineId, location: machineInfo ? machineInfo.location : 'N/A', plays: 0, payouts: 0 };
+                }
+                acc[curr.machineId].plays += curr.newPlays;
+                acc[curr.machineId].payouts += curr.newPayouts;
+                return acc;
+            }, {});
+
+            return Object.values(summary).map(s => {
+                const revenue = s.plays * COIN_VALUE;
+                const cost = s.payouts > 0 ? revenue / s.payouts : 0;
+                return { ...s, revenue, cost };
+            });
+        }
+
         // --- UI RENDERING FUNCTIONS ---
         
         function renderStores(stores) {
@@ -770,35 +834,49 @@
         }
         
         function renderSummaryTab() {
-            const summaryData = getSummaryData();
+            const activeButton = document.querySelector('#summary-controls .active');
+            const period = activeButton ? activeButton.dataset.period : 'all';
+            const summaryData = getAggregatedSummaryData(period);
+
             const totalRevenueAllMachines = summaryData.reduce((sum, s) => sum + s.revenue, 0);
             const summaryTableBody = document.getElementById('summary-table-body');
             summaryTableBody.innerHTML = '';
-            summaryData.forEach((s, index) => {
-                const rowClass = index % 2 === 1 ? 'bg-gray-900/50' : '';
-                summaryTableBody.innerHTML += `<tr class="${rowClass}">
-                    <td class="p-4 font-medium text-white">${s.id}</td>
-                    <td class="p-4 text-right">${s.revenue.toLocaleString()} 元</td>
-                    <td class="p-4 text-right">${s.payouts.toLocaleString()} 次</td>
-                    <td class="p-4 text-right">${s.cost.toFixed(2)} 元/次</td>
-                </tr>`;
-            });
+
+            if (summaryData.length === 0) {
+                summaryTableBody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-gray-400">此期間無資料可供顯示</td></tr>`;
+            } else {
+                summaryData.sort((a,b) => b.revenue - a.revenue).forEach((s, index) => {
+                    const rowClass = index % 2 === 1 ? 'bg-gray-900/50' : '';
+                    summaryTableBody.innerHTML += `<tr class="${rowClass}">
+                        <td class="p-4 font-medium text-white">${s.id}</td>
+                        <td class="p-4 text-right">${s.revenue.toLocaleString()} 元</td>
+                        <td class="p-4 text-right">${s.payouts.toLocaleString()} 次</td>
+                        <td class="p-4 text-right">${s.cost.toFixed(2)} 元/次</td>
+                    </tr>`;
+                });
+            }
+
             const chartContainer = document.getElementById('summary-chart-container');
             chartContainer.innerHTML = '';
-            const colors = ['blue', 'green', 'purple', 'yellow', 'red'];
-            summaryData.forEach((s, index) => {
-                const percentage = totalRevenueAllMachines > 0 ? (s.revenue / totalRevenueAllMachines * 100).toFixed(2) : 0;
-                const color = colors[index % colors.length];
-                chartContainer.innerHTML += `<div class="w-full">
-                    <div class="flex justify-between mb-1">
-                        <span class="text-base font-medium text-${color}-300">${s.id}</span>
-                        <span class="text-sm font-medium text-${color}-300">${s.revenue.toLocaleString()} 元 (${percentage}%)</span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-4">
-                        <div class="bg-${color}-500 h-4 rounded-full" style="width: ${percentage}%"></div>
-                    </div>
-                </div>`;
-            });
+            const colors = ['blue', 'green', 'purple', 'yellow', 'red', 'indigo', 'pink'];
+            
+            if (summaryData.length === 0) {
+                 chartContainer.innerHTML = '<p class="text-center text-gray-500">無佔比資料</p>';
+            } else {
+                summaryData.forEach((s, index) => {
+                    const percentage = totalRevenueAllMachines > 0 ? (s.revenue / totalRevenueAllMachines * 100).toFixed(2) : 0;
+                    const color = colors[index % colors.length];
+                    chartContainer.innerHTML += `<div class="w-full">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-base font-medium text-${color}-300">${s.id}</span>
+                            <span class="text-sm font-medium text-${color}-300">${s.revenue.toLocaleString()} 元 (${percentage}%)</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-4">
+                            <div class="bg-${color}-500 h-4 rounded-full" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>`;
+                });
+            }
         }
 
         function renderAnalysisTab(processedMachines) {
@@ -946,6 +1024,72 @@
             setTimeout(() => { feedbackEl.style.opacity = '0'; }, 5000);
         }
 
+        async function handleDownloadAllStoresReport() {
+            const btn = document.getElementById('download-all-stores-report-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<span>處理中...</span>`;
+            btn.disabled = true;
+
+            try {
+                const storeSnapshot = await db.collection('stores').get();
+                const stores = storeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                if (stores.length === 0) {
+                    alert("沒有任何門市可供下載報表。");
+                    return;
+                }
+
+                const csvRows = [];
+                csvRows.push(`全門市營運概況總報表`);
+                csvRows.push(`報表產生日期: ${new Date().toLocaleString()}`);
+
+                for (const store of stores) {
+                    const machinesSnapshot = await db.collection('stores').doc(store.id).collection('machines').get();
+                    const machines = machinesSnapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
+                    
+                    const summaryData = calculateSummaryData(machines);
+
+                    csvRows.push("");
+                    csvRows.push(`--- ${store.name} ---`);
+                    const summaryTableHeaders = ["機台編號", "總投幣金額", "總出貨數量", "平均出貨成本(元/次)"];
+                    csvRows.push(summaryTableHeaders.join(","));
+
+                    if (summaryData.length > 0) {
+                        summaryData.forEach(item => {
+                            csvRows.push([
+                                item.id,
+                                item.revenue,
+                                item.payouts,
+                                item.cost.toFixed(2)
+                            ].join(","));
+                        });
+                    } else {
+                        csvRows.push("此門市尚無機台數據");
+                    }
+                }
+                
+                let csvContent = "\uFEFF";
+                csvContent += csvRows.join("\n");
+
+                const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                const today = new Date();
+                const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+                link.setAttribute("download", `全門市營運概況總報表-${dateString}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+            } catch (error) {
+                console.error("下載全門市報表失敗:", error);
+                alert("下載報表時發生錯誤，請稍後再試。");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
         // --- EVENT LISTENERS ---
 
         storeListContainer.addEventListener('click', (e) => {
@@ -970,6 +1114,7 @@
         
         createStoreForm.addEventListener('submit', handleCreateStore);
         addMachineForm.addEventListener('submit', handleAddMachine);
+        downloadAllStoresBtn.addEventListener('click', handleDownloadAllStoresReport);
         
         modalConfirmBtn.addEventListener('click', () => {
             if(confirmCallback) confirmCallback();
@@ -1010,6 +1155,7 @@
                 });
                 if (tab.dataset.tab === 'charts') { renderChartsTab(); }
                 if (tab.dataset.tab === 'statistics') { renderStatisticsTab(); }
+                if (tab.dataset.tab === 'summary') { renderSummaryTab(); }
             });
         });
 
@@ -1018,6 +1164,14 @@
                 statsControls.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
                 renderStatisticsTab();
+            }
+        });
+
+        summaryControls.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                summaryControls.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                renderSummaryTab();
             }
         });
         
@@ -1103,6 +1257,8 @@
                 const cost = m.payouts > 0 ? revenue / m.payouts : 0;
                 return { ...m, revenue, cost };
             });
+            
+            const summaryData = calculateSummaryData(appData.machines);
 
             if (processedMachines.length === 0 && appData.history.length === 0) {
                 showFeedback("目前沒有資料可供下載。", true);
@@ -1113,13 +1269,34 @@
             let csvContent = "\uFEFF";
 
             csvRows.push(`娃娃機營業報告 - ${selectedStoreName}`);
-            const summaryHeaders = ["機台編號", "位置", "累積投幣次數", "累積投幣金額", "累積出貨數量", "平均出貨成本(元/次)"];
-            csvRows.push(summaryHeaders.join(","));
-
+            
+            // Section 1: 機台營業明細 (總覽)
+            csvRows.push("");
+            csvRows.push("機台營業明細 (總覽)");
+            const detailsHeaders = ["機台編號", "位置", "累積投幣次數", "累積投幣金額", "累積出貨數量", "平均出貨成本(元/次)"];
+            csvRows.push(detailsHeaders.join(","));
             processedMachines.forEach(item => {
                 csvRows.push([item.id, `"${item.location}"`, item.plays, item.revenue, item.payouts, item.cost.toFixed(2)].join(","));
             });
 
+            // Section 2: 各機台營運狀況 - 營運概況總表
+            if (summaryData.length > 0) {
+                csvRows.push("");
+                csvRows.push("各機台營運狀況 - 營運概況總表");
+                const summaryTableHeaders = ["機台編號", "總投幣金額", "總出貨數量", "平均出貨成本(元/次)"];
+                csvRows.push(summaryTableHeaders.join(","));
+                summaryData.forEach(item => {
+                    csvRows.push([
+                        item.id,
+                        item.revenue,
+                        item.payouts,
+                        item.cost.toFixed(2)
+                    ].join(","));
+                });
+            }
+            
+
+            // Section 3: 每日記帳明細
             if (appData.history.length > 0) {
                 csvRows.push("");
                 csvRows.push("每日記帳明細");
@@ -1131,6 +1308,7 @@
                 });
             }
 
+            // Section 4: 圖表分析原始數據
             if (processedMachines.length > 0) {
                 csvRows.push("");
                 csvRows.push("圖表分析原始數據");
