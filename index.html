@@ -55,9 +55,16 @@
         <h1 id="store-page-title" class="text-4xl font-bold text-white text-center mb-8">門市管理</h1>
         <div class="bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
             <h2 class="text-2xl font-bold text-white mb-4">建立新門市</h2>
-            <form id="create-store-form" class="flex flex-col sm:flex-row gap-4">
-                <input type="text" id="new-store-name" class="flex-grow w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="請輸入門市名稱 (例如：台中逢甲店)" required>
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition shrink-0">建立門市</button>
+            <form id="create-store-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                <div>
+                    <label for="new-store-name" class="block text-sm font-medium text-gray-300 mb-1">門市名稱</label>
+                    <input type="text" id="new-store-name" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="例如：台中逢甲店" required>
+                </div>
+                 <div>
+                    <label for="new-store-start-date" class="block text-sm font-medium text-gray-300 mb-1">營業起始日</label>
+                    <input type="date" id="new-store-start-date" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required>
+                </div>
+                <button type="submit" class="sm:col-span-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition shrink-0">建立門市</button>
             </form>
         </div>
         <div class="bg-gray-800 rounded-xl shadow-lg p-6">
@@ -98,7 +105,7 @@
                         <span>返回門市列表</span>
                     </button>
                     <h1 id="report-title-main" class="text-3xl sm:text-4xl font-bold text-white mb-2">娃娃機營業報告</h1>
-                    <p class="text-lg text-gray-400" id="report-period">統計期間：2025/10/10 ～ 現在</p>
+                    <p class="text-lg text-gray-400" id="report-period">統計期間：</p>
                 </div>
                 <button id="download-report-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0 self-end sm:self-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
@@ -230,7 +237,6 @@
                     </form>
                     
                     <h3 class="text-xl font-bold text-white mb-4 mt-4">現有機台列表</h3>
-                    <p class="text-sm text-gray-400 mb-2">提醒：如需修改起始數值，請刪除機台後重新建立。</p>
                     <div class="overflow-x-auto max-h-96">
                         <table class="w-full text-left">
                             <thead class="bg-gray-700/50 text-gray-300 uppercase text-sm sticky top-0">
@@ -344,7 +350,14 @@
                 </div>
                 <div id="analysis" class="tab-content hidden prose prose-invert max-w-none prose-h3:text-white prose-h3:font-bold prose-h3:mb-3 prose-p:text-gray-300 prose-li:text-gray-300">
                     <h3>📈 PSD（每日平均銷售表現）</h3>
-                    <p>PSD 公式為：總投幣金額 ÷ 統計天數。此數值可作為每日營運基準，用於後續比較週報、月報趨勢。</p>
+                     <div class="flex justify-center mb-4 bg-gray-900/50 p-2 rounded-lg">
+                        <div id="psd-controls" class="inline-flex rounded-md shadow-sm" role="group">
+                            <button type="button" class="stats-period-btn active py-2 px-4 text-sm font-medium text-gray-300 bg-transparent rounded-l-lg border border-gray-600 hover:bg-gray-700 hover:text-white" data-period="all">總計</button>
+                            <button type="button" class="stats-period-btn py-2 px-4 text-sm font-medium text-gray-300 bg-transparent border-t border-b border-gray-600 hover:bg-gray-700 hover:text-white" data-period="weekly">本週</button>
+                            <button type="button" class="stats-period-btn py-2 px-4 text-sm font-medium text-gray-300 bg-transparent border-t border-b border-r border-gray-600 hover:bg-gray-700 hover:text-white" data-period="monthly">本月</button>
+                            <button type="button" class="stats-period-btn py-2 px-4 text-sm font-medium text-gray-300 bg-transparent rounded-r-md border border-gray-600 hover:bg-gray-700 hover:text-white" data-period="quarterly">本季</button>
+                        </div>
+                    </div>
                     <div class="bg-gray-900/50 p-4 rounded-lg not-prose">
                         <p id="psd-display" class="text-lg text-center"><strong>計算中...</strong></p>
                     </div>
@@ -373,15 +386,83 @@
         </div>
     </div>
 
-    <!-- Prompt Modal -->
-    <div id="prompt-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
+    <!-- Edit Store Modal -->
+    <div id="edit-store-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
         <div class="bg-gray-800 rounded-lg p-8 max-w-sm w-full mx-4">
-            <h3 id="prompt-title" class="text-xl font-bold text-white mb-4">更改名稱</h3>
-            <input type="text" id="prompt-input" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 mb-6">
-            <div class="flex justify-end gap-4">
-                <button id="prompt-cancel-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">取消</button>
-                <button id="prompt-confirm-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">確認</button>
-            </div>
+            <h3 class="text-xl font-bold text-white mb-4">編輯門市資訊</h3>
+            <form id="edit-store-form">
+                <input type="hidden" id="edit-store-id">
+                 <div class="mb-4">
+                    <label for="edit-store-name" class="block text-sm font-medium text-gray-300 mb-1">門市名稱</label>
+                    <input type="text" id="edit-store-name" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required>
+                </div>
+                <div class="mb-6">
+                    <label for="edit-store-start-date" class="block text-sm font-medium text-gray-300 mb-1">營業起始日</label>
+                    <input type="date" id="edit-store-start-date" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="edit-store-cancel-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">取消</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">儲存變更</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit History Modal -->
+    <div id="edit-history-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-lg p-8 max-w-sm w-full mx-4">
+            <h3 class="text-xl font-bold text-white mb-4">修改記帳紀錄</h3>
+            <form id="edit-history-form">
+                <input type="hidden" id="edit-history-doc-id">
+                <input type="hidden" id="edit-history-machine-id">
+                <input type="hidden" id="edit-history-location">
+                <input type="hidden" id="edit-history-old-plays">
+                <input type="hidden" id="edit-history-old-payouts">
+                <div class="mb-4">
+                    <label for="edit-history-plays" class="block text-sm font-medium text-gray-300 mb-1">當日投幣數</label>
+                    <input type="number" id="edit-history-plays" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required min="0">
+                </div>
+                <div class="mb-6">
+                    <label for="edit-history-payouts" class="block text-sm font-medium text-gray-300 mb-1">當日出貨數</label>
+                    <input type="number" id="edit-history-payouts" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required min="0">
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="edit-history-cancel-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">取消</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">儲存變更</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Machine Modal -->
+    <div id="edit-machine-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold text-white mb-4">修改機台資訊</h3>
+            <form id="edit-machine-form">
+                <input type="hidden" id="edit-machine-doc-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="mb-4">
+                        <label for="edit-machine-id" class="block text-sm font-medium text-gray-300 mb-1">機台編號</label>
+                        <input type="text" id="edit-machine-id" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-machine-location" class="block text-sm font-medium text-gray-300 mb-1">位置/內容物</label>
+                        <input type="text" id="edit-machine-location" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required>
+                    </div>
+                     <div class="mb-4">
+                        <label for="edit-machine-initial-plays" class="block text-sm font-medium text-gray-300 mb-1">起始投幣數</label>
+                        <input type="number" id="edit-machine-initial-plays" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required min="0">
+                    </div>
+                     <div class="mb-4">
+                        <label for="edit-machine-initial-payouts" class="block text-sm font-medium text-gray-300 mb-1">起始出貨數</label>
+                        <input type="number" id="edit-machine-initial-payouts" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required min="0">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button type="button" id="edit-machine-cancel-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">取消</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">儲存變更</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -437,6 +518,7 @@
         const sortableHeaders = document.querySelectorAll('.table-header-sortable');
         const statsControls = document.getElementById('stats-controls');
         const summaryControls = document.getElementById('summary-controls');
+        const psdControls = document.getElementById('psd-controls');
         const addMachineForm = document.getElementById('add-machine-form');
         const machineListTableBody = document.getElementById('machine-list-table-body');
         const historyTableBody = document.getElementById('history-table-body');
@@ -448,11 +530,19 @@
         const modalMessage = document.getElementById('modal-message');
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
-        const promptModal = document.getElementById('prompt-modal');
-        const promptTitle = document.getElementById('prompt-title');
-        const promptInput = document.getElementById('prompt-input');
-        const promptConfirmBtn = document.getElementById('prompt-confirm-btn');
-        const promptCancelBtn = document.getElementById('prompt-cancel-btn');
+        
+        const editStoreModal = document.getElementById('edit-store-modal');
+        const editStoreForm = document.getElementById('edit-store-form');
+        const editStoreCancelBtn = document.getElementById('edit-store-cancel-btn');
+        
+        const editHistoryModal = document.getElementById('edit-history-modal');
+        const editHistoryForm = document.getElementById('edit-history-form');
+        const editHistoryCancelBtn = document.getElementById('edit-history-cancel-btn');
+        
+        const editMachineModal = document.getElementById('edit-machine-modal');
+        const editMachineForm = document.getElementById('edit-machine-form');
+        const editMachineCancelBtn = document.getElementById('edit-machine-cancel-btn');
+
 
         // --- MODAL FUNCTIONS ---
         function showConfirmationModal(message, onConfirm) {
@@ -465,20 +555,6 @@
             confirmationModal.classList.add('hidden');
             confirmCallback = null;
         }
-
-        function showPromptModal(title, currentValue, onConfirm) {
-            promptTitle.textContent = title;
-            promptInput.value = currentValue;
-            promptCallback = onConfirm;
-            promptModal.classList.remove('hidden');
-            promptInput.focus();
-        }
-
-        function hidePromptModal() {
-            promptModal.classList.add('hidden');
-            promptCallback = null;
-        }
-
 
         // --- NAVIGATION & PAGE CONTROL ---
         
@@ -507,15 +583,18 @@
             loadStores();
         }
 
-        function showReportPage(storeId, storeName) {
+        function showReportPage(storeId, storeName, startDate) {
             selectedStoreId = storeId;
             selectedStoreName = storeName;
+            appData.startDate = startDate;
             
             document.getElementById('report-title-main').textContent = `${selectedStoreName} - 營業報告`;
+            document.getElementById('report-period').textContent = `統計期間：${startDate} ～ 現在`;
             storeSelectionPage.classList.add('hidden');
             reportPage.classList.remove('hidden');
             
-            appData = { machines: [], history: [], startDate: '2025-10-10' };
+            appData.machines = [];
+            appData.history = [];
             document.querySelector('.tab-btn[data-tab="accounting"]').click();
             updateUI(); 
             
@@ -667,39 +746,49 @@
             if(!selectedGroupId) return alert('未選擇單位群組');
 
             const newStoreNameInput = document.getElementById('new-store-name');
+            const newStoreStartDateInput = document.getElementById('new-store-start-date');
             const storeName = newStoreNameInput.value.trim();
-            if (!storeName) return alert('門市名稱不可空白！');
+            const startDate = newStoreStartDateInput.value;
+
+            if (!storeName || !startDate) return alert('門市名稱與起始日不可空白！');
             
             try {
                 await db.collection('groups').doc(selectedGroupId).collection('stores').add({
                     name: storeName,
+                    startDate: startDate,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                newStoreNameInput.value = '';
+                createStoreForm.reset();
                 loadStores(); 
             } catch (error) {
                 console.error("建立門市失敗:", error);
                 alert('建立門市失敗，請稍後再試。');
             }
         }
-
-        async function handleRenameStore(storeId, currentName) {
+        
+        async function handleUpdateStore(e) {
+            e.preventDefault();
             if(!selectedGroupId) return;
-            showPromptModal('更改門市名稱', currentName, async (newName) => {
-                if (newName && newName.trim() !== '' && newName.trim() !== currentName) {
-                    try {
-                        await db.collection('groups').doc(selectedGroupId).collection('stores').doc(storeId).update({ name: newName.trim() });
-                        hidePromptModal();
-                        loadStores();
-                    } catch(error) {
-                        console.error('更新門市名稱失敗:', error);
-                        alert('更新失敗，請稍後再試。');
-                    }
-                } else {
-                    hidePromptModal();
-                }
-            });
+
+            const storeId = document.getElementById('edit-store-id').value;
+            const newName = document.getElementById('edit-store-name').value.trim();
+            const newStartDate = document.getElementById('edit-store-start-date').value;
+
+            if (!newName || !newStartDate) return alert('門市名稱與起始日不可空白！');
+
+            try {
+                await db.collection('groups').doc(selectedGroupId).collection('stores').doc(storeId).update({
+                    name: newName,
+                    startDate: newStartDate
+                });
+                editStoreModal.classList.add('hidden');
+                loadStores();
+            } catch(error) {
+                console.error('更新門市資訊失敗:', error);
+                alert('更新失敗，請稍後再試。');
+            }
         }
+
         
         async function handleDeleteStore(storeId, storeName) {
             if(!selectedGroupId) return;
@@ -782,11 +871,89 @@
                 }
             });
         }
+        
+        async function handleUpdateMachine(e) {
+            e.preventDefault();
+            if(!selectedStoreId || !selectedGroupId) return;
 
-        async function handleDeleteHistory(historyDocId, machineId, dailyPlays, dailyPayouts) {
+            const docId = document.getElementById('edit-machine-doc-id').value;
+            const newId = document.getElementById('edit-machine-id').value.trim();
+            const newLocation = document.getElementById('edit-machine-location').value.trim();
+            const newInitialPlays = parseInt(document.getElementById('edit-machine-initial-plays').value, 10) || 0;
+            const newInitialPayouts = parseInt(document.getElementById('edit-machine-initial-payouts').value, 10) || 0;
+
+            if(!newId || !newLocation) return alert('機台編號和位置不能為空！');
+            
+            try {
+                 await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('machines').doc(docId).update({
+                    id: newId,
+                    location: newLocation,
+                    initialPlays: newInitialPlays,
+                    initialPayouts: newInitialPayouts
+                });
+                editMachineModal.classList.add('hidden');
+                loadStoreData();
+            } catch (error) {
+                 console.error("更新機台資訊失敗：", error);
+                 alert('更新失敗，請稍後再試。');
+            }
+        }
+
+        async function handleUpdateHistory(e) {
+            e.preventDefault();
+            if(!selectedStoreId || !selectedGroupId) return;
+
+            const docId = document.getElementById('edit-history-doc-id').value;
+            const machineId = document.getElementById('edit-history-machine-id').value;
+            const location = document.getElementById('edit-history-location').value;
+            const oldPlays = parseInt(document.getElementById('edit-history-old-plays').value, 10);
+            const oldPayouts = parseInt(document.getElementById('edit-history-old-payouts').value, 10);
+            const newPlays = parseInt(document.getElementById('edit-history-plays').value, 10);
+            const newPayouts = parseInt(document.getElementById('edit-history-payouts').value, 10);
+            
+            const machineToUpdate = appData.machines.find(m => m.id === machineId && m.location === location);
+            if (!machineToUpdate) {
+                alert('錯誤：找不到對應的機台來更新數據。');
+                return;
+            }
+
+            const playsDiff = newPlays - oldPlays;
+            const payoutsDiff = newPayouts - oldPayouts;
+
+            const newTotalPlays = machineToUpdate.plays + playsDiff;
+            const newTotalPayouts = machineToUpdate.payouts + payoutsDiff;
+            
+            try {
+                // Batch update
+                const batch = db.batch();
+                const machineRef = db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('machines').doc(machineToUpdate.docId);
+                batch.update(machineRef, {
+                    plays: newTotalPlays,
+                    payouts: newTotalPayouts
+                });
+
+                const historyRef = db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('history').doc(docId);
+                batch.update(historyRef, {
+                    newPlays: newPlays,
+                    newPayouts: newPayouts
+                });
+
+                await batch.commit();
+
+                editHistoryModal.classList.add('hidden');
+                showFeedback("記帳紀錄已更新！", false);
+                loadStoreData();
+            } catch(error) {
+                console.error("更新記帳紀錄失敗：", error);
+                alert('更新紀錄失敗，請稍後再試。');
+            }
+        }
+
+
+        async function handleDeleteHistory(historyDocId, machineId, location, dailyPlays, dailyPayouts) {
             if(!selectedStoreId || !selectedGroupId || !historyDocId || !machineId) return;
 
-            const machineToUpdate = appData.machines.find(m => m.id === machineId);
+            const machineToUpdate = appData.machines.find(m => m.id === machineId && m.location === location);
             if (!machineToUpdate) {
                 alert('錯誤：找不到對應的機台來回滾數據。');
                 return;
@@ -912,11 +1079,11 @@
             stores.forEach(store => {
                 const storeCard = `
                     <div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between">
-                        <div class="card-base store-card-main cursor-pointer p-4 mb-3" data-store-id="${store.id}" data-store-name="${store.name}">
+                        <div class="card-base store-card-main cursor-pointer p-4 mb-3" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}">
                             <h3 class="text-xl font-bold text-white truncate">${store.name}</h3>
                         </div>
                         <div class="flex justify-end gap-2 border-t border-gray-600 pt-3">
-                            <button class="rename-store-btn text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}">改名</button>
+                            <button class="edit-store-btn text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}">編輯</button>
                             <button class="delete-store-btn text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}">刪除</button>
                         </div>
                     </div>
@@ -931,7 +1098,7 @@
             renderMainStats(processedMachines);
             renderDetailsTable(processedMachines);
             renderSummaryTab();
-            renderAnalysisTab(processedMachines);
+            renderAnalysisTab();
             renderAccountingTab();
             renderMachineManagementTab(); 
             renderChartsTab();
@@ -953,6 +1120,14 @@
                         <td class="p-4 text-right">${machine.initialPlays || 0}</td>
                         <td class="p-4 text-right">${machine.initialPayouts || 0}</td>
                         <td class="p-4 text-right">
+                            <button class="edit-machine-btn bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-1 px-3 rounded mr-2" 
+                                data-doc-id="${machine.docId}" 
+                                data-id="${machine.id}"
+                                data-location="${machine.location}"
+                                data-initial-plays="${machine.initialPlays || 0}"
+                                data-initial-payouts="${machine.initialPayouts || 0}">
+                                修改
+                           </button>
                             <button class="delete-machine-btn bg-red-600 hover:bg-red-700 text-white text-sm font-bold py-1 px-3 rounded" data-doc-id="${machine.docId}">刪除</button>
                         </td>
                     </tr>
@@ -1003,6 +1178,9 @@
         
         function renderAccountingTab() {
             const machineSelector = document.getElementById('machine-selector');
+            const cumulativePlaysInput = document.getElementById('cumulative-plays');
+            const cumulativePayoutsInput = document.getElementById('cumulative-payouts');
+            
             machineSelector.innerHTML = '<option value="" disabled selected>請選擇...</option>';
             if(appData.machines.length === 0) {
                 machineSelector.innerHTML = '<option value="" disabled selected>請先至「機台管理」建立機台</option>';
@@ -1012,6 +1190,8 @@
                 });
             }
             document.getElementById('entry-date').valueAsDate = new Date();
+            cumulativePlaysInput.value = '';
+            cumulativePayoutsInput.value = '';
             
             historyTableBody.innerHTML = '';
             if (appData.history.length === 0) {
@@ -1025,9 +1205,18 @@
                         <td class="p-4 text-right">${h.newPlays}</td>
                         <td class="p-4 text-right">${h.newPayouts}</td>
                         <td class="p-4 text-right">
+                           <button class="edit-history-btn bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-1 px-3 rounded mr-2"
+                                data-doc-id="${h.docId}" 
+                                data-machine-id="${h.machineId}"
+                                data-location="${h.location}"
+                                data-plays="${h.newPlays}"
+                                data-payouts="${h.newPayouts}">
+                                修改
+                           </button>
                            <button class="delete-history-btn bg-red-600 hover:bg-red-700 text-white text-sm font-bold py-1 px-3 rounded" 
                                 data-doc-id="${h.docId}" 
                                 data-machine-id="${h.machineId}"
+                                data-location="${h.location}"
                                 data-plays="${h.newPlays}"
                                 data-payouts="${h.newPayouts}">
                                 刪除
@@ -1084,16 +1273,52 @@
             }
         }
 
-        function renderAnalysisTab(processedMachines) {
-            const startDate = new Date(appData.startDate);
-            const today = new Date();
-            const diffTime = Math.abs(today - startDate);
-            const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-            const totalRevenue = processedMachines.reduce((sum, m) => sum + m.revenue, 0);
-            const psd = totalRevenue > 0 && diffDays > 0 ? totalRevenue / diffDays : 0;
-            document.getElementById('psd-display').innerHTML = `<strong>${psd.toLocaleString('en-US', {maximumFractionDigits: 0})} 元 / 天</strong> 
-                <span class="text-sm text-gray-400">(${totalRevenue.toLocaleString()} 元 ÷ ${diffDays} 天)</span>`;
+        function renderAnalysisTab() {
+            const psdControls = document.getElementById('psd-controls');
+            const activeButton = psdControls.querySelector('.active');
+            const period = activeButton ? activeButton.dataset.period : 'all';
             
+            let periodRevenue = 0;
+            let diffDays = 1;
+            let periodData;
+
+            if (period === 'all') {
+                periodData = appData.machines.map(processMachineData);
+                periodRevenue = periodData.reduce((sum, m) => sum + m.revenue, 0);
+                const startDate = new Date(appData.startDate);
+                const today = new Date();
+                const diffTime = Math.abs(today - startDate);
+                diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
+            } else {
+                const now = new Date();
+                let periodStartDate;
+                switch (period) {
+                    case 'weekly':
+                        const day = now.getDay();
+                        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                        periodStartDate = new Date(new Date().setDate(diff));
+                        periodStartDate.setHours(0, 0, 0, 0);
+                        break;
+                    case 'monthly':
+                        periodStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                        break;
+                    case 'quarterly':
+                        const quarter = Math.floor(now.getMonth() / 3);
+                        periodStartDate = new Date(now.getFullYear(), quarter * 3, 1);
+                        break;
+                }
+                const filteredHistory = appData.history.filter(h => new Date(h.date) >= periodStartDate);
+                periodRevenue = filteredHistory.reduce((sum, h) => sum + (h.newPlays * COIN_VALUE), 0);
+                const diffTime = Math.abs(now - periodStartDate);
+                diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+            }
+            
+            const psd = periodRevenue > 0 && diffDays > 0 ? periodRevenue / diffDays : 0;
+            document.getElementById('psd-display').innerHTML = `<strong>${psd.toLocaleString('en-US', {maximumFractionDigits: 0})} 元 / 天</strong> 
+                <span class="text-sm text-gray-400">(${periodRevenue.toLocaleString()} 元 ÷ ${diffDays} 天)</span>`;
+
+            
+            const processedMachines = appData.machines.map(processMachineData);
             const sortedByRevenue = [...processedMachines].sort((a,b) => b.revenue - a.revenue);
             const sortedByCost = [...processedMachines].sort((a,b) => b.cost - a.cost);
             const bestPerformer = sortedByRevenue[0];
@@ -1467,11 +1692,11 @@
 
                         let psd = 0;
                         if (period === 'all') {
-                             if (store.createdAt && store.createdAt.toDate) {
-                                const storeStartDate = store.createdAt.toDate();
+                             if (store.startDate) {
+                                const storeStartDate = new Date(store.startDate);
                                 const today = new Date();
                                 const diffTime = Math.abs(today - storeStartDate);
-                                const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+                                const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
                                 const machineDocs = await db.collection('groups').doc(selectedGroupId).collection('stores').doc(store.id).collection('machines').get();
                                 const machines = machineDocs.docs.map(doc => doc.data());
                                 const totalCumulativeRevenue = machines.map(processMachineData).reduce((sum, m) => sum + m.revenue, 0);
@@ -1539,17 +1764,19 @@
 
         storeListContainer.addEventListener('click', (e) => {
             const mainCard = e.target.closest('.store-card-main');
-            const renameBtn = e.target.closest('.rename-store-btn');
+            const editBtn = e.target.closest('.edit-store-btn');
             const deleteBtn = e.target.closest('.delete-store-btn');
 
             if (mainCard) {
                 const storeId = mainCard.dataset.storeId;
                 const storeName = mainCard.dataset.storeName;
-                showReportPage(storeId, storeName);
-            } else if (renameBtn) {
-                const storeId = renameBtn.dataset.storeId;
-                const storeName = renameBtn.dataset.storeName;
-                handleRenameStore(storeId, storeName);
+                const startDate = mainCard.dataset.startDate;
+                showReportPage(storeId, storeName, startDate);
+            } else if (editBtn) {
+                document.getElementById('edit-store-id').value = editBtn.dataset.storeId;
+                document.getElementById('edit-store-name').value = editBtn.dataset.storeName;
+                document.getElementById('edit-store-start-date').value = editBtn.dataset.startDate;
+                editStoreModal.classList.remove('hidden');
             } else if (deleteBtn) {
                 const storeId = deleteBtn.dataset.storeId;
                 const storeName = deleteBtn.dataset.storeName;
@@ -1559,6 +1786,9 @@
         
         createGroupForm.addEventListener('submit', handleCreateGroup);
         createStoreForm.addEventListener('submit', handleCreateStore);
+        editStoreForm.addEventListener('submit', handleUpdateStore);
+        editStoreCancelBtn.addEventListener('click', () => editStoreModal.classList.add('hidden'));
+
         addMachineForm.addEventListener('submit', handleAddMachine);
         downloadAllStoresBtn.addEventListener('click', handleDownloadAllStoresReport);
         trendChartDatePicker.addEventListener('change', renderTrendChartByDate);
@@ -1584,29 +1814,40 @@
             if(confirmCallback) confirmCallback();
         });
         modalCancelBtn.addEventListener('click', hideConfirmationModal);
-
-        promptConfirmBtn.addEventListener('click', () => {
-            if(promptCallback) promptCallback(promptInput.value);
-        });
-        promptCancelBtn.addEventListener('click', hidePromptModal);
-
+        
         machineListTableBody.addEventListener('click', (e) => {
-            if(e.target.classList.contains('delete-machine-btn')) {
-                const docId = e.target.dataset.docId;
-                handleDeleteMachine(docId);
+            if (e.target.classList.contains('delete-machine-btn')) {
+                handleDeleteMachine(e.target.dataset.docId);
+            } else if (e.target.classList.contains('edit-machine-btn')) {
+                const btn = e.target;
+                document.getElementById('edit-machine-doc-id').value = btn.dataset.docId;
+                document.getElementById('edit-machine-id').value = btn.dataset.id;
+                document.getElementById('edit-machine-location').value = btn.dataset.location;
+                document.getElementById('edit-machine-initial-plays').value = btn.dataset.initialPlays;
+                document.getElementById('edit-machine-initial-payouts').value = btn.dataset.initialPayouts;
+                editMachineModal.classList.remove('hidden');
             }
         });
+        editMachineForm.addEventListener('submit', handleUpdateMachine);
+        editMachineCancelBtn.addEventListener('click', () => editMachineModal.classList.add('hidden'));
 
         historyTableBody.addEventListener('click', (e) => {
-            if(e.target.classList.contains('delete-history-btn')) {
-                const button = e.target;
-                const docId = button.dataset.docId;
-                const machineId = button.dataset.machineId;
-                const plays = parseInt(button.dataset.plays, 10);
-                const payouts = parseInt(button.dataset.payouts, 10);
-                handleDeleteHistory(docId, machineId, plays, payouts);
+            const button = e.target;
+            if (button.classList.contains('delete-history-btn')) {
+                handleDeleteHistory(button.dataset.docId, button.dataset.machineId, button.dataset.location, parseInt(button.dataset.plays, 10), parseInt(button.dataset.payouts, 10));
+            } else if (button.classList.contains('edit-history-btn')) {
+                document.getElementById('edit-history-doc-id').value = button.dataset.docId;
+                document.getElementById('edit-history-machine-id').value = button.dataset.machineId;
+                document.getElementById('edit-history-location').value = button.dataset.location;
+                document.getElementById('edit-history-old-plays').value = button.dataset.plays;
+                document.getElementById('edit-history-old-payouts').value = button.dataset.payouts;
+                document.getElementById('edit-history-plays').value = button.dataset.plays;
+                document.getElementById('edit-history-payouts').value = button.dataset.payouts;
+                editHistoryModal.classList.remove('hidden');
             }
         });
+        editHistoryForm.addEventListener('submit', handleUpdateHistory);
+        editHistoryCancelBtn.addEventListener('click', () => editHistoryModal.classList.add('hidden'));
         
         backToGroupsBtn.addEventListener('click', showGroupSelectionPage);
         backToStoresBtn.addEventListener('click', () => showStoreSelectionPage(selectedGroupId, selectedGroupName));
@@ -1621,6 +1862,7 @@
                 if (tab.dataset.tab === 'charts') { renderChartsTab(); }
                 if (tab.dataset.tab === 'statistics') { renderStatisticsTab(); }
                 if (tab.dataset.tab === 'summary') { renderSummaryTab(); }
+                if (tab.dataset.tab === 'analysis') { renderAnalysisTab(); }
             });
         });
 
@@ -1637,6 +1879,26 @@
                 summaryControls.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
                 renderSummaryTab();
+            }
+        });
+        
+        psdControls.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                psdControls.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                renderAnalysisTab();
+            }
+        });
+
+        document.getElementById('machine-selector').addEventListener('change', (e) => {
+            const selectedDocId = e.target.value;
+            if(!selectedDocId) return;
+
+            const selectedMachine = appData.machines.find(m => m.docId === selectedDocId);
+            if (selectedMachine) {
+                document.getElementById('cumulative-plays').value = selectedMachine.plays;
+                document.getElementById('cumulative-payouts').value = selectedMachine.payouts;
+                document.getElementById('cumulative-plays').focus();
             }
         });
         
