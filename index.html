@@ -70,7 +70,7 @@
         <div class="bg-gray-800 rounded-xl shadow-lg p-6">
              <h2 class="text-2xl font-bold text-white mb-4">選擇要管理的門市</h2>
             <div class="bg-gray-900/50 p-4 rounded-lg mb-6">
-                <h3 class="text-lg font-semibold text-white mb-3">下載此群組的全門市報表</h3>
+                <h3 class="text-lg font-semibold text-white mb-3">下載所選門市報表</h3>
                 <div class="flex flex-col sm:flex-row items-center gap-4 w-full">
                     <select id="report-period-selector" class="bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 w-full sm:w-auto">
                         <option value="all">總和</option>
@@ -89,6 +89,10 @@
                     </button>
                 </div>
             </div>
+             <div class="flex justify-end gap-4 mb-4">
+                 <button id="select-all-stores-btn" class="text-sm bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded">全選</button>
+                 <button id="deselect-all-stores-btn" class="text-sm bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded">取消全選</button>
+             </div>
             <div id="store-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <p class="text-gray-400 col-span-full text-center py-8">正在讀取門市列表...</p>
             </div>
@@ -356,21 +360,28 @@
                 </div>
                 <div id="analysis" class="tab-content hidden prose prose-invert max-w-none prose-h3:text-white prose-h3:font-bold prose-h3:mb-3 prose-p:text-gray-300 prose-li:text-gray-300">
                     <h3>📈 PSD（每日平均銷售表現）</h3>
-                     <div class="flex justify-center mb-4 bg-gray-900/50 p-2 rounded-lg">
+                     <div class="flex flex-wrap justify-center items-center mb-4 bg-gray-900/50 p-2 rounded-lg gap-2">
                         <div id="psd-controls" class="inline-flex rounded-md shadow-sm" role="group">
                             <button type="button" class="stats-period-btn active py-2 px-4 text-sm font-medium text-gray-300 bg-transparent rounded-l-lg border border-gray-600 hover:bg-gray-700 hover:text-white" data-period="all">總計</button>
                             <button type="button" class="stats-period-btn py-2 px-4 text-sm font-medium text-gray-300 bg-transparent border-t border-b border-gray-600 hover:bg-gray-700 hover:text-white" data-period="weekly">本週</button>
                             <button type="button" class="stats-period-btn py-2 px-4 text-sm font-medium text-gray-300 bg-transparent border-t border-b border-r border-gray-600 hover:bg-gray-700 hover:text-white" data-period="monthly">本月</button>
                             <button type="button" class="stats-period-btn py-2 px-4 text-sm font-medium text-gray-300 bg-transparent rounded-r-md border border-gray-600 hover:bg-gray-700 hover:text-white" data-period="quarterly">本季</button>
+                            <button type="button" class="stats-period-btn py-2 px-4 text-sm font-medium text-gray-300 bg-transparent rounded-r-md border border-gray-600 hover:bg-gray-700 hover:text-white" data-period="custom">自訂區間</button>
+                        </div>
+                         <div id="psd-custom-range" class="flex items-center gap-2 hidden">
+                            <input type="date" id="psd-start-date" class="bg-gray-700 text-white border border-gray-600 rounded-lg py-1 px-2 text-sm">
+                            <span class="text-gray-400">至</span>
+                            <input type="date" id="psd-end-date" class="bg-gray-700 text-white border border-gray-600 rounded-lg py-1 px-2 text-sm">
+                            <button id="psd-calculate-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-lg text-sm">計算</button>
                         </div>
                     </div>
                     <div class="bg-gray-900/50 p-4 rounded-lg not-prose">
                         <p id="psd-display" class="text-lg text-center"><strong>計算中...</strong></p>
                     </div>
                     <h3 class="mt-8">🔬 分析與觀察</h3>
-                    <ul id="analysis-observation" class="list-disc pl-5 space-y-2"></ul>
+                    <div id="analysis-observation" class="space-y-6"></div>
                     <h3 class="mt-8">💡 結論建議</h3>
-                    <ul id="analysis-suggestion" class="list-disc pl-5 space-y-2"></ul>
+                    <div id="analysis-suggestion" class="space-y-4"></div>
                 </div>
             </div>
         </div>
@@ -537,11 +548,17 @@
         const statsControls = document.getElementById('stats-controls');
         const summaryControls = document.getElementById('summary-controls');
         const psdControls = document.getElementById('psd-controls');
+        const psdCustomRange = document.getElementById('psd-custom-range');
+        const psdStartDate = document.getElementById('psd-start-date');
+        const psdEndDate = document.getElementById('psd-end-date');
+        const psdCalculateBtn = document.getElementById('psd-calculate-btn');
         const addMachineForm = document.getElementById('add-machine-form');
         const machineListTableBody = document.getElementById('machine-list-table-body');
         const historyTableBody = document.getElementById('history-table-body');
         const trendChartDatePicker = document.getElementById('trend-chart-date-picker');
         const locationPresets = document.getElementById('location-presets');
+        const selectAllStoresBtn = document.getElementById('select-all-stores-btn');
+        const deselectAllStoresBtn = document.getElementById('deselect-all-stores-btn');
         
         // Modal selectors
         const confirmationModal = document.getElementById('confirmation-modal');
@@ -894,7 +911,7 @@
         
         async function handleUpdateMachine(e) {
             e.preventDefault();
-            if(!selectedStoreId || !selectedGroupId) return;
+            if (!selectedStoreId || !selectedGroupId) return;
 
             const docId = document.getElementById('edit-machine-doc-id').value;
             const newId = document.getElementById('edit-machine-id').value.trim();
@@ -902,22 +919,40 @@
             const newInitialPlays = parseInt(document.getElementById('edit-machine-initial-plays').value, 10) || 0;
             const newInitialPayouts = parseInt(document.getElementById('edit-machine-initial-payouts').value, 10) || 0;
 
-            if(!newId || !newLocation) return alert('機台編號和位置不能為空！');
+            if (!newId || !newLocation) return alert('機台編號和位置不能為空！');
+
+            const originalMachine = appData.machines.find(m => m.docId === docId);
+            if (!originalMachine) {
+                alert('錯誤：找不到原始機台資料！');
+                return;
+            }
+
+            const oldInitialPlays = originalMachine.initialPlays || 0;
+            const oldInitialPayouts = originalMachine.initialPayouts || 0;
+
+            const playsDiff = newInitialPlays - oldInitialPlays;
+            const payoutsDiff = newInitialPayouts - oldInitialPayouts;
+
+            const newTotalPlays = originalMachine.plays + playsDiff;
+            const newTotalPayouts = originalMachine.payouts + payoutsDiff;
             
             try {
-                 await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('machines').doc(docId).update({
+                await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('machines').doc(docId).update({
                     id: newId,
                     location: newLocation,
                     initialPlays: newInitialPlays,
-                    initialPayouts: newInitialPayouts
+                    initialPayouts: newInitialPayouts,
+                    plays: newTotalPlays,
+                    payouts: newTotalPayouts
                 });
                 editMachineModal.classList.add('hidden');
                 loadStoreData();
             } catch (error) {
-                 console.error("更新機台資訊失敗：", error);
-                 alert('更新失敗，請稍後再試。');
+                console.error("更新機台資訊失敗：", error);
+                alert('更新失敗，請稍後再試。');
             }
         }
+
 
         async function handleUpdateHistory(e) {
             e.preventDefault();
@@ -1095,11 +1130,16 @@
             }
             stores.forEach(store => {
                 const storeCard = `
-                    <div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between">
-                        <div class="card-base store-card-main cursor-pointer p-4 mb-3" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}">
-                            <h3 class="text-xl font-bold text-white truncate">${store.name}</h3>
+                     <div class="bg-gray-700 rounded-lg">
+                        <div class="p-4">
+                            <div class="flex items-start justify-between">
+                                <div class="card-base store-card-main cursor-pointer flex-grow" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}">
+                                    <h3 class="text-xl font-bold text-white truncate">${store.name}</h3>
+                                </div>
+                                <input type="checkbox" class="store-checkbox h-6 w-6 bg-gray-800 border-gray-600 rounded text-indigo-500 focus:ring-indigo-600 shrink-0 ml-3 cursor-pointer" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}" checked>
+                            </div>
                         </div>
-                        <div class="flex justify-end gap-2 border-t border-gray-600 pt-3">
+                        <div class="flex justify-end gap-2 border-t border-gray-600 px-4 py-3">
                             <button class="edit-store-btn text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}">編輯</button>
                             <button class="delete-store-btn text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}">刪除</button>
                         </div>
@@ -1310,70 +1350,120 @@
             }
         }
 
-        function renderAnalysisTab() {
+        function renderAnalysisTab(customRange = null) {
             const psdControls = document.getElementById('psd-controls');
             const activeButton = psdControls.querySelector('.active');
-            const period = activeButton ? activeButton.dataset.period : 'all';
-            
+            let period = activeButton ? activeButton.dataset.period : 'all';
             let periodRevenue = 0;
             let diffDays = 1;
-            let periodData;
+            let analysisTitle = activeButton ? activeButton.textContent : "自訂區間";
 
+            // Handle custom range
+            if(customRange){
+                period = 'custom';
+                analysisTitle = `${customRange.start} ~ ${customRange.end}`;
+            }
+
+            // Calculate revenue and days based on period
             if (period === 'all') {
-                periodData = appData.machines.map(processMachineData);
-                periodRevenue = periodData.reduce((sum, m) => sum + m.revenue, 0);
+                periodRevenue = appData.machines.map(processMachineData).reduce((sum, m) => sum + m.revenue, 0);
                 const startDate = new Date(appData.startDate);
                 const today = new Date();
                 const diffTime = Math.abs(today - startDate);
-                diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
+                diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
             } else {
-                const now = new Date();
-                let periodStartDate;
-                switch (period) {
-                    case 'weekly':
-                        const day = now.getDay();
-                        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-                        periodStartDate = new Date(new Date().setDate(diff));
-                        periodStartDate.setHours(0, 0, 0, 0);
-                        break;
-                    case 'monthly':
-                        periodStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                        break;
-                    case 'quarterly':
-                        const quarter = Math.floor(now.getMonth() / 3);
-                        periodStartDate = new Date(now.getFullYear(), quarter * 3, 1);
-                        break;
+                let periodStartDate, periodEndDate;
+                if (period === 'custom') {
+                    periodStartDate = new Date(customRange.start + 'T00:00:00');
+                    periodEndDate = new Date(customRange.end + 'T00:00:00');
+                } else {
+                     const now = new Date();
+                    switch (period) {
+                        case 'weekly':
+                            const day = now.getDay();
+                            const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                            periodStartDate = new Date(new Date().setDate(diff));
+                            periodEndDate = new Date();
+                            break;
+                        case 'monthly':
+                            periodStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                            periodEndDate = new Date();
+                            break;
+                        case 'quarterly':
+                            const quarter = Math.floor(now.getMonth() / 3);
+                            periodStartDate = new Date(now.getFullYear(), quarter * 3, 1);
+                            periodEndDate = new Date();
+                            break;
+                    }
                 }
-                const filteredHistory = appData.history.filter(h => new Date(h.date) >= periodStartDate);
+                periodStartDate.setHours(0,0,0,0);
+                periodEndDate.setHours(23,59,59,999);
+
+                const filteredHistory = appData.history.filter(h => {
+                    const recordDate = new Date(h.date);
+                    return recordDate >= periodStartDate && recordDate <= periodEndDate;
+                });
                 periodRevenue = filteredHistory.reduce((sum, h) => sum + (h.newPlays * COIN_VALUE), 0);
-                const diffTime = Math.abs(now - periodStartDate);
+                const diffTime = Math.abs(periodEndDate - periodStartDate);
                 diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
             }
             
             const psd = periodRevenue > 0 && diffDays > 0 ? periodRevenue / diffDays : 0;
-            document.getElementById('psd-display').innerHTML = `<strong>${psd.toLocaleString('en-US', {maximumFractionDigits: 0})} 元 / 天</strong> 
-                <span class="text-sm text-gray-400">(${periodRevenue.toLocaleString()} 元 ÷ ${diffDays} 天)</span>`;
+            document.getElementById('psd-display').innerHTML = `
+                <div class="text-sm text-gray-400">${analysisTitle} 每日平均營收</div>
+                <div class="text-2xl font-bold text-white mt-1">${psd.toLocaleString('en-US', {maximumFractionDigits: 0})} 元 / 天</div>
+                <div class="text-xs text-gray-500 mt-1">(${periodRevenue.toLocaleString()} 元 ÷ ${diffDays} 天)</div>`;
 
             
+            // --- Detailed Analysis ---
+            const observationEl = document.getElementById('analysis-observation');
+            const suggestionEl = document.getElementById('analysis-suggestion');
             const processedMachines = appData.machines.map(processMachineData);
-            const sortedByRevenue = [...processedMachines].sort((a,b) => b.revenue - a.revenue);
-            const sortedByCost = [...processedMachines].sort((a,b) => b.cost - a.cost);
-            const bestPerformer = sortedByRevenue[0];
-            const highestCost = sortedByCost[0];
-            
-            if (processedMachines.length > 0) {
-                 document.getElementById('analysis-observation').innerHTML = `
-                    <li><strong>收益冠軍：</strong><span class="font-semibold text-white">${bestPerformer.id} (${bestPerformer.location})</span> 累積營收最高。</li>
-                    <li><strong>成本最高：</strong><span class="font-semibold text-white">${highestCost.id} (${highestCost.location})</span> 平均出貨成本最高，建議觀察。</li>
-                `;
-                document.getElementById('analysis-suggestion').innerHTML = `
-                    <li>針對 <span class="font-semibold text-white">${highestCost.id} (${highestCost.location})</span> 檢討難度與獎品設定，以優化成本。</li>
-                    <li>每週持續追蹤 <span class="font-semibold text-white">PSD 指標變化</span>，可有效掌握營運成長趨勢。</li>
-                `;
-            } else {
-                 document.getElementById('analysis-observation').innerHTML = '<li>尚無機台數據可進行分析。</li>';
-                 document.getElementById('analysis-suggestion').innerHTML = '<li>請先至「機台管理」建立機台，並在「每日記帳」新增紀錄。</li>';
+
+            if (processedMachines.length === 0) {
+                 observationEl.innerHTML = '<p>尚無機台數據可進行分析。</p>';
+                 suggestionEl.innerHTML = '<p>請先至「機台管理」建立機台，並在「每日記帳」新增紀錄。</p>';
+                 return;
             }
+
+            const sortedByRevenue = [...processedMachines].sort((a,b) => b.revenue - a.revenue);
+            const sortedByCost = [...processedMachines].filter(m => m.effectivePayouts > 0).sort((a,b) => b.cost - a.cost);
+
+            let observationHTML = '';
+            let suggestionHTML = '';
+
+            // Top 3 Revenue
+            observationHTML += '<div><h4 class="text-lg font-semibold text-green-400 mb-2">🥇 營收 TOP 3 機台 (金雞母)</h4><ul class="list-disc pl-5 space-y-1">';
+            sortedByRevenue.slice(0, 3).forEach(m => {
+                observationHTML += `<li><strong class="text-white">${m.id} (${m.location})</strong>: 總營收 ${m.revenue.toLocaleString()} 元</li>`;
+            });
+            observationHTML += '</ul></div>';
+            suggestionHTML += '<div><p class="text-green-300/80">對於高營收機台，建議維持目前熱度，可考慮適時補充類似獎品，以鞏固營收表現。</p></div>';
+
+
+            // Bottom 3 Revenue
+            if (sortedByRevenue.length > 3) {
+                 observationHTML += '<div class="mt-4"><h4 class="text-lg font-semibold text-yellow-400 mb-2">🥉 營收 BOTTOM 3 機台 (待觀察)</h4><ul class="list-disc pl-5 space-y-1">';
+                sortedByRevenue.slice(-3).reverse().forEach(m => {
+                    observationHTML += `<li><strong class="text-white">${m.id} (${m.location})</strong>: 總營收 ${m.revenue.toLocaleString()} 元</li>`;
+                });
+                observationHTML += '</ul></div>';
+                suggestionHTML += '<div class="mt-2"><p class="text-yellow-300/80">對於營收末段班，建議觀察機台位置是否理想，或考慮更換獎品類型、調整爪力設定以提升投幣意願。</p></div>';
+            }
+
+            // Top 3 Highest Cost
+             if (sortedByCost.length > 0) {
+                observationHTML += '<div class="mt-4"><h4 class="text-lg font-semibold text-red-400 mb-2">🚨 出貨成本最高 TOP 3 機台 (警示區)</h4><ul class="list-disc pl-5 space-y-1">';
+                sortedByCost.slice(0, 3).forEach(m => {
+                    observationHTML += `<li><strong class="text-white">${m.id} (${m.location})</strong>: 平均成本 <strong class="text-red-400">${m.cost.toFixed(2)} 元/次</strong></li>`;
+                });
+                observationHTML += '</ul></div>';
+                suggestionHTML += '<div class="mt-2"><p class="text-red-300/80">成本過高的機台需重點關注！建議立即檢討爪力設定與獎品價值是否匹配，避免利潤被侵蝕。</p></div>';
+
+            }
+
+            observationEl.innerHTML = observationHTML;
+            suggestionEl.innerHTML = suggestionHTML;
         }
 
         function getAggregatedData(period) {
@@ -1672,6 +1762,13 @@
         async function handleDownloadAllStoresReport() {
             if(!selectedGroupId) return alert('No group selected.');
             const btn = document.getElementById('download-all-stores-report-btn');
+            
+            const selectedStoreCheckboxes = document.querySelectorAll('.store-checkbox:checked');
+            if (selectedStoreCheckboxes.length === 0) {
+                alert("請至少勾選一個要下載的門市。");
+                return;
+            }
+
             const originalText = btn.innerHTML;
             btn.innerHTML = `<span>處理中...</span>`;
             btn.disabled = true;
@@ -1688,19 +1785,54 @@
             }
 
             try {
-                const storeSnapshot = await db.collection('groups').doc(selectedGroupId).collection('stores').get();
-                const stores = storeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                if (stores.length === 0) {
-                    alert("此群組沒有任何門市可供下載報表。");
-                    return;
-                }
+                const storesToDownload = Array.from(selectedStoreCheckboxes).map(cb => ({
+                    id: cb.dataset.storeId,
+                    name: cb.dataset.storeName,
+                    startDate: cb.dataset.startDate
+                }));
 
                 const csvRows = [];
-                csvRows.push(`全門市營運概況總報表 - ${periodText}${period !== 'all' ? ' (' + date + ')' : ''}`);
-                csvRows.push(`報表產生日期: ${new Date().toLocaleString()}`);
+                let grandTotalRevenue = 0;
+                let grandTotalPayouts = 0;
+                let grandTotalDays = 0;
+                let psdCalculated = false;
+                
+                for (const store of storesToDownload) {
+                    const summaryData = await getStoreSummaryForPeriod(store.id, period, date);
+                    if (summaryData.length > 0) {
+                        const storeTotalRevenue = summaryData.reduce((sum, item) => sum + item.revenue, 0);
+                        const storeTotalPayouts = summaryData.reduce((sum, item) => sum + item.payouts, 0);
+                        grandTotalRevenue += storeTotalRevenue;
+                        grandTotalPayouts += storeTotalPayouts;
+                    }
+                }
 
-                for (const store of stores) {
+                const grandTotalAvgCost = grandTotalPayouts > 0 ? grandTotalRevenue / grandTotalPayouts : 0;
+
+                csvRows.push(`所選門市營運總計 - ${periodText}${period !== 'all' ? ' (' + date + ')' : ''}`);
+                csvRows.push(`報表產生日期: ${new Date().toLocaleString()}`);
+                csvRows.push("");
+                csvRows.push("--- 全選門市總計 ---");
+                csvRows.push(["項目", "總計"].join(','));
+                csvRows.push(["總營收", grandTotalRevenue].join(','));
+                csvRows.push(["總出貨數", grandTotalPayouts].join(','));
+                csvRows.push(["總平均出貨成本(元/次)", grandTotalAvgCost.toFixed(2)].join(','));
+                
+                let grandPsd = 0;
+                if (period === 'all') {
+                    // Cannot accurately calculate combined PSD for 'all' without a common start date.
+                } else {
+                    const { startDate, endDate } = getPeriodDateRange(period, date);
+                    const d1 = new Date(startDate);
+                    const d2 = new Date(endDate);
+                    const diffTime = Math.abs(d2 - d1);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                    grandPsd = grandTotalRevenue / diffDays;
+                    csvRows.push([`期間PSD (每日平均營收)`, `"${grandPsd.toFixed(2)} 元/天"`].join(","));
+                }
+
+
+                for (const store of storesToDownload) {
                     const summaryData = await getStoreSummaryForPeriod(store.id, period, date);
                     
                     csvRows.push("");
@@ -1821,6 +1953,14 @@
             }
         });
         
+        selectAllStoresBtn.addEventListener('click', () => {
+            document.querySelectorAll('.store-checkbox').forEach(checkbox => checkbox.checked = true);
+        });
+
+        deselectAllStoresBtn.addEventListener('click', () => {
+            document.querySelectorAll('.store-checkbox').forEach(checkbox => checkbox.checked = false);
+        });
+
         createGroupForm.addEventListener('submit', handleCreateGroup);
         createStoreForm.addEventListener('submit', handleCreateStore);
         editStoreForm.addEventListener('submit', handleUpdateStore);
@@ -1922,10 +2062,30 @@
         psdControls.addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON') {
                 psdControls.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
-                renderAnalysisTab();
+                const customRange = document.getElementById('psd-custom-range');
+                if(e.target.dataset.period === 'custom'){
+                    customRange.classList.remove('hidden');
+                    customRange.classList.add('flex');
+                } else {
+                    customRange.classList.add('hidden');
+                    customRange.classList.remove('flex');
+                    e.target.classList.add('active');
+                    renderAnalysisTab();
+                }
             }
         });
+
+        psdCalculateBtn.addEventListener('click', () => {
+            const start = psdStartDate.value;
+            const end = psdEndDate.value;
+            if (start && end && start <= end) {
+                psdControls.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                renderAnalysisTab({start, end});
+            } else {
+                alert('請選擇有效的起訖日期！');
+            }
+        });
+
 
         document.getElementById('machine-selector').addEventListener('change', (e) => {
             const selectedDocId = e.target.value;
@@ -1966,6 +2126,10 @@
             if (cumulativePlaysInput < selectedMachine.plays || cumulativePayoutsInput < selectedMachine.payouts) {
                 return showFeedback('錯誤：輸入的累積數值小於上次紀錄，請確認抄表數值是否正確。', true);
             }
+             if (cumulativePlaysInput < (selectedMachine.initialPlays || 0) || cumulativePayoutsInput < (selectedMachine.initialPayouts || 0)) {
+                return showFeedback(`錯誤：抄表數值不可小於此機台的起始值 (投幣: ${selectedMachine.initialPlays || 0}, 出貨: ${selectedMachine.initialPayouts || 0})。`, true);
+            }
+
 
             const dailyPlays = cumulativePlaysInput - selectedMachine.plays;
             const dailyPayouts = cumulativePayoutsInput - selectedMachine.payouts;
