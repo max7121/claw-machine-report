@@ -75,12 +75,12 @@
                     <select id="report-period-selector" class="bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 w-full sm:w-auto">
                         <option value="all">總和</option>
                         <option value="daily">單日</option>
-                        <option value="weekly">本週</option>
-                        <option value="monthly">本月</option>
-                        <option value="quarterly">本季</option>
-                        <option value="yearly">本年度</option>
+                        <option value="weekly">週報</option>
+                        <option value="monthly">月報</option>
+                        <option value="quarterly">季報</option>
+                        <option value="yearly">年報</option>
                     </select>
-                    <input type="date" id="report-date-picker" class="bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 w-full sm:w-auto hidden">
+                    <input type="date" id="report-date-picker" class="bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 w-full sm:w-auto hidden" title="選擇報表基準日">
                     <button id="download-all-stores-report-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0 w-full sm:w-auto justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
@@ -107,10 +107,16 @@
                     <h1 id="report-title-main" class="text-3xl sm:text-4xl font-bold text-white mb-2">娃娃機營業報告</h1>
                     <p class="text-lg text-gray-400" id="report-period">統計期間：</p>
                 </div>
-                <button id="download-report-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0 self-end sm:self-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                    <span>下載報表 (CSV)</span>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button id="download-report-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                        <span>(CSV)</span>
+                    </button>
+                     <button id="download-pdf-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm2 10a1 1 0 10-2 0v3a1 1 0 102 0v-3zm2-3a1 1 0 011 1v5a1 1 0 11-2 0v-5a1 1 0 011-1zm4-1a1 1 0 10-2 0v7a1 1 0 102 0V8z" clip-rule="evenodd" /></svg>
+                        <span>(PDF)</span>
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -306,8 +312,8 @@
                         <table class="w-full text-left">
                             <thead class="bg-gray-700/50 text-gray-300 uppercase text-sm">
                                 <tr>
-                                    <th class="p-4 table-header-sortable" data-sort="id">機台編號 <span class="sort-indicator"></span></th>
-                                    <th class="p-4">位置</th>
+                                    <th class="p-4 table-header-sortable sorted" data-sort="id">機台編號 <span class="sort-indicator">▲</span></th>
+                                    <th class="p-4 table-header-sortable" data-sort="location">位置 <span class="sort-indicator"></span></th>
                                     <th class="p-4 text-right table-header-sortable" data-sort="effectivePlays">營業投幣次數 <span class="sort-indicator"></span></th>
                                     <th class="p-4 text-right table-header-sortable" data-sort="revenue">營業投幣金額 <span class="sort-indicator"></span></th>
                                     <th class="p-4 text-right table-header-sortable" data-sort="effectivePayouts">營業出貨數量 <span class="sort-indicator"></span></th>
@@ -465,10 +471,22 @@
             </form>
         </div>
     </div>
+    
+    <!-- PDF Loader Overlay -->
+    <div id="pdf-loader-overlay" class="fixed inset-0 bg-black bg-opacity-75 flex-col items-center justify-center hidden z-50">
+        <svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p id="pdf-loader-text-overlay" class="text-white text-lg mt-4">正在生成 PDF...</p>
+    </div>
 
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -542,6 +560,10 @@
         const editMachineModal = document.getElementById('edit-machine-modal');
         const editMachineForm = document.getElementById('edit-machine-form');
         const editMachineCancelBtn = document.getElementById('edit-machine-cancel-btn');
+
+        const downloadPdfBtn = document.getElementById('download-pdf-btn');
+        const pdfLoaderOverlay = document.getElementById('pdf-loader-overlay');
+        const pdfLoaderText = document.getElementById('pdf-loader-text-overlay');
 
 
         // --- MODAL FUNCTIONS ---
@@ -1658,8 +1680,8 @@
             const date = reportDatePicker.value;
             const periodText = reportPeriodSelector.options[reportPeriodSelector.selectedIndex].text;
 
-            if (period === 'daily' && !date) {
-                alert('請選擇一個日期！');
+            if (period !== 'all' && !date) {
+                alert('請選擇一個基準日期！');
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 return;
@@ -1675,7 +1697,7 @@
                 }
 
                 const csvRows = [];
-                csvRows.push(`全門市營運概況總報表 - ${periodText}${period === 'daily' ? ' (' + date + ')' : ''}`);
+                csvRows.push(`全門市營運概況總報表 - ${periodText}${period !== 'all' ? ' (' + date + ')' : ''}`);
                 csvRows.push(`報表產生日期: ${new Date().toLocaleString()}`);
 
                 for (const store of stores) {
@@ -1815,13 +1837,13 @@
         });
 
         reportPeriodSelector.addEventListener('change', () => {
-            if (reportPeriodSelector.value === 'daily') {
+            if (reportPeriodSelector.value === 'all') {
+                reportDatePicker.classList.add('hidden');
+            } else {
                 reportDatePicker.classList.remove('hidden');
                 if (!reportDatePicker.value) {
                     reportDatePicker.valueAsDate = new Date();
                 }
-            } else {
-                reportDatePicker.classList.add('hidden');
             }
         });
         
@@ -1989,12 +2011,90 @@
                 currentSort = { key: sortKey, direction };
                 sortableHeaders.forEach(h => {
                     h.classList.remove('sorted');
-                    h.querySelector('.sort-indicator').textContent = '';
+                    if(h !== header) h.querySelector('.sort-indicator').textContent = '';
                 });
                 header.classList.add('sorted');
                 header.querySelector('.sort-indicator').textContent = direction === 'asc' ? '▲' : '▼';
                 updateUI();
             });
+        });
+        
+        downloadPdfBtn.addEventListener('click', async () => {
+            const activeTab = document.querySelector('.tab-btn.active');
+            if (!activeTab) return;
+
+            const tabId = activeTab.dataset.tab;
+            const tabName = activeTab.textContent;
+
+            if (tabId === 'accounting' || tabId === 'machines') {
+                alert('此頁面為操作頁面，不支援 PDF 匯出。請選擇一個報表頁籤。');
+                return;
+            }
+
+            pdfLoaderText.textContent = `正在生成「${tabName}」報表...`;
+            pdfLoaderOverlay.classList.remove('hidden');
+            pdfLoaderOverlay.classList.add('flex');
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const content = document.getElementById(tabId);
+                const originalScrollTop = content.scrollTop;
+                content.scrollTop = 0; // Ensure we capture from the top
+
+                const canvas = await html2canvas(content, {
+                    backgroundColor: '#1f2937',
+                    scale: 2,
+                    useCORS: true,
+                    windowHeight: content.scrollHeight
+                });
+                content.scrollTop = originalScrollTop; // Restore scroll
+
+                const imgData = canvas.toDataURL('image/png');
+                const doc = new jsPDF('p', 'mm', 'a4');
+                
+                const pdfWidth = doc.internal.pageSize.getWidth();
+                const pdfHeight = doc.internal.pageSize.getHeight();
+                const margin = 10;
+
+                const imgProps = doc.getImageProperties(imgData);
+                const imgWidth = pdfWidth - margin * 2;
+                const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+                
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                doc.addImage(imgData, 'PNG', margin, 20, imgWidth, imgHeight);
+                heightLeft -= (pdfHeight - 30);
+
+                while (heightLeft > 0) {
+                    doc.addPage();
+                    position -= (pdfHeight - 30);
+                    doc.addImage(imgData, 'PNG', margin, position + 20, imgWidth, imgHeight);
+                    heightLeft -= (pdfHeight - 30);
+                }
+
+                for (let i = 1; i <= doc.internal.getNumberOfPages(); i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(14);
+                    doc.setTextColor(150);
+                    doc.text(selectedStoreName, margin, 15);
+                    doc.setFontSize(10);
+                    doc.text(`報表生成日期: ${new Date().toLocaleDateString()}`, pdfWidth - margin, 15, { align: 'right' });
+                    doc.setFontSize(8);
+                    doc.text(`第 ${i} 頁 / 共 ${doc.internal.getNumberOfPages()} 頁`, pdfWidth / 2, pdfHeight - margin, { align: 'center' });
+                }
+                
+                const today = new Date();
+                const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+                doc.save(`${selectedStoreName}-${tabName}-報告-${dateString}.pdf`);
+
+            } catch (error) {
+                console.error("PDF 生成失敗:", error);
+                alert("生成 PDF 時發生錯誤，請稍後再試。");
+            } finally {
+                pdfLoaderOverlay.classList.add('hidden');
+                pdfLoaderOverlay.classList.remove('flex');
+            }
         });
         
         document.getElementById('download-report-btn').addEventListener('click', () => {
