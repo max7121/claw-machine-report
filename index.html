@@ -25,6 +25,11 @@
         .preset-tag { cursor: pointer; transition: background-color 0.2s; }
         .preset-tag:hover { background-color: #4f46e5; }
     </style>
+
+<style>
+/* Force show overlay before auth init */
+#auth-overlay{ display:flex !important; }
+</style>
 </head>
 <body class="p-4 sm:p-6 md:p-8">
 
@@ -2498,6 +2503,723 @@
         showGroupSelectionPage();
     });
     </script>
+
+<script>
+// ===== Feiloli Ops: CSV 報表 / 抄表Δ重算 / 離線佇列 功能補丁 =====
+(function(){
+  // 安全取全域（若不存在就先給stub，避免報錯）
+  const g = (typeof window!=='undefined') ? window : {};
+  const firebase = g.firebase || {};
+  const db = (g.db || (firebase.firestore ? firebase.firestore() : null));
+  const COIN_VALUE = (g.COIN_VALUE != null) ? g.COIN_VALUE : 10;
+
+  // 允許外部原程式覆寫
+  function noop(){}
+  const showFeedback = g.showFeedback || function(msg, isError){
+    try {
+      console[(isError?'warn':'log')](msg);
+      const bar = document.getElementById('feedback-bar');
+      if(bar){ bar.textContent = msg; bar.classList.toggle('error', !!isError); bar.classList.remove('hidden'); }
+    } catch{}
+  };
+  const loadStoreData = g.loadStoreData || noop;
+
+  // 取得目前UI狀態（若沒有就給空字串）
+  function getState(){
+    return {
+      selectedGroupId: g.selectedGroupId || '',
+      selectedGroupName: g.selectedGroupName || '',
+      selectedStoreId: g.selectedStoreId || '',
+      selectedStoreName: g.selectedStoreName || '',
+      appData: g.appData || { history: [], startDate: '' }
+    };
+  }
+
+  // ============== 時間/CSV 工具 ==============
+  function startOfWeek(d) {
+    const dt = new Date(d);
+    const day = (dt.getDay() + 6) % 7; // 週一為0
+    dt.setDate(dt.getDate() - day);
+    dt.setHours(0,0,0,0);
+    return dt;
+  }
+  function endOfWeek(d) { const s=startOfWeek(d); const e=new Date(s); e.setDate(e.getDate()+7); e.setMilliseconds(-1); return e; }
+  function startOfMonth(d){ const dt=new Date(d); dt.setDate(1); dt.setHours(0,0,0,0); return dt; }
+  function endOfMonth(d){ const dt=startOfMonth(d); dt.setMonth(dt.getMonth()+1); dt.setMilliseconds(-1); return dt; }
+  function startOfQuarter(d){ const dt=new Date(d); const q=Math.floor(dt.getMonth()/3)*3; dt.setMonth(q,1); dt.setHours(0,0,0,0); return dt; }
+  function endOfQuarter(d){ const dt=startOfQuarter(d); dt.setMonth(dt.getMonth()+3); dt.setMilliseconds(-1); return dt; }
+  function formatDateISO(d){ const x=new Date(d); const iso=x.toISOString(); return iso.slice(0,10); }
+  function filterHistoryByPeriod(history, period, baseDateStr){
+    if(period==='all') return history;
+    const base = baseDateStr ? new Date(baseDateStr) : new Date();
+    let from, to;
+    if(period==='daily'){ from=new Date(base); from.setHours(0,0,0,0); to=new Date(base); to.setHours(23,59,59,999); }
+    if(period==='weekly'){ from=startOfWeek(base); to=endOfWeek(base); }
+    if(period==='monthly'){ from=startOfMonth(base); to=endOfMonth(base); }
+    if(period==='quarterly'){ from=startOfQuarter(base); to=endOfQuarter(base); }
+    return history.filter(h => {
+      const d = new Date(h.date);
+      return d>=from && d<=to;
+    });
+  }
+  function toCSV(rows){
+    return rows.map(r => r.map(v => {
+      if(v==null) return '';
+      const s=String(v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+    }).join(',')).join('\n');
+  }
+
+  // ============== Δ 重算工具 ==============
+  function compareDateAsc(a,b){ return new Date(a.date) - new Date(b.date); }
+  function computeDeltasForMachine(historyList){
+    historyList.sort(compareDateAsc);
+    let prevPlays = null, prevPayouts = null;
+    for(const item of historyList){
+      const currPlays = Number(item.playsCum||0);
+      const currPayouts = Number(item.payoutsCum||0);
+      if(prevPlays===null || prevPayouts===null){
+        item.playsDelta = 0;
+        item.payoutsDelta = 0;
+      }else{
+        item.playsDelta = Math.max(0, currPlays - prevPlays);
+        item.payoutsDelta = Math.max(0, currPayouts - prevPayouts);
+      }
+      prevPlays = currPlays;
+      prevPayouts = currPayouts;
+    }
+    return historyList;
+  }
+  async function recalcAllDeltasForStore(){
+    const {selectedGroupId, selectedStoreId} = getState();
+    if(!db || !selectedGroupId || !selectedStoreId) return;
+
+    const ref = db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('history');
+    const snap = await ref.get();
+    if(snap.empty) return;
+
+    const byMachine = {};
+    snap.docs.forEach(d=>{
+      const x = { docId:d.id, ...d.data() };
+      const k = (x.machineId||'__unknown__');
+      (byMachine[k]||(byMachine[k]=[])).push(x);
+    });
+
+    const batch = db.batch();
+    Object.values(byMachine).forEach(list=>{
+      const recomputed = computeDeltasForMachine(list);
+      recomputed.forEach(r=>{
+        const docRef = ref.doc(r.docId);
+        batch.update(docRef, { playsDelta: r.playsDelta||0, payoutsDelta: r.payoutsDelta||0 });
+      });
+    });
+    await batch.commit();
+  }
+  g.recalcAllDeltasForStore = g.recalcAllDeltasForStore || recalcAllDeltasForStore;
+
+  // ============== 離線佇列 ==============
+  const OFFLINE_QUEUE_KEY = 'cm_offline_queue_v1';
+  function readQueue(){ try{return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY)||'[]');}catch{return [];} }
+  function writeQueue(arr){ localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(arr)); }
+  function queueOfflineEntry(entry){
+    const q = readQueue();
+    q.push({ ...entry, queuedAt: Date.now(), type:'history' });
+    writeQueue(q);
+  }
+  async function flushQueue(){
+    if(!navigator.onLine) return;
+    if(!db) return;
+    const {selectedGroupId, selectedStoreId} = getState();
+    if(!selectedGroupId || !selectedStoreId) return;
+
+    const q = readQueue();
+    if(q.length===0) return;
+
+    const rest = [];
+    for(const item of q){
+      try{
+        if(item.type==='history'){
+          await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId)
+            .collection('history').add({
+              date:item.date, machineId:item.machineId, location:item.location,
+              playsCum:item.playsCum, payoutsCum:item.payoutsCum,
+              playsDelta:0, payoutsDelta:0,
+              createdAt: (firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+            });
+        }else{
+          rest.push(item);
+        }
+      }catch(e){
+        console.warn('回寫失敗，保留待下次', e);
+        rest.push(item);
+      }
+    }
+    writeQueue(rest);
+    if(q.length!==rest.length){
+      try { await recalcAllDeltasForStore(); } catch{}
+      try { await loadStoreData(); } catch{}
+      showFeedback('已同步本機離線資料', false);
+    }
+  }
+  window.addEventListener('online', flushQueue);
+  setInterval(flushQueue, 10000);
+  g.flushQueue = g.flushQueue || flushQueue;
+
+  // ============== 綁定 UI 事件（若存在則綁） ==============
+  function safeBind(){
+    const {selectedGroupId, selectedGroupName, selectedStoreId, selectedStoreName, appData} = getState();
+
+    const downloadAllBtn = document.getElementById('download-all-stores-report-btn');
+    const periodSel = document.getElementById('reportPeriodSelector');
+    const datePicker = document.getElementById('reportDatePicker');
+    if(periodSel){
+      periodSel.addEventListener('change', ()=>{
+        const needBase = periodSel.value !== 'all';
+        if(datePicker){
+          datePicker.classList.toggle('hidden', !needBase);
+          if(needBase && !datePicker.value){
+            try{ datePicker.valueAsDate = new Date(); }catch{}
+          }
+        }
+      });
+    }
+
+    if(downloadAllBtn && db){
+      downloadAllBtn.addEventListener('click', async ()=>{
+        if(!g.selectedGroupId) return alert('請先選擇單位群組');
+        const period = periodSel ? periodSel.value : 'all';
+        const baseDate = (datePicker && !datePicker.classList.contains('hidden')) ? datePicker.value : '';
+
+        try {
+          const storesSnap = await db.collection('groups').doc(g.selectedGroupId).collection('stores').get();
+          let csvRows = [['群組', '門市', '期間', '日期基準', '總投幣次數', '總投幣金額', '總出貨次數', '平均出貨成本(元/次)']];
+
+          for(const sDoc of storesSnap.docs){
+            const sData = sDoc.data();
+            const storeId = sDoc.id;
+            const historySnap = await db.collection('groups').doc(g.selectedGroupId).collection('stores').doc(storeId).collection('history').get();
+            const history = historySnap.docs.map(d=>({ id:d.id, ...d.data() }));
+            const filtered = filterHistoryByPeriod(history, period==='all'?'all':period, baseDate);
+
+            let plays = 0, payouts = 0;
+            filtered.forEach(h=>{ plays += (Number(h.playsDelta)||0); payouts += (Number(h.payoutsDelta)||0); });
+            const revenue = plays * COIN_VALUE;
+            const cost = payouts>0 ? (revenue/payouts) : 0;
+
+            csvRows.push([
+              g.selectedGroupName || '',
+              sData?.name || storeId,
+              (period||'all').toUpperCase(),
+              baseDate || '—',
+              plays,
+              revenue,
+              payouts,
+              cost.toFixed(2)
+            ]);
+          }
+          const csv = toCSV(csvRows);
+          const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          const dateTag = baseDate ? baseDate : formatDateISO(new Date());
+          a.download = `${(g.selectedGroupName||'Group')}_多店_${period}_${dateTag}.csv`;
+          document.body.appendChild(a); a.click(); a.remove();
+        } catch(err){
+          console.error(err);
+          alert('下載報表失敗，請稍後再試');
+        }
+      });
+    }
+
+    const singleBtn = document.getElementById('download-report-btn');
+    if(singleBtn){
+      singleBtn.addEventListener('click', ()=>{
+        if(!g.selectedStoreId) return alert('請先選擇門市');
+        const rows = [
+          ['門市', g.selectedStoreName || ''],
+          ['統計期間', `${(appData.startDate||'')} ～ ${formatDateISO(new Date())}`],
+          [],
+          ['日期', '機台編號', '位置', '當日投幣Δ', '當日出貨Δ']
+        ];
+        (appData.history||[]).forEach(h=>{
+          rows.push([h.date, h.machineId||'', h.location||'', (h.playsDelta||0), (h.payoutsDelta||0)]);
+        });
+        const csv = toCSV(rows);
+        const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${(g.selectedStoreName||'store')}_daily_history.csv`;
+        document.body.appendChild(a); a.click(); a.remove();
+      });
+    }
+
+    const entryForm = document.getElementById('daily-entry-form');
+    if(entryForm && db){
+      entryForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        if(!g.selectedGroupId || !g.selectedStoreId){ alert('請先選擇門市'); return; }
+
+        const dateEl = document.getElementById('entry-date');
+        const machineSel = document.getElementById('machine-selector');
+        const playsCumEl = document.getElementById('cumulative-plays');
+        const payoutsCumEl = document.getElementById('cumulative-payouts');
+        if(!dateEl || !machineSel || !playsCumEl || !payoutsCumEl){ alert('表單欄位缺少'); return; }
+
+        const date = dateEl.value;
+        const val = (machineSel.value||'').split('||');
+        const machineId = val[0] || machineSel.value || '';
+        const machineLocation = val[1] || '';
+        const playsCum = Number(playsCumEl.value||0);
+        const payoutsCum = Number(payoutsCumEl.value||0);
+
+        try{
+          await db.collection('groups').doc(g.selectedGroupId).collection('stores').doc(g.selectedStoreId)
+            .collection('history').add({
+              date, machineId, location: machineLocation,
+              playsCum, payoutsCum,
+              playsDelta: 0, payoutsDelta: 0,
+              createdAt: (firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+            });
+
+          await recalcAllDeltasForStore();
+          await loadStoreData();
+          showFeedback('已新增紀錄並完成重算', false);
+        }catch(err){
+          console.error(err);
+          showFeedback('新增失敗：將暫存至本機，稍候自動回寫', true);
+          queueOfflineEntry({ date, machineId, location: machineLocation, playsCum, payoutsCum });
+        }
+      });
+    }
+
+    const editForm = document.getElementById('editHistoryForm') || document.getElementById('edit-history-form');
+    const editModal = document.getElementById('editHistoryModal') || document.getElementById('edit-history-modal');
+    if(editForm && db){
+      editForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        if(!g.selectedGroupId || !g.selectedStoreId){ alert('請先選擇門市'); return; }
+
+        const docIdEl = document.getElementById('edit-history-doc-id');
+        const playsDeltaEl = document.getElementById('edit-history-plays');
+        const payoutsDeltaEl = document.getElementById('edit-history-payouts');
+        if(!docIdEl || !playsDeltaEl || !payoutsDeltaEl){ alert('編輯欄位缺少'); return; }
+
+        const docId = docIdEl.value;
+        const playsDeltaNew = Number(playsDeltaEl.value||0);
+        const payoutsDeltaNew = Number(payoutsDeltaEl.value||0);
+
+        try{
+          const ref = db.collection('groups').doc(g.selectedGroupId).collection('stores').doc(g.selectedStoreId).collection('history').doc(docId);
+          const snap = await ref.get();
+          if(!snap.exists){ alert('找不到紀錄'); return; }
+          const curr = { docId: snap.id, ...snap.data() };
+
+          const allSnap = await db.collection('groups').doc(g.selectedGroupId).collection('stores').doc(g.selectedStoreId).collection('history')
+            .where('machineId','==',curr.machineId).get();
+          const list = allSnap.docs.map(d=>({ docId:d.id, ...d.data() })).sort(compareDateAsc);
+          const idx = list.findIndex(x=>x.docId===curr.docId);
+          let prevPlaysCum = 0, prevPayoutsCum = 0;
+          if(idx>0){ prevPlaysCum = Number(list[idx-1].playsCum||0); prevPayoutsCum = Number(list[idx-1].payoutsCum||0); }
+
+          const newPlaysCum = prevPlaysCum + playsDeltaNew;
+          const newPayoutsCum = prevPayoutsCum + payoutsDeltaNew;
+
+          await ref.update({ playsCum: newPlaysCum, payoutsCum: newPayoutsCum });
+          await recalcAllDeltasForStore();
+          if(editModal){ editModal.classList.add('hidden'); }
+          await loadStoreData();
+        }catch(err){
+          console.error(err);
+          alert('更新失敗，請稍後再試');
+        }
+      });
+    }
+
+    // 進入門市頁時嘗試回寫離線資料
+    try { flushQueue(); } catch{}
+  }
+
+  // DOM ready 後綁定（避免阻斷原本腳本）
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', safeBind);
+  } else {
+    setTimeout(safeBind, 0);
+  }
+})();
+</script>
+
+<!-- ===== Login Overlay & Admin Panel (lightweight) ===== -->
+<style>
+  #auth-overlay{position:fixed;inset:0;background:rgba(10,10,10,.75);display:none;align-items:center;justify-content:center;z-index:9999;}
+  #auth-card{background:#111827;color:#e5e7eb;min-width:320px;max-width:420px;border-radius:16px;padding:20px;border:1px solid #374151;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  #auth-card h2{margin:0 0 12px 0;font-size:18px}
+  #auth-card label{display:block;margin-top:8px;font-size:12px;color:#9ca3af}
+  #auth-card input, #auth-card textarea, #auth-card select{width:100%;padding:10px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb;margin-top:6px}
+  #auth-card button{margin-top:14px;width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#1f2937;color:#e5e7eb;cursor:pointer}
+  #auth-card button:hover{background:#111827}
+  #logout-btn{position:fixed;right:12px;top:12px;z-index:9998;padding:8px 10px;border-radius:8px;border:1px solid #374151;background:#0b1220;color:#e5e7eb;display:none}
+  #admin-panel{display:none;position:fixed;right:12px;bottom:12px;z-index:9998;background:#0b1220;border:1px solid #374151;border-radius:14px;padding:14px;max-width:420px;width:420px;color:#e5e7eb}
+  #admin-panel h3{margin:0 0 8px 0;font-size:16px}
+  #admin-panel .row{display:flex;gap:8px}
+  #admin-panel .row>div{flex:1}
+  #admin-panel .muted{color:#9ca3af;font-size:12px}
+</style>
+
+<button id="logout-btn" title="登出">登出</button>
+
+<div id="auth-overlay" role="dialog" aria-modal="true">
+  <div id="auth-card">
+    <h2>登入系統</h2>
+    <p class="muted">管理者預設帳號：<b>22135220</b>（初始密碼同帳號）。登入後可於右下角【管理者面板】建立使用者並設定可存取的單位群組/門市。</p>
+    <label>帳號（純數字或字母，不含空白）</label>
+    <input id="auth-account" placeholder="例如：22135220" autocomplete="username">
+    <label>密碼</label>
+    <input id="auth-password" type="password" placeholder="密碼" autocomplete="current-password">
+    <button id="auth-login-btn">登入</button>
+    <div id="auth-msg" class="muted" style="margin-top:8px;"></div>
+  </div>
+</div>
+
+<div id="admin-panel">
+  <h3>管理者面板</h3>
+  <div class="muted">建立/更新使用者，並指定權限。一般使用者僅能存取被授權的群組/門市；管理者可存取全部並可編輯。</div>
+  <div class="row" style="margin-top:8px">
+    <div>
+      <label>帳號</label>
+      <input id="adm-acc" placeholder="ex: user001">
+    </div>
+    <div>
+      <label>初始密碼</label>
+      <input id="adm-pw" placeholder="建議至少6碼">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>顯示名稱</label>
+      <input id="adm-name" placeholder="使用者顯示名稱">
+    </div>
+    <div>
+      <label>角色</label>
+      <select id="adm-role">
+        <option value="user">user</option>
+        <option value="admin">admin</option>
+      </select>
+    </div>
+  </div>
+  <label style="margin-top:8px">允許的群組 IDs（逗號分隔，admin 可留空代表全部）</label>
+  <input id="adm-groups" placeholder="ex: groupA,groupB">
+  <label>允許的門市 IDs 對應（JSON，key=群組ID，value=門市ID陣列）</label>
+  <textarea id="adm-stores" rows="4" placeholder='例如：{"groupA":["store1","store2"],"groupB":["store9"]}'></textarea>
+  <div class="row">
+    <div>
+      <label>允許編輯（打勾可新增/修改紀錄）</label>
+      <select id="adm-canedit">
+        <option value="true">true</option>
+        <option value="false" selected>false</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:flex-end">
+      <button id="adm-save-btn">建立/更新</button>
+    </div>
+  </div>
+  <div class="muted" id="adm-msg" style="margin-top:6px"></div>
+</div>
+
+<script>
+
+<script>
+// ===== Lightweight account login + permission gate (with local fallback) =====
+(function(){
+  const g = window;
+  const firebase = g.firebase || {};
+  const db = (g.db || (firebase.firestore ? firebase.firestore() : null));
+
+  // UI refs
+  const overlay = document.getElementById('auth-overlay');
+  const accInp = document.getElementById('auth-account');
+  const pwInp = document.getElementById('auth-password');
+  const loginBtn = document.getElementById('auth-login-btn');
+  const authMsg = document.getElementById('auth-msg');
+  const logoutBtn = document.getElementById('logout-btn');
+  const adminPanel = document.getElementById('admin-panel');
+  const admAcc = document.getElementById('adm-acc');
+  const admPw = document.getElementById('adm-pw');
+  const admName = document.getElementById('adm-name');
+  const admRole = document.getElementById('adm-role');
+  const admGroups = document.getElementById('adm-groups');
+  const admStores = document.getElementById('adm-stores');
+  const admCanEdit = document.getElementById('adm-canedit');
+  const admSaveBtn = document.getElementById('adm-save-btn');
+  const admMsg = document.getElementById('adm-msg');
+
+  const LS_KEY = 'cm_user_v1';
+  const LS_LOCAL_USERS = 'cm_local_users_v1'; // 本機備援使用者表
+
+  function setOverlay(show){ overlay.style.display = show ? 'flex' : 'none'; }
+  function setLogoutVisible(show){ logoutBtn.style.display = show ? 'inline-block' : 'none'; }
+  function setAdminVisible(show){ adminPanel.style.display = show ? 'block' : 'none'; }
+
+  function getUser(){ try{return JSON.parse(localStorage.getItem(LS_KEY)||'');}catch{return null;} }
+  function setUser(u){ localStorage.setItem(LS_KEY, JSON.stringify(u)); }
+
+  function getLocalUsers(){
+    try{ return JSON.parse(localStorage.getItem(LS_LOCAL_USERS)||'{}'); }catch{return {}; }
+  }
+  function setLocalUsers(map){ localStorage.setItem(LS_LOCAL_USERS, JSON.stringify(map)); }
+
+  function sanitizeId(s){ return (s||'').trim(); }
+  function showError(msg){ if(authMsg){ authMsg.textContent = msg; } }
+
+  // 建立本機預設管理者（無法連線或規則擋住時使用）
+  function ensureLocalAdmin(){
+    const map = getLocalUsers();
+    if(!map['22135220']){
+      map['22135220'] = {
+        accountId:'22135220', password:'22135220', displayName:'Admin(Local)',
+        role:'admin', allowedGroups:'*', allowedStores:{}, canEdit:true
+      };
+      setLocalUsers(map);
+    }
+  }
+
+  async function ensureCloudDefaultAdmin(){
+    if(!db) return;
+    try{
+      const doc = await db.collection('users').doc('22135220').get();
+      if(!doc.exists){
+        await db.collection('users').doc('22135220').set({
+          accountId:'22135220',
+          displayName:'Admin',
+          role:'admin',
+          password:'22135220', // 初始密碼同帳號
+          allowedGroups:'*',
+          allowedStores:{},
+          canEdit:true,
+          createdAt: (firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+        });
+      }
+    }catch(e){
+      // 可能是規則擋住或未初始化，啟用本機備援
+      console.warn('ensureCloudDefaultAdmin failed:', e);
+      ensureLocalAdmin();
+    }
+  }
+
+  function applyUser(u){
+    setOverlay(false);
+    setLogoutVisible(true);
+    setAdminVisible(u.role==='admin');
+    bindEditGuards();
+    try{
+      const bar = document.getElementById('feedback-bar');
+      if(bar){ bar.textContent = `已登入：${u.displayName}（${u.role}）`; bar.classList.remove('hidden'); }
+    }catch{}
+    try{ if(g.loadStoreData) g.loadStoreData(); }catch{}
+  }
+
+  async function login(){
+    const acc = sanitizeId(accInp.value);
+    const pw = String(pwInp.value||'');
+    if(!acc){ return showError('請輸入帳號'); }
+    if(!pw){ return showError('請輸入密碼'); }
+
+    // 先試雲端 Firestore
+    let cloudOk = false;
+    if(db){
+      try{
+        await ensureCloudDefaultAdmin();
+        const snap = await db.collection('users').doc(acc).get();
+        if(snap.exists){
+          const u = snap.data();
+          if(String(u.password||'') === pw){
+            const cur = {
+              accountId:u.accountId, displayName:u.displayName||u.accountId,
+              role:u.role||'user', allowedGroups:u.allowedGroups||[], allowedStores:u.allowedStores||{},
+              canEdit: !!u.canEdit
+            };
+            setUser(cur);
+            applyUser(cur);
+            cloudOk = true;
+            return;
+          }else{
+            showError('密碼錯誤（雲端）');
+            return;
+          }
+        }
+      }catch(e){
+        console.warn('cloud login failed:', e);
+      }
+    }
+
+    // 若雲端失敗，走本機備援（離線或規則擋住時用）
+    ensureLocalAdmin();
+    const map = getLocalUsers();
+    const u = map[acc];
+    if(u && String(u.password||'')===pw){
+      const cur = {
+        accountId:u.accountId, displayName:u.displayName||u.accountId,
+        role:u.role||'user', allowedGroups:u.allowedGroups||[], allowedStores:u.allowedStores||{},
+        canEdit: !!u.canEdit
+      };
+      setUser(cur);
+      applyUser(cur);
+      showError('（提示）目前使用本機登入（Firestore 未就緒或規則限制）');
+      return;
+    }
+
+    if(!cloudOk){
+      showError('登入失敗：找不到帳號，或雲端規則/連線異常且本機無備援帳號');
+    }
+  }
+
+  function userCanAccessGroup(groupId){
+    const u = getUser();
+    if(!u) return false;
+    if(u.role==='admin') return true;
+    if(u.allowedGroups==='*') return true;
+    const arr = Array.isArray(u.allowedGroups) ? u.allowedGroups : [];
+    return arr.includes(groupId);
+  }
+  function userCanAccessStore(groupId, storeId){
+    const u = getUser();
+    if(!u) return false;
+    if(u.role==='admin') return true;
+    if(u.allowedGroups==='*') return true;
+    const map = u.allowedStores || {};
+    if(map[groupId] && Array.isArray(map[groupId])){
+      return map[groupId].includes(storeId);
+    }
+    return userCanAccessGroup(groupId);
+  }
+  function userCanEdit(){
+    const u = getUser(); if(!u) return false;
+    if(u.role==='admin') return true;
+    return !!u.canEdit;
+  }
+  g.CM_AUTH = { userCanAccessGroup, userCanAccessStore, userCanEdit, getUser };
+
+  // 變更攔截
+  let _selectedGroupId = g.selectedGroupId || '';
+  Object.defineProperty(g, 'selectedGroupId', {
+    get(){ return _selectedGroupId; },
+    set(v){
+      const id = String(v||'');
+      if(id && !userCanAccessGroup(id)){
+        alert('您沒有存取此單位群組的權限');
+        return;
+      }
+      _selectedGroupId = id;
+    }
+  });
+  let _selectedStoreId = g.selectedStoreId || '';
+  Object.defineProperty(g, 'selectedStoreId', {
+    get(){ return _selectedStoreId; },
+    set(v){
+      const id = String(v||'');
+      const gid = g.selectedGroupId || '';
+      if(id && gid && !userCanAccessStore(gid, id)){
+        alert('您沒有存取此門市的權限');
+        return;
+      }
+      _selectedStoreId = id;
+    }
+  });
+
+  function bindEditGuards(){
+    const addForm = document.getElementById('daily-entry-form');
+    const editForm = document.getElementById('editHistoryForm') || document.getElementById('edit-history-form');
+    function guardSubmit(e){
+      const u = getUser();
+      if(!u){ e.preventDefault(); alert('請先登入'); return; }
+      if(!userCanEdit()){
+        e.preventDefault();
+        alert('您的帳號未被授權進行編輯。');
+      }
+    }
+    if(addForm){ addForm.addEventListener('submit', guardSubmit, true); }
+    if(editForm){ editForm.addEventListener('submit', guardSubmit, true); }
+  }
+
+  // Admin: 在雲端不可寫時，改寫本機使用者表，確保可用
+  async function saveUser(){
+    const cur = getUser();
+    if(!cur || cur.role!=='admin'){ admMsg.textContent='僅管理者可操作'; return; }
+
+    const acc = sanitizeId(admAcc.value);
+    const pw  = String(admPw.value||'');
+    const name = sanitizeId(admName.value) || acc;
+    const role = admRole.value==='admin' ? 'admin' : 'user';
+    const canEdit = (admCanEdit.value==='true');
+
+    if(!acc){ admMsg.textContent='請輸入帳號'; return; }
+    if(!pw){ admMsg.textContent='請輸入初始密碼'; return; }
+
+    let groups = sanitizeId(admGroups.value);
+    let groupsVal;
+    if(!groups){ groupsVal = (role==='admin')?'*':[]; }
+    else{ groupsVal = groups.split(',').map(s=>s.trim()).filter(Boolean); }
+
+    let storesVal={};
+    const storesText = admStores.value.trim();
+    if(storesText){
+      try{ storesVal = JSON.parse(storesText); }
+      catch(e){ admMsg.textContent='門市 JSON 格式錯誤'; return; }
+    }
+
+    // 先嘗試雲端
+    if(db){
+      try{
+        await db.collection('users').doc(acc).set({
+          accountId:acc, password:pw, displayName:name, role, allowedGroups:groupsVal, allowedStores:storesVal, canEdit,
+          updatedAt: (firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+        }, {merge:true});
+        admMsg.textContent='已建立/更新使用者（雲端）';
+        return;
+      }catch(e){
+        console.warn('cloud save user failed:', e);
+      }
+    }
+
+    // 雲端失敗 → 寫本機備援
+    const map = getLocalUsers();
+    map[acc] = { accountId:acc, password:pw, displayName:name, role, allowedGroups:groupsVal, allowedStores:storesVal, canEdit };
+    setLocalUsers(map);
+    admMsg.textContent='已建立/更新使用者（本機備援）';
+  }
+
+  // 事件
+  if(loginBtn){ loginBtn.addEventListener('click', login); }
+  if(pwInp){ pwInp.addEventListener('keydown', (e)=>{ if(e.key==='Enter') login(); }); }
+  if(logoutBtn){
+    logoutBtn.addEventListener('click', ()=>{
+      localStorage.removeItem(LS_KEY);
+      setLogoutVisible(false);
+      setAdminVisible(false);
+      setOverlay(true);
+    });
+  }
+  if(admSaveBtn){ admSaveBtn.addEventListener('click', saveUser); }
+
+  // 開機
+  (async function init(){
+    // 強化：若雲端失敗，至少本機有 admin
+    ensureLocalAdmin();
+
+    const u = getUser();
+    if(u && u.accountId){
+      applyUser(u);
+      setOverlay(false);
+      setLogoutVisible(true);
+      setAdminVisible(u.role==='admin');
+    }else{
+      setOverlay(true);
+      // 顯示提示
+      showError('提示：若無法連上 Firestore，可先用本機預設管理者 22135220 / 22135220 登入');
+    }
+  })();
+})();
+</script>
+
 </body>
 </html>
 
