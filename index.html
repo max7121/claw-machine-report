@@ -6,6 +6,7 @@
     <title>互動式查帳系統 - 娃娃機營業報告 (多單位雲端版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
     <style>
         body { font-family: 'Inter', 'Noto Sans TC', sans-serif; background-color: #111827; color: #d1d5db; }
         .tab-btn.active { border-bottom: 2px solid #3b82f6; color: white; background-color: #1f2937; }
@@ -28,8 +29,39 @@
 </head>
 <body class="p-4 sm:p-6 md:p-8">
 
+    <!-- 登入/使用者區塊 -->
+    <div id="user-bar" class="max-w-7xl mx-auto flex justify-end mb-4 hidden">
+        <div class="flex items-center gap-3">
+            <span id="user-greeting" class="text-gray-300">歡迎，<strong id="user-name">使用者</strong></span>
+            <button id="admin-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded hidden">管理</button>
+            <button id="logout-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded">登出</button>
+        </div>
+    </div>
+
+    <!-- 登入 modal (預設顯示，如果未登入) -->
+    <div id="login-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
+            <h2 class="text-2xl font-bold text-white mb-4 text-center">請先登入</h2>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm text-gray-300 mb-1">帳號</label>
+                    <input id="username" type="text" required class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" placeholder="輸入帳號">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm text-gray-300 mb-1">密碼</label>
+                    <input id="password" type="password" required class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" placeholder="輸入密碼">
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-gray-400">提示：預設帳號：admin，密碼：password</div>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">登入</button>
+                </div>
+                <div id="login-feedback" class="text-sm text-red-400 mt-2 hidden"></div>
+            </form>
+        </div>
+    </div>
+
     <!-- 層級 1: 單位群組選擇頁面 -->
-    <div id="group-selection-page" class="max-w-4xl mx-auto">
+    <div id="group-selection-page" class="max-w-4xl mx-auto hidden">
         <h1 class="text-4xl font-bold text-white text-center mb-8">娃娃機查帳系統</h1>
         <div class="bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
             <h2 class="text-2xl font-bold text-white mb-4">建立新單位群組</h2>
@@ -43,6 +75,102 @@
             <div id="group-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <p class="text-gray-400 col-span-full text-center py-8">正在讀取群組列表...</p>
             </div>
+        </div>
+    </div>
+
+    <!-- 管理者設定頁面 -->
+    <div id="admin-page" class="max-w-6xl mx-auto hidden">
+        <div class="mb-8 flex items-center justify-between">
+            <h1 class="text-4xl font-bold text-white">系統管理</h1>
+            <button id="back-to-main-btn" class="text-blue-400 hover:text-blue-300 transition flex items-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                <span>返回主系統</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 管理員帳密設定 -->
+            <div class="bg-gray-800 rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-white mb-4">管理員帳密設定</h2>
+                <form id="admin-password-form" class="space-y-4">
+                    <div>
+                        <label for="current-password" class="block text-sm text-gray-300 mb-1">目前密碼</label>
+                        <input id="current-password" type="password" required class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3">
+                    </div>
+                    <div>
+                        <label for="new-username" class="block text-sm text-gray-300 mb-1">新帳號</label>
+                        <input id="new-username" type="text" required class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3">
+                    </div>
+                    <div>
+                        <label for="new-password" class="block text-sm text-gray-300 mb-1">新密碼</label>
+                        <input id="new-password" type="password" required class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3">
+                    </div>
+                    <div>
+                        <label for="confirm-password" class="block text-sm text-gray-300 mb-1">確認密碼</label>
+                        <input id="confirm-password" type="password" required class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3">
+                    </div>
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition">更新管理員帳密</button>
+                </form>
+                <div id="admin-password-feedback" class="text-sm mt-2 hidden"></div>
+            </div>
+
+            <!-- 訪客帳號管理 -->
+            <div class="bg-gray-800 rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-white mb-4">訪客帳號管理</h2>
+                <form id="guest-account-form" class="space-y-4 mb-6">
+                    <div>
+                        <label for="guest-username" class="block text-sm text-gray-300 mb-1">訪客帳號</label>
+                        <input id="guest-username" type="text" required class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3">
+                    </div>
+                    <div>
+                        <label for="guest-password" class="block text-sm text-gray-300 mb-1">訪客密碼</label>
+                        <input id="guest-password" type="password" required class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-2">可訪問的群組</label>
+                        <div id="group-permissions" class="space-y-2 max-h-32 overflow-y-auto bg-gray-700 p-3 rounded-lg">
+                            <p class="text-gray-400 text-sm">載入群組列表中...</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">新增訪客</button>
+                        <button type="button" id="cancel-guest-edit" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition hidden">取消</button>
+                    </div>
+                </form>
+                <div id="guest-account-feedback" class="text-sm mt-2 hidden"></div>
+            </div>
+        </div>
+
+        <!-- 訪客帳號列表 -->
+        <div class="bg-gray-800 rounded-xl shadow-lg p-6 mt-8">
+            <h2 class="text-2xl font-bold text-white mb-4">現有訪客帳號</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-700/50 text-gray-300 uppercase text-sm">
+                        <tr>
+                            <th class="p-4">帳號</th>
+                            <th class="p-4">狀態</th>
+                            <th class="p-4">可訪問群組</th>
+                            <th class="p-4">建立時間</th>
+                            <th class="p-4 text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="guest-accounts-table" class="divide-y divide-gray-700">
+                        <tr><td colspan="5" class="text-center p-8 text-gray-400">載入中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 系統工具 -->
+        <div class="bg-gray-800 rounded-xl shadow-lg p-6 mt-8">
+            <h2 class="text-2xl font-bold text-white mb-4">系統工具</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button id="export-config-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition">匯出設定</button>
+                <button id="import-config-btn" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition">匯入設定</button>
+                <button id="reset-config-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition">重置系統</button>
+            </div>
+            <input type="file" id="config-file-input" accept=".json" class="hidden">
         </div>
     </div>
 
@@ -566,10 +694,13 @@
         const groupSelectionPage = document.getElementById('group-selection-page');
         const storeSelectionPage = document.getElementById('store-selection-page');
         const reportPage = document.getElementById('report-page');
+        const adminPage = document.getElementById('admin-page');
         
         const groupListContainer = document.getElementById('group-list');
         const createGroupForm = document.getElementById('create-group-form');
         const backToGroupsBtn = document.getElementById('back-to-groups-btn');
+        const adminBtn = document.getElementById('admin-btn');
+        const backToMainBtn = document.getElementById('back-to-main-btn');
 
         const storeListContainer = document.getElementById('store-list');
         const createStoreForm = document.getElementById('create-store-form');
@@ -596,6 +727,17 @@
         const selectAllStoresBtn = document.getElementById('select-all-stores-btn');
         const deselectAllStoresBtn = document.getElementById('deselect-all-stores-btn');
         const recalculateAllBtn = document.getElementById('recalculate-all-btn');
+
+        // 管理者界面元素
+        const adminPasswordForm = document.getElementById('admin-password-form');
+        const guestAccountForm = document.getElementById('guest-account-form');
+        const guestAccountsTable = document.getElementById('guest-accounts-table');
+        const groupPermissions = document.getElementById('group-permissions');
+        const cancelGuestEditBtn = document.getElementById('cancel-guest-edit');
+        const exportConfigBtn = document.getElementById('export-config-btn');
+        const importConfigBtn = document.getElementById('import-config-btn');
+        const resetConfigBtn = document.getElementById('reset-config-btn');
+        const configFileInput = document.getElementById('config-file-input');
 
         
         // Modal selectors
@@ -652,6 +794,107 @@
             
             loadGroups();
         }
+        
+        // 暴露函數到全域範圍供登入系統使用
+        window.showGroupSelectionPage = showGroupSelectionPage;
+
+        // --- 管理者界面函數 ---
+        function showAdminPage() {
+            groupSelectionPage.classList.add('hidden');
+            storeSelectionPage.classList.add('hidden');
+            reportPage.classList.add('hidden');
+            adminPage.classList.remove('hidden');
+            
+            loadAdminInterface();
+        }
+
+        function hideAdminPage() {
+            adminPage.classList.add('hidden');
+            showGroupSelectionPage();
+        }
+
+        function loadAdminInterface() {
+            // 載入當前管理員資訊
+            const currentAdmin = window.adminConfig.config.adminCredentials;
+            document.getElementById('new-username').value = currentAdmin.username;
+            
+            // 載入群組權限選項
+            loadGroupPermissions();
+            
+            // 載入訪客帳號列表
+            loadGuestAccountsTable();
+            
+            // 重置表單
+            adminPasswordForm.reset();
+            guestAccountForm.reset();
+            document.getElementById('new-username').value = currentAdmin.username;
+        }
+
+        async function loadGroupPermissions() {
+            try {
+                const groupsSnapshot = await db.collection('groups').get();
+                const groups = groupsSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                
+                groupPermissions.innerHTML = '';
+                if (groups.length === 0) {
+                    groupPermissions.innerHTML = '<p class="text-gray-400 text-sm">目前沒有可用的群組</p>';
+                } else {
+                    groups.forEach(group => {
+                        const checkbox = document.createElement('label');
+                        checkbox.className = 'flex items-center space-x-2 text-white cursor-pointer';
+                        checkbox.innerHTML = `
+                            <input type="checkbox" value="${group.id}" class="group-permission-checkbox rounded">
+                            <span>${group.name}</span>
+                        `;
+                        groupPermissions.appendChild(checkbox);
+                    });
+                }
+            } catch (error) {
+                console.error('載入群組權限失敗:', error);
+                groupPermissions.innerHTML = '<p class="text-red-400 text-sm">載入群組失敗</p>';
+            }
+        }
+
+        function loadGuestAccountsTable() {
+            const guests = window.adminConfig.getGuestAccounts();
+            guestAccountsTable.innerHTML = '';
+            
+            if (guests.length === 0) {
+                guestAccountsTable.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-400">尚無訪客帳號</td></tr>';
+            } else {
+                guests.forEach(guest => {
+                    const allowedGroupsText = guest.allowedGroups.length > 0 ? 
+                        `${guest.allowedGroups.length} 個群組` : '無權限';
+                    const statusText = guest.enabled ? '啟用' : '停用';
+                    const statusClass = guest.enabled ? 'text-green-400' : 'text-red-400';
+                    const createdDate = new Date(guest.createdAt).toLocaleDateString();
+                    
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-700/50 transition';
+                    row.innerHTML = `
+                        <td class="p-4 font-medium text-white">${guest.username}</td>
+                        <td class="p-4 ${statusClass}">${statusText}</td>
+                        <td class="p-4 text-gray-300">${allowedGroupsText}</td>
+                        <td class="p-4 text-gray-300">${createdDate}</td>
+                        <td class="p-4 text-center">
+                            <button class="edit-guest-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded mr-2" data-guest-id="${guest.id}">編輯</button>
+                            <button class="delete-guest-btn bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded" data-guest-id="${guest.id}">刪除</button>
+                        </td>
+                    `;
+                    guestAccountsTable.appendChild(row);
+                });
+            }
+        }
+
+        function showAdminFeedback(elementId, message, isError = false) {
+            const feedbackEl = document.getElementById(elementId);
+            feedbackEl.textContent = message;
+            feedbackEl.className = `text-sm mt-2 ${isError ? 'text-red-400' : 'text-green-400'}`;
+            feedbackEl.classList.remove('hidden');
+            setTimeout(() => {
+                feedbackEl.classList.add('hidden');
+            }, 5000);
+        }
 
         function showStoreSelectionPage(groupId, groupName) {
             selectedGroupId = groupId;
@@ -662,6 +905,17 @@
             storeSelectionPage.classList.remove('hidden');
             reportPage.classList.add('hidden');
             document.getElementById('new-store-start-date').valueAsDate = new Date();
+
+            // 根據用戶類型隱藏/顯示新增門市表單
+            const userType = localStorage.getItem('userType');
+            const createStoreForm = document.getElementById('create-store-form').parentElement;
+            if (createStoreForm) {
+                if (userType === 'admin') {
+                    createStoreForm.style.display = 'block';
+                } else {
+                    createStoreForm.style.display = 'none';
+                }
+            }
 
             loadStores();
         }
@@ -700,7 +954,15 @@
         async function loadGroups() {
             try {
                 const groupSnapshot = await db.collection('groups').orderBy('createdAt', 'desc').get();
-                const groups = groupSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                let groups = groupSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                // 如果是訪客用戶，過濾只顯示有權限的群組
+                const userType = localStorage.getItem('userType');
+                if (userType === 'guest') {
+                    const allowedGroups = JSON.parse(localStorage.getItem('allowedGroups') || '[]');
+                    groups = groups.filter(group => allowedGroups.includes(group.id));
+                }
+                
                 renderGroups(groups);
             } catch (error) {
                 console.error("讀取單位群組失敗:", error);
@@ -1204,34 +1466,64 @@
 
         // --- UI RENDERING FUNCTIONS ---
         function renderGroups(groups) {
+            const userType = localStorage.getItem('userType');
+            const isAdmin = userType === 'admin';
+            
             groupListContainer.innerHTML = '';
             if (groups.length === 0) {
-                groupListContainer.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">尚未建立任何單位群組。</p>';
+                const noGroupsMessage = isAdmin ? 
+                    '尚未建立任何單位群組。' : 
+                    '您沒有權限訪問任何群組，請聯繫管理員。';
+                groupListContainer.innerHTML = `<p class="text-gray-400 col-span-full text-center py-8">${noGroupsMessage}</p>`;
                 return;
             }
             groups.forEach(group => {
+                const adminButtons = isAdmin ? `
+                    <div class="flex justify-end gap-2 border-t border-gray-600 pt-3">
+                        <button class="rename-group-btn text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded" data-group-id="${group.id}" data-group-name="${group.name}">改名</button>
+                        <button class="delete-group-btn text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" data-group-id="${group.id}" data-group-name="${group.name}">刪除</button>
+                    </div>
+                ` : '';
+                
                 const groupCard = `
                     <div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between">
                         <div class="card-base group-card-main cursor-pointer p-4 mb-3" data-group-id="${group.id}" data-group-name="${group.name}">
                             <h3 class="text-xl font-bold text-white truncate text-center">${group.name}</h3>
                         </div>
-                        <div class="flex justify-end gap-2 border-t border-gray-600 pt-3">
-                            <button class="rename-group-btn text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded" data-group-id="${group.id}" data-group-name="${group.name}">改名</button>
-                            <button class="delete-group-btn text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" data-group-id="${group.id}" data-group-name="${group.name}">刪除</button>
-                        </div>
+                        ${adminButtons}
                     </div>
                 `;
                 groupListContainer.innerHTML += groupCard;
             });
+            
+            // 隱藏新增群組表單（如果是訪客）
+            const createGroupForm = document.getElementById('create-group-form').parentElement;
+            if (createGroupForm) {
+                if (isAdmin) {
+                    createGroupForm.style.display = 'block';
+                } else {
+                    createGroupForm.style.display = 'none';
+                }
+            }
         }
         
         function renderStores(stores) {
+            const userType = localStorage.getItem('userType');
+            const isAdmin = userType === 'admin';
+            
             storeListContainer.innerHTML = ''; 
             if (stores.length === 0) {
                 storeListContainer.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">此群組尚未建立任何門市。</p>';
                 return;
             }
             stores.forEach(store => {
+                const adminButtons = isAdmin ? `
+                    <div class="flex justify-end gap-2 border-t border-gray-600 px-4 py-3">
+                        <button class="edit-store-btn text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}">編輯</button>
+                        <button class="delete-store-btn text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}">刪除</button>
+                    </div>
+                ` : '';
+                
                 const storeCard = `
                      <div class="bg-gray-700 rounded-lg">
                         <div class="p-4">
@@ -1242,10 +1534,7 @@
                                 <input type="checkbox" class="store-checkbox h-6 w-6 bg-gray-800 border-gray-600 rounded text-indigo-500 focus:ring-indigo-600 shrink-0 ml-3 cursor-pointer" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}" checked>
                             </div>
                         </div>
-                        <div class="flex justify-end gap-2 border-t border-gray-600 px-4 py-3">
-                            <button class="edit-store-btn text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}">編輯</button>
-                            <button class="delete-store-btn text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}">刪除</button>
-                        </div>
+                        ${adminButtons}
                     </div>
                 `;
                 storeListContainer.innerHTML += storeCard;
@@ -1837,7 +2126,37 @@
         }
 
 
-        function updateFooterAndHeader() { /* ... Footer rendering logic ... */ }
+        function updateFooterAndHeader() {
+            // 更新頁首資訊
+            const headerEl = document.querySelector('#accounting-header');
+            if (headerEl && currentGroupName && currentStoreName) {
+                headerEl.innerHTML = `
+                    <h2 class="text-2xl font-bold text-white mb-4">
+                        ${currentGroupName} - ${currentStoreName} 帳務紀錄
+                    </h2>
+                `;
+            }
+
+            // 更新表格表尾統計
+            const tableFooter = document.querySelector('#accounting-table tfoot');
+            if (tableFooter && accountingData && accountingData.length > 0) {
+                const totalRevenue = accountingData.reduce((sum, item) => sum + (item.revenue || 0), 0);
+                const totalPayouts = accountingData.reduce((sum, item) => sum + (item.payouts || 0), 0);
+                const avgCost = accountingData.length > 0 ? 
+                    accountingData.reduce((sum, item) => sum + (item.cost || 0), 0) / accountingData.length : 0;
+
+                tableFooter.innerHTML = `
+                    <tr class="bg-gray-700/50 font-bold">
+                        <td class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">總計</td>
+                        <td class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">-</td>
+                        <td class="px-6 py-3 text-left text-xs font-medium text-green-400 uppercase tracking-wider">${totalRevenue.toLocaleString()}</td>
+                        <td class="px-6 py-3 text-left text-xs font-medium text-red-400 uppercase tracking-wider">${totalPayouts.toLocaleString()}</td>
+                        <td class="px-6 py-3 text-left text-xs font-medium text-blue-400 uppercase tracking-wider">${avgCost.toFixed(2)}</td>
+                        <td class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">-</td>
+                    </tr>
+                `;
+            }
+        }
         function showFeedback(message, isError = false) {
             const feedbackEl = document.getElementById('form-feedback');
             feedbackEl.innerHTML = message;
@@ -2070,6 +2389,154 @@
 
 
         // --- EVENT LISTENERS ---
+        
+        // 管理者界面事件
+        adminBtn.addEventListener('click', showAdminPage);
+        backToMainBtn.addEventListener('click', hideAdminPage);
+
+        // 管理員密碼更新
+        adminPasswordForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const currentPassword = document.getElementById('current-password').value;
+            const newUsername = document.getElementById('new-username').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+
+            if (newPassword !== confirmPassword) {
+                showAdminFeedback('admin-password-feedback', '新密碼與確認密碼不符', true);
+                return;
+            }
+
+            try {
+                window.adminConfig.updateAdminCredentials(newUsername, newPassword, currentPassword);
+                showAdminFeedback('admin-password-feedback', '管理員帳密更新成功');
+                adminPasswordForm.reset();
+                document.getElementById('new-username').value = newUsername;
+            } catch (error) {
+                showAdminFeedback('admin-password-feedback', error.message, true);
+            }
+        });
+
+        // 訪客帳號管理
+        guestAccountForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('guest-username').value;
+            const password = document.getElementById('guest-password').value;
+            const selectedGroups = Array.from(document.querySelectorAll('.group-permission-checkbox:checked'))
+                .map(cb => cb.value);
+
+            const isEditing = guestAccountForm.dataset.editingId;
+
+            try {
+                if (isEditing) {
+                    window.adminConfig.updateGuestAccount(isEditing, {
+                        username,
+                        password,
+                        allowedGroups: selectedGroups
+                    });
+                    showAdminFeedback('guest-account-feedback', '訪客帳號更新成功');
+                    cancelGuestEdit();
+                } else {
+                    window.adminConfig.addGuestAccount(username, password, selectedGroups);
+                    showAdminFeedback('guest-account-feedback', '訪客帳號新增成功');
+                }
+                
+                guestAccountForm.reset();
+                loadGuestAccountsTable();
+            } catch (error) {
+                showAdminFeedback('guest-account-feedback', error.message, true);
+            }
+        });
+
+        // 取消編輯
+        cancelGuestEditBtn.addEventListener('click', cancelGuestEdit);
+
+        function cancelGuestEdit() {
+            delete guestAccountForm.dataset.editingId;
+            guestAccountForm.reset();
+            cancelGuestEditBtn.classList.add('hidden');
+            guestAccountForm.querySelector('button[type="submit"]').textContent = '新增訪客';
+        }
+
+        // 訪客帳號表格事件
+        guestAccountsTable.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-guest-btn');
+            const deleteBtn = e.target.closest('.delete-guest-btn');
+
+            if (editBtn) {
+                const guestId = editBtn.dataset.guestId;
+                const guest = window.adminConfig.getGuestAccounts().find(g => g.id === guestId);
+                if (guest) {
+                    // 填入編輯表單
+                    document.getElementById('guest-username').value = guest.username;
+                    document.getElementById('guest-password').value = guest.password;
+                    
+                    // 設定群組權限
+                    document.querySelectorAll('.group-permission-checkbox').forEach(cb => {
+                        cb.checked = guest.allowedGroups.includes(cb.value);
+                    });
+                    
+                    // 切換到編輯模式
+                    guestAccountForm.dataset.editingId = guestId;
+                    cancelGuestEditBtn.classList.remove('hidden');
+                    guestAccountForm.querySelector('button[type="submit"]').textContent = '更新訪客';
+                }
+            } else if (deleteBtn) {
+                const guestId = deleteBtn.dataset.guestId;
+                const guest = window.adminConfig.getGuestAccounts().find(g => g.id === guestId);
+                if (guest && confirm(`確定要刪除訪客帳號「${guest.username}」嗎？`)) {
+                    try {
+                        window.adminConfig.deleteGuestAccount(guestId);
+                        loadGuestAccountsTable();
+                        showAdminFeedback('guest-account-feedback', '訪客帳號已刪除');
+                    } catch (error) {
+                        showAdminFeedback('guest-account-feedback', error.message, true);
+                    }
+                }
+            }
+        });
+
+        // 系統工具事件
+        exportConfigBtn.addEventListener('click', () => {
+            const config = window.adminConfig.exportConfig();
+            const blob = new Blob([config], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `admin-config-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        importConfigBtn.addEventListener('click', () => {
+            configFileInput.click();
+        });
+
+        configFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        window.adminConfig.importConfig(e.target.result);
+                        alert('設定匯入成功');
+                        loadAdminInterface();
+                    } catch (error) {
+                        alert('匯入失敗：' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        resetConfigBtn.addEventListener('click', () => {
+            if (confirm('確定要重置所有設定嗎？這將刪除所有訪客帳號並恢復預設管理員密碼。')) {
+                window.adminConfig.resetToDefault();
+                alert('系統已重置為預設設定');
+                loadAdminInterface();
+            }
+        });
+
         groupListContainer.addEventListener('click', (e) => {
             const mainCard = e.target.closest('.group-card-main');
             const renameBtn = e.target.closest('.rename-group-btn');
@@ -2193,8 +2660,12 @@
                 allTabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 allTabContents.forEach(content => {
-                    content.style.display = content.id === tab.dataset.tab ? 'block' : 'none';
+                    content.classList.add('hidden');
                 });
+                const activeContent = document.getElementById(tab.dataset.tab);
+                if (activeContent) {
+                    activeContent.classList.remove('hidden');
+                }
                 if (tab.dataset.tab === 'charts') { renderChartsTab(); }
                 if (tab.dataset.tab === 'statistics') { renderStatisticsTab(); }
                 if (tab.dataset.tab === 'summary') { renderSummaryTab(); }
@@ -2531,9 +3002,15 @@
         performCheckoutBtn.addEventListener('click', handlePerformCheckout);
 
         // --- INITIAL LOAD ---
-        showGroupSelectionPage();
+        // 不再直接載入群組頁面，由登入邏輯控制
+        // showGroupSelectionPage(); 
+        
+        // 通知登入系統主應用程式已載入完成
+        window.dispatchEvent(new CustomEvent('appLoaded'));
     });
     </script>
+    <script src="admin-config.js"></script>
+    <script src="login.js"></script>
 </body>
 </html>
 
