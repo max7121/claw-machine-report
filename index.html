@@ -111,7 +111,7 @@
                     <h1 id="report-title-main" class="text-3xl sm:text-4xl font-bold text-white mb-2">娃娃機營業報告</h1>
                     <p class="text-lg text-gray-400" id="report-period">統計期間：</p>
                 </div>
-                <div class="flex items-center gap-2">
+                <div id="header-download-buttons" class="flex items-center gap-2">
                     <button id="download-report-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                         <span>(CSV)</span>
@@ -399,7 +399,10 @@
                             <p class="text-sm text-gray-400">上次結帳日期：<span id="last-checkout-date" class="font-semibold">無</span></p>
                             <p class="text-lg text-white mt-1">本期待結帳金額：<span id="pending-checkout-amount" class="text-2xl font-bold text-green-400">0 元</span></p>
                         </div>
-                        <button id="perform-checkout-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition shrink-0">執行結帳</button>
+                        <div class="flex gap-2">
+                           <button id="download-checkout-csv-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition shrink-0">下載結帳報表 (CSV)</button>
+                           <button id="perform-checkout-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition shrink-0">執行結帳</button>
+                        </div>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-4 mt-8">結帳歷史紀錄</h3>
                     <div class="overflow-x-auto max-h-96">
@@ -619,6 +622,8 @@
         
         const checkoutHistoryBody = document.getElementById('checkout-history-body');
         const performCheckoutBtn = document.getElementById('perform-checkout-btn');
+        const downloadCheckoutCsvBtn = document.getElementById('download-checkout-csv-btn');
+        const headerDownloadButtons = document.getElementById('header-download-buttons');
 
 
         // --- MODAL FUNCTIONS ---
@@ -1147,8 +1152,12 @@
             try {
                 const checkoutSnapshot = await checkoutCollection.limit(1).get();
                 let lastCheckoutRevenue = 0;
+                let lastCheckoutDate = appData.startDate;
+
                 if (!checkoutSnapshot.empty) {
-                    lastCheckoutRevenue = checkoutSnapshot.docs[0].data().cumulativeRevenueAtCheckout;
+                    const lastCheckout = checkoutSnapshot.docs[0].data();
+                    lastCheckoutRevenue = lastCheckout.cumulativeRevenueAtCheckout;
+                    lastCheckoutDate = new Date(lastCheckout.checkoutDate.toDate()).toLocaleString();
                 }
 
                 const currentTotalRevenue = appData.machines.map(processMachineData).reduce((sum, m) => sum + m.revenue, 0);
@@ -1161,14 +1170,25 @@
                 
                 showConfirmationModal(`您確定要結算本期營收 ${pendingAmount.toLocaleString()} 元嗎？`, async () => {
                      try {
-                        await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('checkouts').add({
+                        const newCheckoutData = {
                             checkoutDate: firebase.firestore.FieldValue.serverTimestamp(),
                             checkoutAmount: pendingAmount,
                             cumulativeRevenueAtCheckout: currentTotalRevenue
-                        });
+                        };
+                        const newCheckoutRef = await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('checkouts').add(newCheckoutData);
+                        
                         hideConfirmationModal();
-                        showFeedback("結帳成功！", false);
+                        showFeedback("結帳成功！將自動下載報表。", false);
                         renderCheckoutTab(); // Refresh the tab
+                        
+                        // Auto-download PDF for the new checkout
+                        generateCheckoutPdf({
+                            checkoutDate: new Date().toLocaleString(),
+                            prevCheckoutDate: lastCheckoutDate,
+                            amount: pendingAmount,
+                            cumulative: currentTotalRevenue
+                        });
+
                     } catch (error) {
                         hideConfirmationModal();
                         console.error("結帳失敗:", error);
@@ -1772,7 +1792,7 @@
 
             try {
                 const checkoutSnapshot = await checkoutCollection.get();
-                const checkouts = checkoutSnapshot.docs.map(doc => doc.data());
+                const checkouts = checkoutSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
 
                 let lastCheckoutRevenue = 0;
                 if (checkouts.length > 0) {
@@ -1780,19 +1800,30 @@
                     lastCheckoutDateEl.textContent = new Date(lastCheckout.checkoutDate.toDate()).toLocaleString();
                     lastCheckoutRevenue = lastCheckout.cumulativeRevenueAtCheckout;
 
-                    checkouts.forEach(checkout => {
+                    checkouts.forEach((checkout, index) => {
+                         const prevCheckoutDate = index < checkouts.length - 1 ? new Date(checkouts[index + 1].checkoutDate.toDate()).toLocaleString() : appData.startDate;
                         const row = `
                             <tr class="hover:bg-gray-700/50">
                                 <td class="p-4">${new Date(checkout.checkoutDate.toDate()).toLocaleString()}</td>
                                 <td class="p-4 text-right">${checkout.checkoutAmount.toLocaleString()} 元</td>
                                 <td class="p-4 text-right">${checkout.cumulativeRevenueAtCheckout.toLocaleString()} 元</td>
+                                <td class="p-4 text-right">
+                                    <button class="download-checkout-pdf-btn bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-1 px-3 rounded"
+                                        data-checkout-id="${checkout.id}"
+                                        data-checkout-date="${new Date(checkout.checkoutDate.toDate()).toLocaleString()}"
+                                        data-prev-checkout-date="${prevCheckoutDate}"
+                                        data-amount="${checkout.checkoutAmount}"
+                                        data-cumulative="${checkout.cumulativeRevenueAtCheckout}">
+                                        下載報告
+                                    </button>
+                                </td>
                             </tr>
                         `;
                         checkoutHistoryBody.innerHTML += row;
                     });
                 } else {
-                    lastCheckoutDateEl.textContent = '無';
-                    checkoutHistoryBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-gray-400">尚無結帳紀錄</td></tr>`;
+                    lastCheckoutDateEl.textContent = '無 (以營業起始日為準)';
+                    checkoutHistoryBody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-gray-400">尚無結帳紀錄</td></tr>`;
                 }
                 
                 const currentTotalRevenue = appData.machines.map(processMachineData).reduce((sum, m) => sum + m.revenue, 0);
@@ -1801,7 +1832,7 @@
 
             } catch (error) {
                 console.error("讀取結帳歷史失敗:", error);
-                checkoutHistoryBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-red-400">無法讀取結帳歷史</td></tr>`;
+                checkoutHistoryBody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-red-400">無法讀取結帳歷史</td></tr>`;
             }
         }
 
@@ -2168,7 +2199,12 @@
                 if (tab.dataset.tab === 'statistics') { renderStatisticsTab(); }
                 if (tab.dataset.tab === 'summary') { renderSummaryTab(); }
                 if (tab.dataset.tab === 'analysis') { renderAnalysisTab(); }
-                 if (tab.dataset.tab === 'checkout') { renderCheckoutTab(); }
+                 if (tab.dataset.tab === 'checkout') { 
+                    headerDownloadButtons.classList.add('hidden');
+                    renderCheckoutTab(); 
+                } else {
+                    headerDownloadButtons.classList.remove('hidden');
+                }
             });
         });
 
@@ -2338,8 +2374,8 @@
             const tabId = activeTab.dataset.tab;
             const tabName = activeTab.textContent;
 
-            if (tabId === 'accounting' || tabId === 'machines') {
-                alert('此頁面為操作頁面，不支援 PDF 匯出。請選擇一個報表頁籤。');
+            if (tabId === 'accounting' || tabId === 'machines' || tabId === 'checkout') {
+                alert('此頁面不支援 PDF 匯出。請選擇一個報表頁籤。');
                 return;
             }
 
