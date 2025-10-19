@@ -1,7 +1,8 @@
-// 管理者配置系統
+// 管理者配置系統 - Firebase 版本
 class AdminConfig {
     constructor() {
-        this.storageKey = 'admin_config';
+        this.collectionName = 'admin_config';
+        this.docId = 'system_config';
         this.defaultConfig = {
             adminCredentials: {
                 username: 'admin',
@@ -23,33 +24,95 @@ class AdminConfig {
                 maxLoginAttempts: 5
             }
         };
-        this.loadConfig();
+        this.config = { ...this.defaultConfig };
+        this.db = null;
+        this.isInitialized = false;
     }
 
-    // 載入配置
-    loadConfig() {
+    // 初始化 Firebase 連接
+    async init(firebaseDb) {
+        this.db = firebaseDb;
+        await this.loadConfig();
+        this.isInitialized = true;
+    }
+
+    // 從 Firebase 載入配置
+    async loadConfig() {
         try {
-            const savedConfig = localStorage.getItem(this.storageKey);
+            if (!this.db) {
+                console.error('Firebase 尚未初始化');
+                return false;
+            }
+
+            const docRef = this.db.collection(this.collectionName).doc(this.docId);
+            const doc = await docRef.get();
+            
+            if (doc.exists) {
+                const savedConfig = doc.data();
+                this.config = { ...this.defaultConfig, ...savedConfig };
+                console.log('已從 Firebase 載入管理配置');
+            } else {
+                // 如果沒有配置，創建預設配置
+                await this.saveConfig();
+                console.log('已創建預設管理配置到 Firebase');
+            }
+            return true;
+        } catch (error) {
+            console.error('從 Firebase 載入管理配置失敗:', error);
+            // 回退到本地儲存
+            this.loadLocalConfig();
+            return false;
+        }
+    }
+
+    // 回退到本地儲存
+    loadLocalConfig() {
+        try {
+            const savedConfig = localStorage.getItem('admin_config_backup');
             if (savedConfig) {
                 this.config = { ...this.defaultConfig, ...JSON.parse(savedConfig) };
             } else {
                 this.config = { ...this.defaultConfig };
-                this.saveConfig();
             }
         } catch (error) {
-            console.error('載入管理配置失敗:', error);
+            console.error('載入本地備份配置失敗:', error);
             this.config = { ...this.defaultConfig };
         }
     }
 
-    // 儲存配置
-    saveConfig() {
+    // 儲存配置到 Firebase
+    async saveConfig() {
         try {
-            localStorage.setItem(this.storageKey, JSON.stringify(this.config));
+            if (!this.db) {
+                console.error('Firebase 尚未初始化，使用本地儲存');
+                this.saveLocalConfig();
+                return false;
+            }
+
+            const docRef = this.db.collection(this.collectionName).doc(this.docId);
+            await docRef.set({
+                ...this.config,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            // 同時備份到本地儲存
+            this.saveLocalConfig();
+            console.log('配置已儲存到 Firebase');
             return true;
         } catch (error) {
-            console.error('儲存管理配置失敗:', error);
+            console.error('儲存配置到 Firebase 失敗:', error);
+            // 回退到本地儲存
+            this.saveLocalConfig();
             return false;
+        }
+    }
+
+    // 本地儲存備份
+    saveLocalConfig() {
+        try {
+            localStorage.setItem('admin_config_backup', JSON.stringify(this.config));
+        } catch (error) {
+            console.error('本地備份失敗:', error);
         }
     }
 
@@ -68,18 +131,18 @@ class AdminConfig {
     }
 
     // 更新管理員密碼
-    updateAdminCredentials(newUsername, newPassword, currentPassword) {
+    async updateAdminCredentials(newUsername, newPassword, currentPassword) {
         if (!this.validateAdmin(this.config.adminCredentials.username, currentPassword)) {
             throw new Error('當前密碼錯誤');
         }
         
         this.config.adminCredentials.username = newUsername;
         this.config.adminCredentials.password = newPassword;
-        return this.saveConfig();
+        return await this.saveConfig();
     }
 
     // 新增訪客帳號
-    addGuestAccount(username, password, allowedGroups = []) {
+    async addGuestAccount(username, password, allowedGroups = []) {
         // 檢查用戶名是否已存在
         const exists = this.config.guestAccounts.some(g => g.username === username);
         if (exists) {
@@ -96,11 +159,12 @@ class AdminConfig {
         };
 
         this.config.guestAccounts.push(newGuest);
-        return this.saveConfig() ? newGuest : null;
+        const saved = await this.saveConfig();
+        return saved ? newGuest : null;
     }
 
     // 更新訪客帳號
-    updateGuestAccount(guestId, updates) {
+    async updateGuestAccount(guestId, updates) {
         const guestIndex = this.config.guestAccounts.findIndex(g => g.id === guestId);
         if (guestIndex === -1) {
             throw new Error('找不到指定的訪客帳號');
@@ -122,11 +186,11 @@ class AdminConfig {
             updatedAt: new Date().toISOString()
         };
 
-        return this.saveConfig();
+        return await this.saveConfig();
     }
 
     // 刪除訪客帳號
-    deleteGuestAccount(guestId) {
+    async deleteGuestAccount(guestId) {
         const initialLength = this.config.guestAccounts.length;
         this.config.guestAccounts = this.config.guestAccounts.filter(g => g.id !== guestId);
         
@@ -134,7 +198,7 @@ class AdminConfig {
             throw new Error('找不到指定的訪客帳號');
         }
 
-        return this.saveConfig();
+        return await this.saveConfig();
     }
 
     // 獲取所有訪客帳號
@@ -155,9 +219,9 @@ class AdminConfig {
     }
 
     // 重置為預設配置
-    resetToDefault() {
+    async resetToDefault() {
         this.config = { ...this.defaultConfig };
-        return this.saveConfig();
+        return await this.saveConfig();
     }
 
     // 匯出配置
@@ -166,16 +230,45 @@ class AdminConfig {
     }
 
     // 匯入配置
-    importConfig(configJson) {
+    async importConfig(configJson) {
         try {
             const importedConfig = JSON.parse(configJson);
             this.config = { ...this.defaultConfig, ...importedConfig };
-            return this.saveConfig();
+            return await this.saveConfig();
         } catch (error) {
             throw new Error('配置格式錯誤');
         }
     }
+
+    // 等待初始化完成
+    async waitForInit() {
+        let attempts = 0;
+        const maxAttempts = 50; // 5秒超時
+        
+        while (!this.isInitialized && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        if (!this.isInitialized) {
+            console.warn('AdminConfig 初始化超時，使用本地配置');
+            this.loadLocalConfig();
+            this.isInitialized = true;
+        }
+        
+        return this.isInitialized;
+    }
 }
 
-// 全域實例
+// 全域實例 - 不立即初始化
 window.adminConfig = new AdminConfig();
+
+// Firebase 初始化完成後調用
+window.initAdminConfig = async function(db) {
+    try {
+        await window.adminConfig.init(db);
+        console.log('AdminConfig 已初始化');
+    } catch (error) {
+        console.error('AdminConfig 初始化失敗:', error);
+    }
+};

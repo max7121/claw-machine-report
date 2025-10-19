@@ -30,7 +30,12 @@
     }
 
     // 驗證使用者憑證
-    function validateCredentials(username, password) {
+    async function validateCredentials(username, password) {
+        // 等待 AdminConfig 初始化
+        if (window.adminConfig) {
+            await window.adminConfig.waitForInit();
+        }
+        
         // 檢查管理員身份
         if (window.adminConfig && window.adminConfig.validateAdmin(username, password)) {
             return { type: 'admin', username };
@@ -120,7 +125,7 @@
         }
     });
 
-    loginForm.addEventListener('submit', function(e){
+    loginForm.addEventListener('submit', async function(e){
         e.preventDefault();
         console.log('Login form submitted'); // Debug
         
@@ -137,27 +142,43 @@
             return;
         }
 
-        // 驗證憑證
-        const authResult = validateCredentials(u, p);
-        if(authResult){
-            console.log('Login successful:', authResult); // Debug
-            setLoggedIn(authResult.username, authResult.type);
-            
-            // 如果是訪客，儲存允許的群組資訊
-            if(authResult.type === 'guest' && authResult.guestInfo){
-                localStorage.setItem('allowedGroups', JSON.stringify(authResult.guestInfo.allowedGroups));
-                localStorage.setItem('userType', 'guest');
+        // 顯示載入狀態
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = '驗證中...';
+        submitBtn.disabled = true;
+
+        try {
+            // 驗證憑證（非同步）
+            const authResult = await validateCredentials(u, p);
+            if(authResult){
+                console.log('Login successful:', authResult); // Debug
+                setLoggedIn(authResult.username, authResult.type);
+                
+                // 如果是訪客，儲存允許的群組資訊
+                if(authResult.type === 'guest' && authResult.guestInfo){
+                    localStorage.setItem('allowedGroups', JSON.stringify(authResult.guestInfo.allowedGroups));
+                    localStorage.setItem('userType', 'guest');
+                } else {
+                    localStorage.setItem('userType', 'admin');
+                    localStorage.removeItem('allowedGroups');
+                }
+                
+                showProtectedUI();
+                console.log('Protected UI shown, groups should be loaded'); // Debug
             } else {
-                localStorage.setItem('userType', 'admin');
-                localStorage.removeItem('allowedGroups');
+                console.log('Login failed'); // Debug
+                loginFeedback.textContent = '帳號或密碼錯誤。';
+                loginFeedback.classList.remove('hidden');
             }
-            
-            showProtectedUI();
-            console.log('Protected UI shown, groups should be loaded'); // Debug
-        } else {
-            console.log('Login failed'); // Debug
-            loginFeedback.textContent = '帳號或密碼錯誤。';
+        } catch (error) {
+            console.error('Login error:', error);
+            loginFeedback.textContent = '登入過程發生錯誤，請稍後再試。';
             loginFeedback.classList.remove('hidden');
+        } finally {
+            // 恢復按鈕狀態
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
         }
     });
 

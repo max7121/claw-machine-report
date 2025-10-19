@@ -677,6 +677,11 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        
+        // 初始化管理員配置系統
+        if (window.initAdminConfig) {
+            window.initAdminConfig(db);
+        }
         // --- END: Firebase Initialization ---
 
         // --- GLOBAL STATE ---
@@ -2395,7 +2400,7 @@
         backToMainBtn.addEventListener('click', hideAdminPage);
 
         // 管理員密碼更新
-        adminPasswordForm.addEventListener('submit', (e) => {
+        adminPasswordForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const currentPassword = document.getElementById('current-password').value;
             const newUsername = document.getElementById('new-username').value;
@@ -2408,7 +2413,7 @@
             }
 
             try {
-                window.adminConfig.updateAdminCredentials(newUsername, newPassword, currentPassword);
+                await window.adminConfig.updateAdminCredentials(newUsername, newPassword, currentPassword);
                 showAdminFeedback('admin-password-feedback', '管理員帳密更新成功');
                 adminPasswordForm.reset();
                 document.getElementById('new-username').value = newUsername;
@@ -2418,7 +2423,7 @@
         });
 
         // 訪客帳號管理
-        guestAccountForm.addEventListener('submit', (e) => {
+        guestAccountForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('guest-username').value;
             const password = document.getElementById('guest-password').value;
@@ -2429,7 +2434,7 @@
 
             try {
                 if (isEditing) {
-                    window.adminConfig.updateGuestAccount(isEditing, {
+                    await window.adminConfig.updateGuestAccount(isEditing, {
                         username,
                         password,
                         allowedGroups: selectedGroups
@@ -2437,7 +2442,7 @@
                     showAdminFeedback('guest-account-feedback', '訪客帳號更新成功');
                     cancelGuestEdit();
                 } else {
-                    window.adminConfig.addGuestAccount(username, password, selectedGroups);
+                    await window.adminConfig.addGuestAccount(username, password, selectedGroups);
                     showAdminFeedback('guest-account-feedback', '訪客帳號新增成功');
                 }
                 
@@ -2459,7 +2464,7 @@
         }
 
         // 訪客帳號表格事件
-        guestAccountsTable.addEventListener('click', (e) => {
+        guestAccountsTable.addEventListener('click', async (e) => {
             const editBtn = e.target.closest('.edit-guest-btn');
             const deleteBtn = e.target.closest('.delete-guest-btn');
 
@@ -2486,7 +2491,7 @@
                 const guest = window.adminConfig.getGuestAccounts().find(g => g.id === guestId);
                 if (guest && confirm(`確定要刪除訪客帳號「${guest.username}」嗎？`)) {
                     try {
-                        window.adminConfig.deleteGuestAccount(guestId);
+                        await window.adminConfig.deleteGuestAccount(guestId);
                         loadGuestAccountsTable();
                         showAdminFeedback('guest-account-feedback', '訪客帳號已刪除');
                     } catch (error) {
@@ -2512,13 +2517,13 @@
             configFileInput.click();
         });
 
-        configFileInput.addEventListener('change', (e) => {
+        configFileInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = async (e) => {
                     try {
-                        window.adminConfig.importConfig(e.target.result);
+                        await window.adminConfig.importConfig(e.target.result);
                         alert('設定匯入成功');
                         loadAdminInterface();
                     } catch (error) {
@@ -2529,9 +2534,9 @@
             }
         });
 
-        resetConfigBtn.addEventListener('click', () => {
+        resetConfigBtn.addEventListener('click', async () => {
             if (confirm('確定要重置所有設定嗎？這將刪除所有訪客帳號並恢復預設管理員密碼。')) {
-                window.adminConfig.resetToDefault();
+                await window.adminConfig.resetToDefault();
                 alert('系統已重置為預設設定');
                 loadAdminInterface();
             }
