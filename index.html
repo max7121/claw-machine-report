@@ -25,6 +25,12 @@
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         .preset-tag { cursor: pointer; transition: background-color 0.2s; }
         .preset-tag:hover { background-color: #4f46e5; }
+        
+        /* 圖表樣式 */
+        .checkout-chart svg { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1)); }
+        .checkout-chart circle { transition: all 0.2s ease; }
+        .checkout-chart circle:hover { filter: brightness(1.2); transform: scale(1.2); }
+        .checkout-chart path { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1)); }
     </style>
 </head>
 <body class="p-4 sm:p-6 md:p-8">
@@ -588,6 +594,53 @@
                            <button id="perform-checkout-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition shrink-0">執行結帳</button>
                         </div>
                     </div>
+                    
+                    <!-- 結帳趨勢圖表 -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-gray-900/50 p-6 rounded-lg">
+                            <h4 class="text-lg font-bold text-white mb-4 flex items-center">
+                                <svg class="w-6 h-6 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                </svg>
+                                結帳金額趨勢
+                            </h4>
+                            <div id="checkout-amount-chart" class="h-64 checkout-chart">
+                                <p class="text-center text-gray-500 mt-20">暫無數據可顯示圖表</p>
+                            </div>
+                        </div>
+                        <div class="bg-gray-900/50 p-6 rounded-lg">
+                            <h4 class="text-lg font-bold text-white mb-4 flex items-center">
+                                <svg class="w-6 h-6 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                </svg>
+                                累積營收趨勢
+                            </h4>
+                            <div id="checkout-cumulative-chart" class="h-64 checkout-chart">
+                                <p class="text-center text-gray-500 mt-20">暫無數據可顯示圖表</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 結帳統計摘要 -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-blue-900/30 p-4 rounded-lg text-center">
+                            <p class="text-blue-400 text-sm">總結帳次數</p>
+                            <p id="total-checkouts" class="text-2xl font-bold text-white">0</p>
+                        </div>
+                        <div class="bg-green-900/30 p-4 rounded-lg text-center">
+                            <p class="text-green-400 text-sm">平均結帳金額</p>
+                            <p id="avg-checkout-amount" class="text-2xl font-bold text-white">0 元</p>
+                        </div>
+                        <div class="bg-purple-900/30 p-4 rounded-lg text-center">
+                            <p class="text-purple-400 text-sm">最高單次結帳</p>
+                            <p id="max-checkout-amount" class="text-2xl font-bold text-white">0 元</p>
+                        </div>
+                        <div class="bg-orange-900/30 p-4 rounded-lg text-center">
+                            <p class="text-orange-400 text-sm">結帳頻率</p>
+                            <p id="checkout-frequency" class="text-2xl font-bold text-white">0 天/次</p>
+                        </div>
+                    </div>
+                    
                     <h3 class="text-xl font-bold text-white mb-4 mt-8">結帳歷史紀錄</h3>
                     <div class="overflow-x-auto max-h-96">
                         <table class="w-full text-left">
@@ -1607,26 +1660,18 @@
                         const newCheckoutRef = await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('checkouts').add(newCheckoutData);
                         
                         hideConfirmationModal();
-                        showFeedback("結帳成功！將自動下載報表。", false);
+                        showFeedback("結帳成功！您可以在結帳歷史中下載報表。", false);
                         renderCheckoutTab(); // Refresh the tab
-                        
-                        // Auto-download PDF for the new checkout
-                        generateCheckoutPdf({
-                            checkoutDate: new Date().toLocaleString(),
-                            prevCheckoutDate: lastCheckoutDate,
-                            amount: pendingAmount,
-                            cumulative: currentTotalRevenue
-                        });
 
                     } catch (error) {
                         hideConfirmationModal();
                         console.error("結帳失敗:", error);
-                        alert("結帳失敗，請稍後再試。");
+                        showFeedback("結帳失敗，請稍後再試。", true);
                     }
                 });
             } catch (error) {
                 console.error("處理結帳時發生錯誤:", error);
-                alert("處理結帳時發生錯誤，請稍後再試。");
+                showFeedback("處理結帳時發生錯誤，請稍後再試。", true);
             }
         }
 
@@ -2277,9 +2322,17 @@
                         `;
                         checkoutHistoryBody.innerHTML += row;
                     });
+                    
+                    // 渲染圖表和統計數據
+                    renderCheckoutCharts(checkouts);
+                    renderCheckoutStats(checkouts);
                 } else {
                     lastCheckoutDateEl.textContent = '無 (以營業起始日為準)';
                     checkoutHistoryBody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-gray-400">尚無結帳紀錄</td></tr>`;
+                    
+                    // 清空圖表和統計
+                    clearCheckoutCharts();
+                    clearCheckoutStats();
                 }
                 
                 const currentTotalRevenue = appData.machines.map(processMachineData).reduce((sum, m) => sum + m.revenue, 0);
@@ -2289,7 +2342,176 @@
             } catch (error) {
                 console.error("讀取結帳歷史失敗:", error);
                 checkoutHistoryBody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-red-400">無法讀取結帳歷史</td></tr>`;
+                clearCheckoutCharts();
+                clearCheckoutStats();
             }
+        }
+
+        // 渲染結帳圖表
+        function renderCheckoutCharts(checkouts) {
+            if (checkouts.length === 0) {
+                clearCheckoutCharts();
+                return;
+            }
+
+            // 按時間排序 (舊到新)
+            const sortedCheckouts = [...checkouts].reverse();
+            
+            // 結帳金額趨勢圖 - 使用線圖 + 區域填充
+            renderLineChart('checkout-amount-chart', sortedCheckouts, 'checkoutAmount', 'blue', '結帳金額');
+            
+            // 累積營收趨勢圖 - 使用線圖 + 區域填充
+            renderLineChart('checkout-cumulative-chart', sortedCheckouts, 'cumulativeRevenueAtCheckout', 'green', '累積營收');
+        }
+
+        // 渲染線圖
+        function renderLineChart(elementId, data, valueKey, color, label) {
+            const chartEl = document.getElementById(elementId);
+            const values = data.map(d => d[valueKey]);
+            const maxValue = Math.max(...values);
+            const minValue = Math.min(...values);
+            const valueRange = maxValue - minValue || 1;
+            
+            const chartWidth = 400;
+            const chartHeight = 200;
+            const padding = 40;
+            
+            chartEl.innerHTML = `
+                <div class="relative w-full h-56 bg-gray-800/50 rounded-lg p-4">
+                    <svg width="100%" height="100%" viewBox="0 0 ${chartWidth} ${chartHeight}" class="overflow-visible">
+                        <!-- 網格線 -->
+                        ${Array.from({length: 5}, (_, i) => {
+                            const y = padding + (i * (chartHeight - 2 * padding)) / 4;
+                            return `<line x1="${padding}" y1="${y}" x2="${chartWidth - padding}" y2="${y}" stroke="#374151" stroke-width="1" opacity="0.3"/>`;
+                        }).join('')}
+                        
+                        <!-- 區域填充 -->
+                        <defs>
+                            <linearGradient id="gradient-${color}" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:${color === 'blue' ? '#3b82f6' : '#10b981'};stop-opacity:0.3"/>
+                                <stop offset="100%" style="stop-color:${color === 'blue' ? '#3b82f6' : '#10b981'};stop-opacity:0.05"/>
+                            </linearGradient>
+                        </defs>
+                        
+                        <path d="M${padding},${chartHeight - padding} ${data.map((item, index) => {
+                            const x = padding + (index * (chartWidth - 2 * padding)) / (data.length - 1);
+                            const normalizedValue = (item[valueKey] - minValue) / valueRange;
+                            const y = chartHeight - padding - (normalizedValue * (chartHeight - 2 * padding));
+                            return `L${x},${y}`;
+                        }).join(' ')} L${chartWidth - padding},${chartHeight - padding} Z" 
+                              fill="url(#gradient-${color})" stroke="none"/>
+                        
+                        <!-- 線條 -->
+                        <path d="M${data.map((item, index) => {
+                            const x = padding + (index * (chartWidth - 2 * padding)) / (data.length - 1);
+                            const normalizedValue = (item[valueKey] - minValue) / valueRange;
+                            const y = chartHeight - padding - (normalizedValue * (chartHeight - 2 * padding));
+                            return `${index === 0 ? 'M' : 'L'}${x},${y}`;
+                        }).join(' ')}" 
+                              fill="none" 
+                              stroke="${color === 'blue' ? '#3b82f6' : '#10b981'}" 
+                              stroke-width="3" 
+                              stroke-linecap="round"
+                              stroke-linejoin="round"/>
+                        
+                        <!-- 數據點 -->
+                        ${data.map((item, index) => {
+                            const x = padding + (index * (chartWidth - 2 * padding)) / (data.length - 1);
+                            const normalizedValue = (item[valueKey] - minValue) / valueRange;
+                            const y = chartHeight - padding - (normalizedValue * (chartHeight - 2 * padding));
+                            const date = new Date(item.checkoutDate.toDate()).toLocaleDateString();
+                            const value = item[valueKey].toLocaleString();
+                            
+                            return `
+                                <circle cx="${x}" cy="${y}" r="4" 
+                                        fill="${color === 'blue' ? '#3b82f6' : '#10b981'}" 
+                                        stroke="#1f2937" 
+                                        stroke-width="2" 
+                                        class="cursor-pointer transition-all hover:r-6"
+                                        data-tooltip="${date}: ${value} 元">
+                                    <title>${date}: ${value} 元</title>
+                                </circle>
+                            `;
+                        }).join('')}
+                        
+                        <!-- Y軸標籤 -->
+                        ${Array.from({length: 5}, (_, i) => {
+                            const value = minValue + (i * valueRange) / 4;
+                            const y = chartHeight - padding - (i * (chartHeight - 2 * padding)) / 4;
+                            return `<text x="${padding - 10}" y="${y + 4}" fill="#9ca3af" text-anchor="end" font-size="10">${Math.round(value).toLocaleString()}</text>`;
+                        }).join('')}
+                    </svg>
+                    
+                    <!-- 數據點標籤 -->
+                    <div class="absolute bottom-2 left-0 right-0 flex justify-between px-10 text-xs text-gray-400">
+                        ${data.map((item, index) => {
+                            if (data.length <= 5 || index % Math.ceil(data.length / 5) === 0 || index === data.length - 1) {
+                                const date = new Date(item.checkoutDate.toDate()).toLocaleDateString();
+                                return `<span class="transform -rotate-45 origin-bottom-left">${date}</span>`;
+                            }
+                            return '';
+                        }).join('')}
+                    </div>
+                    
+                    <!-- 圖例 -->
+                    <div class="absolute top-2 right-2 flex items-center space-x-2">
+                        <div class="w-3 h-3 rounded-full bg-gradient-to-br ${color === 'blue' ? 'from-blue-400 to-blue-600' : 'from-green-400 to-green-600'}"></div>
+                        <span class="text-xs text-gray-300">${label}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 渲染結帳統計
+        function renderCheckoutStats(checkouts) {
+            if (checkouts.length === 0) {
+                clearCheckoutStats();
+                return;
+            }
+
+            const totalCheckouts = checkouts.length;
+            const totalAmount = checkouts.reduce((sum, c) => sum + c.checkoutAmount, 0);
+            const avgAmount = totalAmount / totalCheckouts;
+            const maxAmount = Math.max(...checkouts.map(c => c.checkoutAmount));
+            
+            // 計算結帳頻率 (平均天數)
+            let frequency = 0;
+            if (checkouts.length > 1) {
+                const firstDate = new Date(checkouts[checkouts.length - 1].checkoutDate.toDate());
+                const lastDate = new Date(checkouts[0].checkoutDate.toDate());
+                const daysDiff = Math.ceil((lastDate - firstDate) / (1000 * 60 * 60 * 24));
+                frequency = Math.round(daysDiff / (checkouts.length - 1));
+            }
+
+            document.getElementById('total-checkouts').textContent = totalCheckouts.toLocaleString();
+            document.getElementById('avg-checkout-amount').textContent = `${Math.round(avgAmount).toLocaleString()} 元`;
+            document.getElementById('max-checkout-amount').textContent = `${maxAmount.toLocaleString()} 元`;
+            document.getElementById('checkout-frequency').textContent = frequency > 0 ? `${frequency} 天/次` : '無';
+        }
+
+        // 清空圖表
+        function clearCheckoutCharts() {
+            const emptyChartHtml = `
+                <div class="relative w-full h-56 bg-gray-800/50 rounded-lg p-4 flex items-center justify-center">
+                    <div class="text-center">
+                        <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        <p class="text-gray-500 text-sm">暫無數據可顯示圖表</p>
+                        <p class="text-gray-600 text-xs mt-1">完成首次結帳後將顯示趨勢圖</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('checkout-amount-chart').innerHTML = emptyChartHtml;
+            document.getElementById('checkout-cumulative-chart').innerHTML = emptyChartHtml;
+        }
+
+        // 清空統計
+        function clearCheckoutStats() {
+            document.getElementById('total-checkouts').textContent = '0';
+            document.getElementById('avg-checkout-amount').textContent = '0 元';
+            document.getElementById('max-checkout-amount').textContent = '0 元';
+            document.getElementById('checkout-frequency').textContent = '0 天/次';
         }
 
 
