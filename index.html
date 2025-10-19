@@ -51,8 +51,7 @@
                     <label for="password" class="block text-sm text-gray-300 mb-1">密碼</label>
                     <input id="password" type="password" required class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" placeholder="輸入密碼">
                 </div>
-                <div class="flex items-center justify-between">
-                    <div class="text-sm text-gray-400">提示：預設帳號：admin，密碼：password</div>
+                <div class="flex items-center justify-end">
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">登入</button>
                 </div>
                 <div id="login-feedback" class="text-sm text-red-400 mt-2 hidden"></div>
@@ -132,6 +131,62 @@
                             <p class="text-gray-400 text-sm">載入群組列表中...</p>
                         </div>
                     </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-2">頁面訪問權限</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-700 p-4 rounded-lg">
+                            <div class="space-y-2">
+                                <h4 class="text-sm font-semibold text-blue-300">報表功能</h4>
+                                <label class="flex items-center space-x-2 text-sm">
+                                    <input type="checkbox" value="details" class="page-permission-checkbox rounded text-blue-600">
+                                    <span>機台明細</span>
+                                </label>
+                                <label class="flex items-center space-x-2 text-sm">
+                                    <input type="checkbox" value="summary" class="page-permission-checkbox rounded text-blue-600">
+                                    <span>營運總覽</span>
+                                </label>
+                                <label class="flex items-center space-x-2 text-sm">
+                                    <input type="checkbox" value="analysis" class="page-permission-checkbox rounded text-blue-600">
+                                    <span>經營分析</span>
+                                </label>
+                                <label class="flex items-center space-x-2 text-sm">
+                                    <input type="checkbox" value="charts" class="page-permission-checkbox rounded text-blue-600">
+                                    <span>圖表統計</span>
+                                </label>
+                                <label class="flex items-center space-x-2 text-sm">
+                                    <input type="checkbox" value="statistics" class="page-permission-checkbox rounded text-blue-600">
+                                    <span>數據統計</span>
+                                </label>
+                            </div>
+                            <div class="space-y-2">
+                                <h4 class="text-sm font-semibold text-green-300">操作功能</h4>
+                                <label class="flex items-center space-x-2 text-sm">
+                                    <input type="checkbox" value="accounting" class="page-permission-checkbox rounded text-green-600">
+                                    <span>每日記帳</span>
+                                </label>
+                                <label class="flex items-center space-x-2 text-sm">
+                                    <input type="checkbox" value="machines" class="page-permission-checkbox rounded text-green-600">
+                                    <span>機台管理</span>
+                                </label>
+                                <label class="flex items-center space-x-2 text-sm">
+                                    <input type="checkbox" value="checkout" class="page-permission-checkbox rounded text-green-600">
+                                    <span>結帳作業</span>
+                                </label>
+                                <label class="flex items-center space-x-2 text-sm">
+                                    <input type="checkbox" value="download" class="page-permission-checkbox rounded text-purple-600">
+                                    <span>下載報告</span>
+                                </label>
+                                <label class="flex items-center space-x-2 text-sm">
+                                    <input type="checkbox" value="edit" class="page-permission-checkbox rounded text-orange-600">
+                                    <span>編輯/刪除</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mt-2 flex gap-2">
+                            <button type="button" id="select-all-permissions" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded">全選</button>
+                            <button type="button" id="select-readonly-permissions" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded">僅檢視</button>
+                            <button type="button" id="clear-all-permissions" class="text-xs bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded">清除</button>
+                        </div>
+                    </div>
                     <div class="flex gap-2">
                         <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">新增訪客</button>
                         <button type="button" id="cancel-guest-edit" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition hidden">取消</button>
@@ -151,12 +206,13 @@
                             <th class="p-4">帳號</th>
                             <th class="p-4">狀態</th>
                             <th class="p-4">可訪問群組</th>
+                            <th class="p-4">頁面權限</th>
                             <th class="p-4">建立時間</th>
                             <th class="p-4 text-center">操作</th>
                         </tr>
                     </thead>
                     <tbody id="guest-accounts-table" class="divide-y divide-gray-700">
-                        <tr><td colspan="5" class="text-center p-8 text-gray-400">載入中...</td></tr>
+                        <tr><td colspan="6" class="text-center p-8 text-gray-400">載入中...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -242,11 +298,11 @@
                 <div id="header-download-buttons" class="flex items-center gap-2">
                     <button id="download-report-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                        <span>(CSV)</span>
+                        <span>下載完整報告 (CSV)</span>
                     </button>
                      <button id="download-pdf-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm2 10a1 1 0 10-2 0v3a1 1 0 102 0v-3zm2-3a1 1 0 011 1v5a1 1 0 11-2 0v-5a1 1 0 011-1zm4-1a1 1 0 10-2 0v7a1 1 0 102 0V8z" clip-rule="evenodd" /></svg>
-                        <span>(PDF)</span>
+                        <span>列印報告 (PDF)</span>
                     </button>
                 </div>
             </div>
@@ -865,11 +921,23 @@
             guestAccountsTable.innerHTML = '';
             
             if (guests.length === 0) {
-                guestAccountsTable.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-400">尚無訪客帳號</td></tr>';
+                guestAccountsTable.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-400">尚無訪客帳號</td></tr>';
             } else {
                 guests.forEach(guest => {
                     const allowedGroupsText = guest.allowedGroups.length > 0 ? 
                         `${guest.allowedGroups.length} 個群組` : '無權限';
+                    
+                    // 頁面權限顯示
+                    const pagePermissions = guest.pagePermissions || [];
+                    const pagePermissionNames = {
+                        'details': '機台明細', 'summary': '營運總覽', 'analysis': '經營分析',
+                        'charts': '圖表統計', 'statistics': '數據統計', 'accounting': '每日記帳',
+                        'machines': '機台管理', 'checkout': '結帳作業', 'download': '下載報告', 'edit': '編輯刪除'
+                    };
+                    const pagePermissionsText = pagePermissions.length > 0 ? 
+                        pagePermissions.map(p => pagePermissionNames[p] || p).slice(0, 3).join(', ') + 
+                        (pagePermissions.length > 3 ? `等${pagePermissions.length}項` : '') : '無權限';
+                    
                     const statusText = guest.enabled ? '啟用' : '停用';
                     const statusClass = guest.enabled ? 'text-green-400' : 'text-red-400';
                     const createdDate = new Date(guest.createdAt).toLocaleDateString();
@@ -880,6 +948,7 @@
                         <td class="p-4 font-medium text-white">${guest.username}</td>
                         <td class="p-4 ${statusClass}">${statusText}</td>
                         <td class="p-4 text-gray-300">${allowedGroupsText}</td>
+                        <td class="p-4 text-gray-300 text-sm" title="${pagePermissions.map(p => pagePermissionNames[p] || p).join(', ')}">${pagePermissionsText}</td>
                         <td class="p-4 text-gray-300">${createdDate}</td>
                         <td class="p-4 text-center">
                             <button class="edit-guest-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded mr-2" data-guest-id="${guest.id}">編輯</button>
@@ -935,12 +1004,105 @@
             storeSelectionPage.classList.add('hidden');
             reportPage.classList.remove('hidden');
             
+            // 檢查用戶頁面權限並隱藏/顯示相應的標籤頁
+            applyPagePermissions();
+            
             appData.machines = [];
             appData.history = [];
-            document.querySelector('.tab-btn[data-tab="accounting"]').click();
-            updateUI(); 
             
+            // 選擇第一個可見的標籤頁
+            const firstVisibleTab = document.querySelector('.tab-btn:not([style*="display: none"])');
+            if (firstVisibleTab) {
+                firstVisibleTab.click();
+            } else {
+                document.querySelector('.tab-btn[data-tab="details"]').click(); // 默認回退
+            }
+            
+            updateUI(); 
             loadStoreData();
+        }
+
+        // 應用頁面權限
+        function applyPagePermissions() {
+            const userType = localStorage.getItem('userType');
+            console.log('應用頁面權限，用戶類型:', userType);
+            
+            if (userType === 'admin') {
+                // 管理員擁有所有權限
+                console.log('管理員用戶，顯示所有功能');
+                document.querySelectorAll('.tab-btn').forEach(tab => {
+                    tab.style.display = 'block';
+                });
+                document.getElementById('header-download-buttons').style.display = 'flex';
+                return;
+            }
+            
+            // 訪客用戶，檢查頁面權限
+            const currentUser = localStorage.getItem('currentUser');
+            const userPagePermissions = JSON.parse(localStorage.getItem('userPagePermissions') || '[]');
+            console.log('訪客用戶頁面權限:', userPagePermissions);
+            
+            // 標籤頁權限映射
+            const tabPermissionMap = {
+                'details': 'details',
+                'summary': 'summary', 
+                'analysis': 'analysis',
+                'charts': 'charts',
+                'statistics': 'statistics',
+                'accounting': 'accounting',
+                'machines': 'machines',
+                'checkout': 'checkout'
+            };
+            
+            // 隱藏/顯示標籤頁
+            document.querySelectorAll('.tab-btn').forEach(tab => {
+                const tabName = tab.dataset.tab;
+                const requiredPermission = tabPermissionMap[tabName];
+                
+                if (requiredPermission && userPagePermissions.includes(requiredPermission)) {
+                    tab.style.display = 'block';
+                    console.log(`顯示標籤頁: ${tabName}`);
+                } else {
+                    tab.style.display = 'none';
+                    console.log(`隱藏標籤頁: ${tabName}`);
+                }
+            });
+            
+            // 下載按鈕權限
+            if (userPagePermissions.includes('download')) {
+                document.getElementById('header-download-buttons').style.display = 'flex';
+                console.log('顯示下載按鈕');
+            } else {
+                document.getElementById('header-download-buttons').style.display = 'none';
+                console.log('隱藏下載按鈕');
+            }
+            
+            // 編輯/刪除按鈕權限
+            const hasEditPermission = userPagePermissions.includes('edit');
+            console.log('編輯權限:', hasEditPermission);
+            
+            if (!hasEditPermission) {
+                // 隱藏所有編輯和刪除按鈕
+                setTimeout(() => {
+                    const style = document.createElement('style');
+                    style.id = 'guest-permissions-style';
+                    style.textContent = `
+                        .edit-machine-btn, .delete-machine-btn, 
+                        .edit-history-btn, .delete-history-btn,
+                        .edit-store-btn, .delete-store-btn,
+                        .rename-group-btn, .delete-group-btn {
+                            display: none !important;
+                        }
+                    `;
+                    // 移除之前的樣式再添加新的
+                    const existingStyle = document.getElementById('guest-permissions-style');
+                    if (existingStyle) {
+                        existingStyle.remove();
+                    }
+                    document.head.appendChild(style);
+                    console.log('已隱藏編輯/刪除按鈕');
+                }, 100);
+            }
         }
 
         // --- DATA PROCESSING & CALCULATION ---
@@ -2399,6 +2561,25 @@
         adminBtn.addEventListener('click', showAdminPage);
         backToMainBtn.addEventListener('click', hideAdminPage);
 
+        // 頁面權限快捷按鈕事件
+        document.getElementById('select-all-permissions').addEventListener('click', () => {
+            document.querySelectorAll('.page-permission-checkbox').forEach(cb => cb.checked = true);
+        });
+
+        document.getElementById('select-readonly-permissions').addEventListener('click', () => {
+            document.querySelectorAll('.page-permission-checkbox').forEach(cb => cb.checked = false);
+            // 只勾選檢視相關權限
+            const readonlyPermissions = ['details', 'summary', 'analysis', 'charts', 'statistics'];
+            readonlyPermissions.forEach(permission => {
+                const checkbox = document.querySelector(`.page-permission-checkbox[value="${permission}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+        });
+
+        document.getElementById('clear-all-permissions').addEventListener('click', () => {
+            document.querySelectorAll('.page-permission-checkbox').forEach(cb => cb.checked = false);
+        });
+
         // 管理員密碼更新
         adminPasswordForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2429,6 +2610,8 @@
             const password = document.getElementById('guest-password').value;
             const selectedGroups = Array.from(document.querySelectorAll('.group-permission-checkbox:checked'))
                 .map(cb => cb.value);
+            const selectedPagePermissions = Array.from(document.querySelectorAll('.page-permission-checkbox:checked'))
+                .map(cb => cb.value);
 
             const isEditing = guestAccountForm.dataset.editingId;
 
@@ -2437,16 +2620,18 @@
                     await window.adminConfig.updateGuestAccount(isEditing, {
                         username,
                         password,
-                        allowedGroups: selectedGroups
+                        allowedGroups: selectedGroups,
+                        pagePermissions: selectedPagePermissions
                     });
                     showAdminFeedback('guest-account-feedback', '訪客帳號更新成功');
                     cancelGuestEdit();
                 } else {
-                    await window.adminConfig.addGuestAccount(username, password, selectedGroups);
+                    await window.adminConfig.addGuestAccount(username, password, selectedGroups, selectedPagePermissions);
                     showAdminFeedback('guest-account-feedback', '訪客帳號新增成功');
                 }
                 
                 guestAccountForm.reset();
+                document.querySelectorAll('.page-permission-checkbox').forEach(cb => cb.checked = false);
                 loadGuestAccountsTable();
             } catch (error) {
                 showAdminFeedback('guest-account-feedback', error.message, true);
@@ -2459,6 +2644,8 @@
         function cancelGuestEdit() {
             delete guestAccountForm.dataset.editingId;
             guestAccountForm.reset();
+            document.querySelectorAll('.group-permission-checkbox').forEach(cb => cb.checked = false);
+            document.querySelectorAll('.page-permission-checkbox').forEach(cb => cb.checked = false);
             cancelGuestEditBtn.classList.add('hidden');
             guestAccountForm.querySelector('button[type="submit"]').textContent = '新增訪客';
         }
@@ -2479,6 +2666,11 @@
                     // 設定群組權限
                     document.querySelectorAll('.group-permission-checkbox').forEach(cb => {
                         cb.checked = guest.allowedGroups.includes(cb.value);
+                    });
+                    
+                    // 設定頁面權限
+                    document.querySelectorAll('.page-permission-checkbox').forEach(cb => {
+                        cb.checked = (guest.pagePermissions || []).includes(cb.value);
                     });
                     
                     // 切換到編輯模式
@@ -2922,89 +3114,220 @@
         });
         
         document.getElementById('download-report-btn').addEventListener('click', () => {
-            if (!selectedStoreId) return;
-
-            const processedMachines = appData.machines.map(processMachineData);
-            const summaryData = getAggregatedSummaryData('all');
-
-            if (processedMachines.length === 0 && appData.history.length === 0) {
-                showFeedback("目前沒有資料可供下載。", true);
+            if (!selectedStoreId) {
+                showFeedback("請先選擇門市再下載報告。", true);
                 return;
             }
-            
-            const csvRows = [];
-            let csvContent = "\uFEFF";
 
-            csvRows.push(`娃娃機營業報告 - ${selectedStoreName}`);
-            
-            // Section 1: 機台營業明細 (總覽)
-            csvRows.push("");
-            csvRows.push("機台營業明細 (總覽)");
-            const detailsHeaders = ["機台編號", "位置", "營業投幣次數", "營業投幣金額", "營業出貨數量", "平均出貨成本(元/次)"];
-            csvRows.push(detailsHeaders.join(","));
-            processedMachines.forEach(item => {
-                csvRows.push([item.id, `"${item.location}"`, item.effectivePlays, item.revenue, item.effectivePayouts, item.cost.toFixed(2)].join(","));
-            });
+            try {
+                const processedMachines = appData.machines.map(processMachineData);
+                const summaryData = getAggregatedSummaryData('all');
 
-            // Section 2: 各機台營運狀況 - 營運概況總表
-            if (summaryData.length > 0) {
-                csvRows.push("");
-                csvRows.push("各機台營運狀況 - 營運概況總表");
-                const summaryTableHeaders = ["機台編號", "總投幣金額", "總出貨數量", "平均出貨成本(元/次)"];
-                csvRows.push(summaryTableHeaders.join(","));
-                summaryData.forEach(item => {
-                    csvRows.push([
-                        item.id,
-                        item.revenue,
-                        item.payouts,
-                        item.cost.toFixed(2)
-                    ].join(","));
-                });
+                if (processedMachines.length === 0 && appData.history.length === 0) {
+                    showFeedback("目前沒有資料可供下載。請先新增機台並記錄數據。", true);
+                    return;
+                }
+                
+                // 顯示處理中狀態
+                const btn = document.getElementById('download-report-btn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = `
+                    <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>產生中...</span>
+                `;
+                btn.disabled = true;
+                
+                // 延遲執行以允許UI更新
+                setTimeout(() => {
+                    try {
+                        const csvRows = [];
+                        let csvContent = "\uFEFF";
+
+                        csvRows.push(`娃娃機營業報告 - ${selectedStoreName}`);
+                        csvRows.push(`報告產生時間：${new Date().toLocaleString('zh-TW')}`);
+                        csvRows.push(`統計期間：${appData.startDate} ～ 現在`);
+                        
+                        // Section 1: 機台營業明細 (總覽)
+                        csvRows.push("");
+                        csvRows.push("機台營業明細 (總覽)");
+                        const detailsHeaders = ["機台編號", "位置", "營業投幣次數", "營業投幣金額", "營業出貨數量", "平均出貨成本(元/次)"];
+                        csvRows.push(detailsHeaders.join(","));
+                        processedMachines.forEach(item => {
+                            csvRows.push([item.id, `"${item.location}"`, item.effectivePlays, item.revenue, item.effectivePayouts, item.cost.toFixed(2)].join(","));
+                        });
+
+                        // Section 2: 各機台營運狀況 - 營運概況總表
+                        if (summaryData.length > 0) {
+                            csvRows.push("");
+                            csvRows.push("各機台營運狀況 - 營運概況總表");
+                            const summaryTableHeaders = ["機台編號", "總投幣金額", "總出貨數量", "平均出貨成本(元/次)"];
+                            csvRows.push(summaryTableHeaders.join(","));
+                            summaryData.forEach(item => {
+                                csvRows.push([
+                                    item.id,
+                                    item.revenue,
+                                    item.payouts,
+                                    item.cost.toFixed(2)
+                                ].join(","));
+                            });
+                        }
+                        
+
+                        // Section 3: 每日記帳明細
+                        if (appData.history.length > 0) {
+                            csvRows.push("");
+                            csvRows.push("每日記帳明細");
+                            const historyHeaders = ["日期", "機台編號", "位置", "當日投幣數", "當日出貨數"];
+                            csvRows.push(historyHeaders.join(","));
+                            const sortedHistory = [...appData.history].sort((a, b) => b.date.localeCompare(a.date));
+                            sortedHistory.forEach(item => {
+                                csvRows.push([item.date, item.machineId, `"${item.location}"`, item.newPlays, item.newPayouts].join(","));
+                            });
+                        }
+
+                        // Section 4: 圖表分析原始數據
+                        if (processedMachines.length > 0) {
+                            csvRows.push("");
+                            csvRows.push("圖表分析原始數據");
+                            csvRows.push("各機台總營收比較");
+                            csvRows.push(["機台編號", "位置", "總營收(元)"].join(","));
+                            [...processedMachines].sort((a, b) => b.revenue - a.revenue).forEach(item => {
+                                csvRows.push([item.id, `"${item.location}"`, item.revenue].join(","));
+                            });
+                            csvRows.push("");
+                            csvRows.push("各機台平均出貨成本");
+                            csvRows.push(["機台編號", "位置", "平均出貨成本(元/次)"].join(","));
+                            [...processedMachines].sort((a, b) => b.cost - a.cost).forEach(item => {
+                                csvRows.push([item.id, `"${item.location}"`, item.cost.toFixed(2)].join(","));
+                            });
+                        }
+
+                        csvContent += csvRows.join("\n");
+                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.setAttribute("href", url);
+                        const today = new Date();
+                        const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+                        link.setAttribute("download", `${selectedStoreName}-全方位報告-${dateString}.csv`);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                        
+                        showFeedback("報告下載成功！", false);
+                        
+                    } catch (error) {
+                        console.error('下載報告時發生錯誤:', error);
+                        showFeedback("下載報告時發生錯誤，請稍後再試。", true);
+                    } finally {
+                        // 恢復按鈕狀態
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                }, 100);
+                
+            } catch (error) {
+                console.error('準備下載報告時發生錯誤:', error);
+                showFeedback("準備下載報告時發生錯誤，請重新整理頁面後再試。", true);
             }
-            
-
-            // Section 3: 每日記帳明細
-            if (appData.history.length > 0) {
-                csvRows.push("");
-                csvRows.push("每日記帳明細");
-                const historyHeaders = ["日期", "機台編號", "位置", "當日投幣數", "當日出貨數"];
-                csvRows.push(historyHeaders.join(","));
-                const sortedHistory = [...appData.history].sort((a, b) => b.date.localeCompare(a.date));
-                sortedHistory.forEach(item => {
-                    csvRows.push([item.date, item.machineId, `"${item.location}"`, item.newPlays, item.newPayouts].join(","));
-                });
-            }
-
-            // Section 4: 圖表分析原始數據
-            if (processedMachines.length > 0) {
-                csvRows.push("");
-                csvRows.push("圖表分析原始數據");
-                csvRows.push("各機台總營收比較");
-                csvRows.push(["機台編號", "位置", "總營收(元)"].join(","));
-                [...processedMachines].sort((a, b) => b.revenue - a.revenue).forEach(item => {
-                    csvRows.push([item.id, `"${item.location}"`, item.revenue].join(","));
-                });
-                csvRows.push("");
-                csvRows.push("各機台平均出貨成本");
-                csvRows.push(["機台編號", "位置", "平均出貨成本(元/次)"].join(","));
-                [...processedMachines].sort((a, b) => b.cost - a.cost).forEach(item => {
-                    csvRows.push([item.id, `"${item.location}"`, item.cost.toFixed(2)].join(","));
-                });
-            }
-
-            csvContent += csvRows.join("\n");
-            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            const today = new Date();
-            const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-            link.setAttribute("download", `${selectedStoreName}-全方位報告-${dateString}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
         });
 
         performCheckoutBtn.addEventListener('click', handlePerformCheckout);
+
+        // 下載結帳報表 CSV
+        downloadCheckoutCsvBtn.addEventListener('click', async () => {
+            if (!selectedGroupId || !selectedStoreId) {
+                alert('請先選擇門市');
+                return;
+            }
+
+            try {
+                const btn = downloadCheckoutCsvBtn;
+                const originalText = btn.textContent;
+                btn.textContent = '產生中...';
+                btn.disabled = true;
+
+                // 獲取結帳歷史
+                const checkoutCollection = db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('checkouts').orderBy('checkoutDate', 'desc');
+                const checkoutSnapshot = await checkoutCollection.get();
+                const checkouts = checkoutSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+
+                // 生成 CSV 內容
+                const csvRows = [];
+                csvRows.push('\uFEFF'); // UTF-8 BOM
+                csvRows.push(`結帳報表 - ${selectedStoreName}`);
+                csvRows.push(`報表產生日期: ${new Date().toLocaleString()}`);
+                csvRows.push('');
+                
+                if (checkouts.length === 0) {
+                    csvRows.push('尚無結帳紀錄');
+                } else {
+                    // 表頭
+                    csvRows.push(['結帳日期', '結帳金額', '累積營收', '期間天數', '平均每日營收'].join(','));
+                    
+                    // 資料行
+                    checkouts.forEach((checkout, index) => {
+                        const checkoutDate = new Date(checkout.checkoutDate.toDate());
+                        const prevCheckoutDate = index < checkouts.length - 1 ? 
+                            new Date(checkouts[index + 1].checkoutDate.toDate()) : 
+                            new Date(appData.startDate);
+                        
+                        const daysDiff = Math.ceil((checkoutDate - prevCheckoutDate) / (1000 * 60 * 60 * 24));
+                        const avgDailyRevenue = daysDiff > 0 ? checkout.checkoutAmount / daysDiff : 0;
+                        
+                        csvRows.push([
+                            checkoutDate.toLocaleString(),
+                            checkout.checkoutAmount,
+                            checkout.cumulativeRevenueAtCheckout,
+                            daysDiff,
+                            avgDailyRevenue.toFixed(2)
+                        ].join(','));
+                    });
+
+                    // 統計摘要
+                    csvRows.push('');
+                    csvRows.push('--- 統計摘要 ---');
+                    const totalCheckouts = checkouts.length;
+                    const totalRevenue = checkouts.length > 0 ? checkouts[0].cumulativeRevenueAtCheckout : 0;
+                    const avgCheckoutAmount = checkouts.length > 0 ? 
+                        checkouts.reduce((sum, c) => sum + c.checkoutAmount, 0) / checkouts.length : 0;
+                    
+                    csvRows.push(`總結帳次數,${totalCheckouts}`);
+                    csvRows.push(`累積總營收,${totalRevenue} 元`);
+                    csvRows.push(`平均結帳金額,${avgCheckoutAmount.toFixed(2)} 元`);
+                }
+
+                // 下載 CSV
+                const csvContent = csvRows.join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                
+                const today = new Date();
+                const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+                link.setAttribute('download', `${selectedStoreName}-結帳報表-${dateString}.csv`);
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                btn.textContent = originalText;
+                btn.disabled = false;
+
+            } catch (error) {
+                console.error('下載結帳報表失敗:', error);
+                alert('下載報表時發生錯誤，請稍後再試。');
+                
+                downloadCheckoutCsvBtn.textContent = '下載結帳報表 (CSV)';
+                downloadCheckoutCsvBtn.disabled = false;
+            }
+        });
 
         // --- INITIAL LOAD ---
         // 不再直接載入群組頁面，由登入邏輯控制

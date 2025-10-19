@@ -14,6 +14,7 @@ class AdminConfig {
                     username: 'guest',
                     password: 'guest123',
                     allowedGroups: [], // 空陣列表示無權限訪問任何群組
+                    pagePermissions: ['details', 'summary'], // 默認只能檢視基本報表
                     enabled: true,
                     createdAt: new Date().toISOString()
                 }
@@ -142,7 +143,7 @@ class AdminConfig {
     }
 
     // 新增訪客帳號
-    async addGuestAccount(username, password, allowedGroups = []) {
+    async addGuestAccount(username, password, allowedGroups = [], pagePermissions = []) {
         // 檢查用戶名是否已存在
         const exists = this.config.guestAccounts.some(g => g.username === username);
         if (exists) {
@@ -154,6 +155,7 @@ class AdminConfig {
             username,
             password,
             allowedGroups: [...allowedGroups],
+            pagePermissions: [...pagePermissions],
             enabled: true,
             createdAt: new Date().toISOString()
         };

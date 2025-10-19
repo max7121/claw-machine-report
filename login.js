@@ -24,6 +24,8 @@
         localStorage.removeItem('username');
         localStorage.removeItem('userType');
         localStorage.removeItem('allowedGroups');
+        localStorage.removeItem('userPagePermissions');
+        localStorage.removeItem('currentUser');
     }
     function isLoggedIn(){
         return localStorage.getItem('isLoggedIn') === '1';
@@ -155,13 +157,17 @@
                 console.log('Login successful:', authResult); // Debug
                 setLoggedIn(authResult.username, authResult.type);
                 
-                // 如果是訪客，儲存允許的群組資訊
+                // 如果是訪客，儲存允許的群組資訊和頁面權限
                 if(authResult.type === 'guest' && authResult.guestInfo){
                     localStorage.setItem('allowedGroups', JSON.stringify(authResult.guestInfo.allowedGroups));
+                    localStorage.setItem('userPagePermissions', JSON.stringify(authResult.guestInfo.pagePermissions || []));
                     localStorage.setItem('userType', 'guest');
+                    localStorage.setItem('currentUser', authResult.username);
                 } else {
                     localStorage.setItem('userType', 'admin');
                     localStorage.removeItem('allowedGroups');
+                    localStorage.removeItem('userPagePermissions');
+                    localStorage.setItem('currentUser', authResult.username);
                 }
                 
                 showProtectedUI();
