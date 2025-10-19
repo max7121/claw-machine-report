@@ -2138,11 +2138,11 @@
                 costChartEl.innerHTML = '<p class="text-center text-gray-500">尚無資料可繪製圖表</p>';
             } else {
                 const maxRevenue = Math.max(...processedMachines.map(m => m.revenue), 1);
-                processedMachines.sort((a,b) => b.revenue - a.revenue).forEach(machine => {
+                processedMachines.sort((a,b) => b.revenue - a.revenue).forEach((machine, index) => {
                     const barWidth = (machine.revenue / maxRevenue * 100);
                     const chartItem = `
                         <div class="flex items-center space-x-4">
-                            <div class="w-40 text-sm font-medium text-gray-300 truncate">${machine.id} - ${machine.location}</div>
+                            <div class="w-44 text-sm font-medium text-gray-300 truncate">${index + 1}. ${machine.id} - ${machine.location}</div>
                             <div class="flex-grow bg-gray-700 rounded-full h-6">
                                 <div class="chart-bar bg-blue-500 h-6 rounded-full text-xs font-medium text-white text-right pr-2 leading-6" style="width: ${barWidth}%">
                                    ${machine.revenue.toLocaleString()} 元
@@ -2154,13 +2154,13 @@
                 });
 
                 const maxCost = Math.max(...processedMachines.map(m => m.cost), 1);
-                 processedMachines.sort((a,b) => b.cost - a.cost).forEach(machine => {
+                processedMachines.sort((a,b) => b.revenue - a.revenue).forEach((machine, index) => {
                     const barWidth = (machine.cost / maxCost * 100);
                     const chartItem = `
                         <div class="flex items-center space-x-4">
-                            <div class="w-40 text-sm font-medium text-gray-300 truncate">${machine.id} - ${machine.location}</div>
+                            <div class="w-44 text-sm font-medium text-gray-300 truncate">${index + 1}. ${machine.id} - ${machine.location}</div>
                             <div class="flex-grow bg-gray-700 rounded-full h-6">
-                                 <div class="chart-bar bg-yellow-500 h-6 rounded-full text-xs font-medium text-gray-900 text-right pr-2 leading-6" style="width: ${barWidth}%">
+                                <div class="chart-bar bg-yellow-500 h-6 rounded-full text-xs font-medium text-gray-900 text-right pr-2 leading-6" style="width: ${barWidth}%">
                                    ${machine.cost.toFixed(2)} 元/次
                                 </div>
                             </div>
