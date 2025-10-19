@@ -172,6 +172,7 @@
                 <button class="tab-btn text-lg py-3 px-6 font-semibold transition text-gray-400" data-tab="details">機台營業明細</button>
                 <button class="tab-btn text-lg py-3 px-6 font-semibold transition text-gray-400" data-tab="summary">各機台營運概況</button>
                 <button class="tab-btn text-lg py-3 px-6 font-semibold transition text-gray-400" data-tab="analysis">分析與建議</button>
+                <button class="tab-btn text-lg py-3 px-6 font-semibold transition text-gray-400" data-tab="checkout">結帳作業</button>
             </div>
 
             <div>
@@ -246,7 +247,15 @@
                         <button type="submit" class="md:col-span-2 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition">建立機台</button>
                     </form>
                     
-                    <h3 class="text-xl font-bold text-white mb-4 mt-4">現有機台列表</h3>
+                    <div class="flex justify-between items-center mb-4 mt-4">
+                         <h3 class="text-xl font-bold text-white">現有機台列表</h3>
+                         <button id="recalculate-all-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.899 2.186l-1.082.541a5.002 5.002 0 00-8.736-1.613L8 8H4V4l2.293 2.293A6.996 6.996 0 0111 3.055a6.996 6.996 0 015.688 3.568l1.082-.54A8.996 8.996 0 0012.22 2.022 8.996 8.996 0 004 5.101V3a1 1 0 01-1-1H2a1 1 0 01-1-1V1a1 1 0 011-1h2zm12 16a1 1 0 01-1-1v-2.101a7.002 7.002 0 01-11.899-2.186l1.082-.541a5.002 5.002 0 008.736 1.613L12 12h4v4l-2.293-2.293A6.996 6.996 0 019 16.945a6.996 6.996 0 01-5.688-3.568l-1.082.54A8.996 8.996 0 007.78 17.978 8.996 8.996 0 0016 14.899V17a1 1 0 011 1h1a1 1 0 011 1v1a1 1 0 01-1 1h-2z" clip-rule="evenodd" />
+                            </svg>
+                            <span>重新計算所有數據</span>
+                        </button>
+                    </div>
                     <div class="overflow-x-auto max-h-96">
                         <table class="w-full text-left">
                             <thead class="bg-gray-700/50 text-gray-300 uppercase text-sm sticky top-0">
@@ -382,6 +391,30 @@
                     <div id="analysis-observation" class="space-y-6"></div>
                     <h3 class="mt-8">💡 結論建議</h3>
                     <div id="analysis-suggestion" class="space-y-4"></div>
+                </div>
+                 <div id="checkout" class="tab-content hidden">
+                    <h3 class="text-xl font-bold text-white mb-4">本期營收結帳</h3>
+                    <div class="bg-gray-900/50 p-6 rounded-lg mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div>
+                            <p class="text-sm text-gray-400">上次結帳日期：<span id="last-checkout-date" class="font-semibold">無</span></p>
+                            <p class="text-lg text-white mt-1">本期待結帳金額：<span id="pending-checkout-amount" class="text-2xl font-bold text-green-400">0 元</span></p>
+                        </div>
+                        <button id="perform-checkout-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition shrink-0">執行結帳</button>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-4 mt-8">結帳歷史紀錄</h3>
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-700/50 text-gray-300 uppercase text-sm sticky top-0">
+                                <tr>
+                                    <th class="p-4">結帳日期</th>
+                                    <th class="p-4 text-right">當期營收</th>
+                                    <th class="p-4 text-right">結帳時累積總營收</th>
+                                    <th class="p-4 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="checkout-history-body" class="divide-y divide-gray-700"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -559,6 +592,8 @@
         const locationPresets = document.getElementById('location-presets');
         const selectAllStoresBtn = document.getElementById('select-all-stores-btn');
         const deselectAllStoresBtn = document.getElementById('deselect-all-stores-btn');
+        const recalculateAllBtn = document.getElementById('recalculate-all-btn');
+
         
         // Modal selectors
         const confirmationModal = document.getElementById('confirmation-modal');
@@ -581,6 +616,9 @@
         const downloadPdfBtn = document.getElementById('download-pdf-btn');
         const pdfLoaderOverlay = document.getElementById('pdf-loader-overlay');
         const pdfLoaderText = document.getElementById('pdf-loader-text-overlay');
+        
+        const checkoutHistoryBody = document.getElementById('checkout-history-body');
+        const performCheckoutBtn = document.getElementById('perform-checkout-btn');
 
 
         // --- MODAL FUNCTIONS ---
@@ -921,6 +959,7 @@
 
             if (!newId || !newLocation) return alert('機台編號和位置不能為空！');
 
+            // Find the original machine data to calculate the difference
             const originalMachine = appData.machines.find(m => m.docId === docId);
             if (!originalMachine) {
                 alert('錯誤：找不到原始機台資料！');
@@ -930,9 +969,11 @@
             const oldInitialPlays = originalMachine.initialPlays || 0;
             const oldInitialPayouts = originalMachine.initialPayouts || 0;
 
+            // Calculate the difference introduced by changing the initial values
             const playsDiff = newInitialPlays - oldInitialPlays;
             const payoutsDiff = newInitialPayouts - oldInitialPayouts;
 
+            // Adjust the current total plays and payouts
             const newTotalPlays = originalMachine.plays + playsDiff;
             const newTotalPayouts = originalMachine.payouts + payoutsDiff;
             
@@ -1096,6 +1137,48 @@
                 const cost = s.payouts > 0 ? revenue / s.payouts : 0;
                 return { id: s.id, revenue, payouts: s.payouts, cost };
             });
+        }
+        
+        async function handlePerformCheckout() {
+            if (!selectedGroupId || !selectedStoreId) return;
+
+            const checkoutCollection = db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('checkouts').orderBy('checkoutDate', 'desc');
+
+            try {
+                const checkoutSnapshot = await checkoutCollection.limit(1).get();
+                let lastCheckoutRevenue = 0;
+                if (!checkoutSnapshot.empty) {
+                    lastCheckoutRevenue = checkoutSnapshot.docs[0].data().cumulativeRevenueAtCheckout;
+                }
+
+                const currentTotalRevenue = appData.machines.map(processMachineData).reduce((sum, m) => sum + m.revenue, 0);
+                const pendingAmount = currentTotalRevenue - lastCheckoutRevenue;
+
+                if (pendingAmount <= 0) {
+                    alert("目前沒有待結帳金額。");
+                    return;
+                }
+                
+                showConfirmationModal(`您確定要結算本期營收 ${pendingAmount.toLocaleString()} 元嗎？`, async () => {
+                     try {
+                        await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('checkouts').add({
+                            checkoutDate: firebase.firestore.FieldValue.serverTimestamp(),
+                            checkoutAmount: pendingAmount,
+                            cumulativeRevenueAtCheckout: currentTotalRevenue
+                        });
+                        hideConfirmationModal();
+                        showFeedback("結帳成功！", false);
+                        renderCheckoutTab(); // Refresh the tab
+                    } catch (error) {
+                        hideConfirmationModal();
+                        console.error("結帳失敗:", error);
+                        alert("結帳失敗，請稍後再試。");
+                    }
+                });
+            } catch (error) {
+                console.error("處理結帳時發生錯誤:", error);
+                alert("處理結帳時發生錯誤，請稍後再試。");
+            }
         }
 
 
@@ -1677,6 +1760,51 @@
                 </div>
             `;
         }
+        
+        async function renderCheckoutTab() {
+            if (!selectedGroupId || !selectedStoreId) return;
+
+            const checkoutCollection = db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('checkouts').orderBy('checkoutDate', 'desc');
+            const lastCheckoutDateEl = document.getElementById('last-checkout-date');
+            const pendingAmountEl = document.getElementById('pending-checkout-amount');
+
+            checkoutHistoryBody.innerHTML = '';
+
+            try {
+                const checkoutSnapshot = await checkoutCollection.get();
+                const checkouts = checkoutSnapshot.docs.map(doc => doc.data());
+
+                let lastCheckoutRevenue = 0;
+                if (checkouts.length > 0) {
+                    const lastCheckout = checkouts[0];
+                    lastCheckoutDateEl.textContent = new Date(lastCheckout.checkoutDate.toDate()).toLocaleString();
+                    lastCheckoutRevenue = lastCheckout.cumulativeRevenueAtCheckout;
+
+                    checkouts.forEach(checkout => {
+                        const row = `
+                            <tr class="hover:bg-gray-700/50">
+                                <td class="p-4">${new Date(checkout.checkoutDate.toDate()).toLocaleString()}</td>
+                                <td class="p-4 text-right">${checkout.checkoutAmount.toLocaleString()} 元</td>
+                                <td class="p-4 text-right">${checkout.cumulativeRevenueAtCheckout.toLocaleString()} 元</td>
+                            </tr>
+                        `;
+                        checkoutHistoryBody.innerHTML += row;
+                    });
+                } else {
+                    lastCheckoutDateEl.textContent = '無';
+                    checkoutHistoryBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-gray-400">尚無結帳紀錄</td></tr>`;
+                }
+                
+                const currentTotalRevenue = appData.machines.map(processMachineData).reduce((sum, m) => sum + m.revenue, 0);
+                const pendingAmount = currentTotalRevenue - lastCheckoutRevenue;
+                pendingAmountEl.textContent = `${pendingAmount.toLocaleString()} 元`;
+
+            } catch (error) {
+                console.error("讀取結帳歷史失敗:", error);
+                checkoutHistoryBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-red-400">無法讀取結帳歷史</td></tr>`;
+            }
+        }
+
 
         function updateFooterAndHeader() { /* ... Footer rendering logic ... */ }
         function showFeedback(message, isError = false) {
@@ -2040,6 +2168,7 @@
                 if (tab.dataset.tab === 'statistics') { renderStatisticsTab(); }
                 if (tab.dataset.tab === 'summary') { renderSummaryTab(); }
                 if (tab.dataset.tab === 'analysis') { renderAnalysisTab(); }
+                 if (tab.dataset.tab === 'checkout') { renderCheckoutTab(); }
             });
         });
 
@@ -2181,6 +2310,25 @@
                 header.querySelector('.sort-indicator').textContent = direction === 'asc' ? '▲' : '▼';
                 updateUI();
             });
+        });
+        
+        recalculateAllBtn.addEventListener('click', async () => {
+            if (!selectedStoreId) return;
+
+            pdfLoaderText.textContent = '正在重新整理與計算所有數據...';
+            pdfLoaderOverlay.classList.remove('hidden');
+            pdfLoaderOverlay.classList.add('flex');
+
+            try {
+                await loadStoreData(); // This function already re-fetches and calls updateUI()
+                showFeedback("所有數據已成功重新計算並更新！", false);
+            } catch (error) {
+                console.error("重新計算失敗:", error);
+                showFeedback("數據更新失敗，請檢查網路連線。", true);
+            } finally {
+                pdfLoaderOverlay.classList.add('hidden');
+                pdfLoaderOverlay.classList.remove('flex');
+            }
         });
         
         downloadPdfBtn.addEventListener('click', async () => {
@@ -2343,6 +2491,8 @@
             link.click();
             document.body.removeChild(link);
         });
+
+        performCheckoutBtn.addEventListener('click', handlePerformCheckout);
 
         // --- INITIAL LOAD ---
         showGroupSelectionPage();
