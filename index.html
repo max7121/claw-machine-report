@@ -304,11 +304,11 @@
                 <div id="header-download-buttons" class="flex items-center gap-2">
                     <button id="download-report-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                        <span>下載完整報告 (CSV)</span>
+                        <span>自定義報表下載</span>
                     </button>
                      <button id="download-pdf-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center space-x-2 shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm2 10a1 1 0 10-2 0v3a1 1 0 102 0v-3zm2-3a1 1 0 011 1v5a1 1 0 11-2 0v-5a1 1 0 011-1zm4-1a1 1 0 10-2 0v7a1 1 0 102 0V8z" clip-rule="evenodd" /></svg>
-                        <span>列印報告 (PDF)</span>
+                        <span>快速列印 (PDF)</span>
                     </button>
                 </div>
             </div>
@@ -756,6 +756,81 @@
         </div>
     </div>
     
+    <!-- Custom Report Download Modal -->
+    <div id="custom-report-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <h3 class="text-xl font-bold text-white mb-6">自定義報表內容</h3>
+            
+            <!-- 報表類型選擇 -->
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-white mb-3">選擇報表類型</h4>
+                <div class="space-y-2">
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="include-summary" class="report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" checked>
+                        <span class="text-gray-300">📊 營業摘要統計</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="include-details" class="report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" checked>
+                        <span class="text-gray-300">📋 機台詳細資料</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="include-operation-summary" class="report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                        <span class="text-gray-300">📊 營運概況總表</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="include-history" class="report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                        <span class="text-gray-300">📝 記帳歷史紀錄</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="include-analysis" class="report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                        <span class="text-gray-300">📈 營運分析數據</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="include-checkout" class="report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                        <span class="text-gray-300">💰 結帳紀錄</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- 報表格式選擇 -->
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-white mb-3">選擇檔案格式</h4>
+                <div class="flex gap-4">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="report-format" value="csv" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500" checked>
+                        <span class="text-gray-300">📄 CSV 格式</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="report-format" value="pdf" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500">
+                        <span class="text-gray-300">📑 PDF 格式</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- 快速選擇按鈕 -->
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-white mb-3">快速選擇</h4>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" id="select-all-reports" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">全選</button>
+                    <button type="button" id="select-basic-reports" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">基本報表</button>
+                    <button type="button" id="select-detailed-reports" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm">詳細報表</button>
+                    <button type="button" id="clear-all-reports" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm">清空</button>
+                </div>
+            </div>
+            
+            <!-- 操作按鈕 -->
+            <div class="flex justify-end gap-4">
+                <button type="button" id="custom-report-cancel" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">取消</button>
+                <button type="button" id="custom-report-download" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    <span>下載報表</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <!-- PDF Loader Overlay -->
     <div id="pdf-loader-overlay" class="fixed inset-0 bg-black bg-opacity-75 flex-col items-center justify-center hidden z-50">
         <svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -881,6 +956,15 @@
         const downloadCheckoutCsvBtn = document.getElementById('download-checkout-csv-btn');
         const headerDownloadButtons = document.getElementById('header-download-buttons');
 
+        // 自定義報表模態視窗元素
+        const customReportModal = document.getElementById('custom-report-modal');
+        const customReportDownloadBtn = document.getElementById('custom-report-download');
+        const customReportCancelBtn = document.getElementById('custom-report-cancel');
+        const selectAllReportsBtn = document.getElementById('select-all-reports');
+        const selectBasicReportsBtn = document.getElementById('select-basic-reports');
+        const selectDetailedReportsBtn = document.getElementById('select-detailed-reports');
+        const clearAllReportsBtn = document.getElementById('clear-all-reports');
+
 
         // --- MODAL FUNCTIONS ---
         function showConfirmationModal(message, onConfirm) {
@@ -892,6 +976,156 @@
         function hideConfirmationModal() {
             confirmationModal.classList.add('hidden');
             confirmCallback = null;
+        }
+
+        // --- CUSTOM REPORT FUNCTIONS ---
+        function showCustomReportModal() {
+            customReportModal.classList.remove('hidden');
+        }
+
+        function hideCustomReportModal() {
+            customReportModal.classList.add('hidden');
+        }
+
+        function setReportCheckboxes(summary, details, operationSummary, history, analysis, checkout) {
+            document.getElementById('include-summary').checked = summary;
+            document.getElementById('include-details').checked = details;
+            document.getElementById('include-operation-summary').checked = operationSummary;
+            document.getElementById('include-history').checked = history;
+            document.getElementById('include-analysis').checked = analysis;
+            document.getElementById('include-checkout').checked = checkout;
+        }
+
+        async function generateCustomReport() {
+            const includeSummary = document.getElementById('include-summary').checked;
+            const includeDetails = document.getElementById('include-details').checked;
+            const includeOperationSummary = document.getElementById('include-operation-summary').checked;
+            const includeHistory = document.getElementById('include-history').checked;
+            const includeAnalysis = document.getElementById('include-analysis').checked;
+            const includeCheckout = document.getElementById('include-checkout').checked;
+            const format = document.querySelector('input[name="report-format"]:checked').value;
+
+            if (!includeSummary && !includeDetails && !includeOperationSummary && !includeHistory && !includeAnalysis && !includeCheckout) {
+                alert('請至少選擇一項報表內容！');
+                return;
+            }
+
+            pdfLoaderText.textContent = `正在生成自定義報表 (${format.toUpperCase()})...`;
+            pdfLoaderOverlay.classList.remove('hidden');
+            pdfLoaderOverlay.classList.add('flex');
+
+            try {
+                let reportData = [];
+                const timestamp = new Date().toLocaleString('zh-TW');
+                const storeName = selectedStoreName || '未知門市';
+
+                if (format === 'csv') {
+                    // CSV 格式報表
+                    if (includeSummary) {
+                        reportData.push('=== 營業摘要統計 ===');
+                        const processedMachines = appData.machines.map(processMachineData);
+                        const totalPlays = processedMachines.reduce((sum, m) => sum + m.effectivePlays, 0);
+                        const totalRevenue = totalPlays * COIN_VALUE;
+                        const totalPayouts = processedMachines.reduce((sum, m) => sum + m.effectivePayouts, 0);
+                        const avgCost = totalPayouts > 0 ? totalRevenue / totalPayouts : 0;
+
+                        reportData.push('統計項目,數值');
+                        reportData.push(`門市名稱,${storeName}`);
+                        reportData.push(`統計期間,${appData.startDate} ~ ${new Date().toISOString().split('T')[0]}`);
+                        reportData.push(`總投幣次數,${totalPlays.toLocaleString()}`);
+                        reportData.push(`總營業額,${totalRevenue.toLocaleString()}`);
+                        reportData.push(`總出貨次數,${totalPayouts.toLocaleString()}`);
+                        reportData.push(`平均出貨成本,${avgCost.toFixed(2)}`);
+                        reportData.push('');
+                    }
+
+                    if (includeDetails) {
+                        reportData.push('=== 機台詳細資料 ===');
+                        reportData.push('機台編號,位置,投幣次數,營業額,出貨次數,平均成本,初始投幣,初始出貨');
+                        const processedMachines = appData.machines.map(processMachineData);
+                        processedMachines.forEach(machine => {
+                            reportData.push(`${machine.id},${machine.location},${machine.effectivePlays},${machine.revenue},${machine.effectivePayouts},${machine.cost.toFixed(2)},${machine.initialPlays || 0},${machine.initialPayouts || 0}`);
+                        });
+                        reportData.push('');
+                    }
+
+                    if (includeOperationSummary) {
+                        reportData.push('=== 營運概況總表 ===');
+                        reportData.push('機台編號,總投幣金額,總出貨數量,平均出貨成本');
+                        const summaryData = getAggregatedSummaryData('all');
+                        summaryData.forEach(item => {
+                            reportData.push(`${item.id},${item.revenue},${item.payouts},${item.cost.toFixed(2)}`);
+                        });
+                        reportData.push('');
+                    }
+
+                    if (includeHistory) {
+                        reportData.push('=== 記帳歷史紀錄 ===');
+                        reportData.push('日期,機台編號,位置,投幣次數,出貨次數,當日營收');
+                        appData.history.forEach(record => {
+                            const dailyRevenue = record.dailyPlays * COIN_VALUE;
+                            reportData.push(`${record.date},${record.machineId},${record.location},${record.dailyPlays},${record.dailyPayouts},${dailyRevenue}`);
+                        });
+                        reportData.push('');
+                    }
+
+                    if (includeAnalysis) {
+                        reportData.push('=== 營運分析數據 ===');
+                        const processedMachines = appData.machines.map(processMachineData);
+                        const sortedByRevenue = [...processedMachines].sort((a,b) => b.revenue - a.revenue);
+                        const sortedByCost = [...processedMachines].filter(m => m.effectivePayouts > 0).sort((a,b) => b.cost - a.cost);
+
+                        reportData.push('營收排行榜');
+                        reportData.push('排名,機台編號,位置,營收');
+                        sortedByRevenue.forEach((machine, index) => {
+                            reportData.push(`${index + 1},${machine.id},${machine.location},${machine.revenue}`);
+                        });
+                        reportData.push('');
+
+                        reportData.push('出貨成本排行榜');
+                        reportData.push('排名,機台編號,位置,平均成本');
+                        sortedByCost.forEach((machine, index) => {
+                            reportData.push(`${index + 1},${machine.id},${machine.location},${machine.cost.toFixed(2)}`);
+                        });
+                        reportData.push('');
+                    }
+
+                    if (includeCheckout && selectedGroupId && selectedStoreId) {
+                        reportData.push('=== 結帳紀錄 ===');
+                        const checkoutCollection = db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('checkouts').orderBy('checkoutDate', 'desc');
+                        const checkoutSnapshot = await checkoutCollection.get();
+                        const checkouts = checkoutSnapshot.docs.map(doc => doc.data());
+
+                        reportData.push('結帳日期,結帳金額,累積營收,備註');
+                        checkouts.forEach(checkout => {
+                            reportData.push(`${checkout.checkoutDate},${checkout.checkoutAmount},${checkout.cumulativeRevenueAtCheckout || 0},${checkout.notes || ''}`);
+                        });
+                    }
+
+                    // 下載 CSV
+                    const csvContent = reportData.join('\n');
+                    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `${storeName}_自定義報表_${new Date().toISOString().split('T')[0]}.csv`;
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+
+                } else if (format === 'pdf') {
+                    // PDF 格式報表 (簡化版本)
+                    alert('PDF 格式報表功能開發中，請先使用 CSV 格式。');
+                }
+
+                hideCustomReportModal();
+                showFeedback('自定義報表下載成功！', false);
+
+            } catch (error) {
+                console.error('生成自定義報表時發生錯誤:', error);
+                showFeedback('報表生成失敗，請稍後再試。', true);
+            } finally {
+                pdfLoaderOverlay.classList.add('hidden');
+                pdfLoaderOverlay.classList.remove('flex');
+            }
         }
 
         // --- NAVIGATION & PAGE CONTROL ---
@@ -3341,120 +3575,41 @@
                 return;
             }
 
-            try {
-                const processedMachines = appData.machines.map(processMachineData);
-                const summaryData = getAggregatedSummaryData('all');
+            const processedMachines = appData.machines.map(processMachineData);
+            if (processedMachines.length === 0 && appData.history.length === 0) {
+                showFeedback("目前沒有資料可供下載。請先新增機台並記錄數據。", true);
+                return;
+            }
 
-                if (processedMachines.length === 0 && appData.history.length === 0) {
-                    showFeedback("目前沒有資料可供下載。請先新增機台並記錄數據。", true);
-                    return;
-                }
-                
-                // 顯示處理中狀態
-                const btn = document.getElementById('download-report-btn');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = `
-                    <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>產生中...</span>
-                `;
-                btn.disabled = true;
-                
-                // 延遲執行以允許UI更新
-                setTimeout(() => {
-                    try {
-                        const csvRows = [];
-                        let csvContent = "\uFEFF";
+            showCustomReportModal();
+        });
 
-                        csvRows.push(`娃娃機營業報告 - ${selectedStoreName}`);
-                        csvRows.push(`報告產生時間：${new Date().toLocaleString('zh-TW')}`);
-                        csvRows.push(`統計期間：${appData.startDate} ～ 現在`);
-                        
-                        // Section 1: 機台營業明細 (總覽)
-                        csvRows.push("");
-                        csvRows.push("機台營業明細 (總覽)");
-                        const detailsHeaders = ["機台編號", "位置", "營業投幣次數", "營業投幣金額", "營業出貨數量", "平均出貨成本(元/次)"];
-                        csvRows.push(detailsHeaders.join(","));
-                        processedMachines.forEach(item => {
-                            csvRows.push([item.id, `"${item.location}"`, item.effectivePlays, item.revenue, item.effectivePayouts, item.cost.toFixed(2)].join(","));
-                        });
+        // 自定義報表模態視窗事件監聽器
+        customReportCancelBtn.addEventListener('click', hideCustomReportModal);
+        
+        customReportDownloadBtn.addEventListener('click', generateCustomReport);
 
-                        // Section 2: 各機台營運狀況 - 營運概況總表
-                        if (summaryData.length > 0) {
-                            csvRows.push("");
-                            csvRows.push("各機台營運狀況 - 營運概況總表");
-                            const summaryTableHeaders = ["機台編號", "總投幣金額", "總出貨數量", "平均出貨成本(元/次)"];
-                            csvRows.push(summaryTableHeaders.join(","));
-                            summaryData.forEach(item => {
-                                csvRows.push([
-                                    item.id,
-                                    item.revenue,
-                                    item.payouts,
-                                    item.cost.toFixed(2)
-                                ].join(","));
-                            });
-                        }
-                        
+        // 快速選擇按鈕事件
+        selectAllReportsBtn.addEventListener('click', () => {
+            setReportCheckboxes(true, true, true, true, true, true);
+        });
 
-                        // Section 3: 每日記帳明細
-                        if (appData.history.length > 0) {
-                            csvRows.push("");
-                            csvRows.push("每日記帳明細");
-                            const historyHeaders = ["日期", "機台編號", "位置", "當日投幣數", "當日出貨數"];
-                            csvRows.push(historyHeaders.join(","));
-                            const sortedHistory = [...appData.history].sort((a, b) => b.date.localeCompare(a.date));
-                            sortedHistory.forEach(item => {
-                                csvRows.push([item.date, item.machineId, `"${item.location}"`, item.newPlays, item.newPayouts].join(","));
-                            });
-                        }
+        selectBasicReportsBtn.addEventListener('click', () => {
+            setReportCheckboxes(true, true, true, false, false, false);
+        });
 
-                        // Section 4: 圖表分析原始數據
-                        if (processedMachines.length > 0) {
-                            csvRows.push("");
-                            csvRows.push("圖表分析原始數據");
-                            csvRows.push("各機台總營收比較");
-                            csvRows.push(["機台編號", "位置", "總營收(元)"].join(","));
-                            [...processedMachines].sort((a, b) => b.revenue - a.revenue).forEach(item => {
-                                csvRows.push([item.id, `"${item.location}"`, item.revenue].join(","));
-                            });
-                            csvRows.push("");
-                            csvRows.push("各機台平均出貨成本");
-                            csvRows.push(["機台編號", "位置", "平均出貨成本(元/次)"].join(","));
-                            [...processedMachines].sort((a, b) => b.cost - a.cost).forEach(item => {
-                                csvRows.push([item.id, `"${item.location}"`, item.cost.toFixed(2)].join(","));
-                            });
-                        }
+        selectDetailedReportsBtn.addEventListener('click', () => {
+            setReportCheckboxes(true, true, true, true, true, true);
+        });
 
-                        csvContent += csvRows.join("\n");
-                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement("a");
-                        link.setAttribute("href", url);
-                        const today = new Date();
-                        const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-                        link.setAttribute("download", `${selectedStoreName}-全方位報告-${dateString}.csv`);
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        URL.revokeObjectURL(url);
-                        
-                        showFeedback("報告下載成功！", false);
-                        
-                    } catch (error) {
-                        console.error('下載報告時發生錯誤:', error);
-                        showFeedback("下載報告時發生錯誤，請稍後再試。", true);
-                    } finally {
-                        // 恢復按鈕狀態
-                        btn.innerHTML = originalText;
-                        btn.disabled = false;
-                    }
-                }, 100);
-                
-            } catch (error) {
-                console.error('準備下載報告時發生錯誤:', error);
-                showFeedback("準備下載報告時發生錯誤，請重新整理頁面後再試。", true);
+        clearAllReportsBtn.addEventListener('click', () => {
+            setReportCheckboxes(false, false, false, false, false, false);
+        });
+
+        // 模態視窗點擊外部關閉
+        customReportModal.addEventListener('click', (e) => {
+            if (e.target === customReportModal) {
+                hideCustomReportModal();
             }
         });
 
