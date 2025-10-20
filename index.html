@@ -613,7 +613,31 @@
                     
                     <!-- 成本設定區域 -->
                     <div class="bg-gray-700/50 rounded-xl p-6 mb-6">
-                        <h4 class="text-lg font-semibold text-white mb-4">🔧 成本設定</h4>
+                        <h4 class="text-lg font-semibold text-white mb-4">🔧 成本設定與計算範圍</h4>
+                        
+                        <!-- 計算範圍選擇 -->
+                        <div class="mb-6 p-4 bg-gray-800/50 rounded-lg">
+                            <label class="block text-sm font-medium text-gray-300 mb-3">📊 計算範圍選擇</label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <label class="flex items-center space-x-3 cursor-pointer p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition">
+                                    <input type="radio" name="profit-calculation-scope" value="total" checked 
+                                           class="text-blue-600 focus:ring-blue-500">
+                                    <div>
+                                        <span class="text-white font-medium">📈 總累積計算</span>
+                                        <p class="text-gray-400 text-sm">計算從營業開始至今的總盈利</p>
+                                    </div>
+                                </label>
+                                <label class="flex items-center space-x-3 cursor-pointer p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition">
+                                    <input type="radio" name="profit-calculation-scope" value="pending" 
+                                           class="text-blue-600 focus:ring-blue-500">
+                                    <div>
+                                        <span class="text-white font-medium">💰 本期待結帳計算</span>
+                                        <p class="text-gray-400 text-sm">僅計算本期待結帳金額的盈利</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-300 mb-2">🎁 每次出貨禮品成本 (元)</label>
@@ -751,8 +775,8 @@
                             <p id="max-checkout-amount" class="text-2xl font-bold text-white">0 元</p>
                         </div>
                         <div class="bg-orange-900/30 p-4 rounded-lg text-center">
-                            <p class="text-orange-400 text-sm">結帳頻率</p>
-                            <p id="checkout-frequency" class="text-2xl font-bold text-white">0 天/次</p>
+                            <p class="text-orange-400 text-sm">累計盈利</p>
+                            <p id="total-profit-summary" class="text-2xl font-bold text-white">0 元</p>
                         </div>
                     </div>
                     
@@ -761,10 +785,13 @@
                         <table class="w-full text-left">
                             <thead class="bg-gray-700/50 text-gray-300 uppercase text-sm sticky top-0">
                                 <tr>
-                                    <th class="p-4">結帳日期</th>
-                                    <th class="p-4 text-right">當期營收</th>
-                                    <th class="p-4 text-right">結帳時累積總營收</th>
-                                    <th class="p-4 text-right">操作</th>
+                                    <th class="p-3 text-xs">結帳日期</th>
+                                    <th class="p-3 text-right text-xs">當期營收</th>
+                                    <th class="p-3 text-right text-xs">當期出貨</th>
+                                    <th class="p-3 text-right text-xs">當期盈利</th>
+                                    <th class="p-3 text-right text-xs">累積總營收</th>
+                                    <th class="p-3 text-right text-xs">盈利計算</th>
+                                    <th class="p-3 text-right text-xs">操作</th>
                                 </tr>
                             </thead>
                             <tbody id="checkout-history-body" class="divide-y divide-gray-700"></tbody>
@@ -904,6 +931,10 @@
                         <input type="checkbox" id="include-checkout" class="report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
                         <span class="text-gray-300">💰 結帳紀錄</span>
                     </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="include-profit" class="report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                        <span class="text-gray-300">🧮 盈利計算</span>
+                    </label>
                 </div>
             </div>
             
@@ -980,6 +1011,10 @@
                         <input type="checkbox" id="store-include-period-summary" class="store-report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
                         <span class="text-gray-300">📅 期間營運統計</span>
                     </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="store-include-profit" class="store-report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                        <span class="text-gray-300">🧮 盈利計算分析</span>
+                    </label>
                 </div>
             </div>
             
@@ -1029,6 +1064,103 @@
                     </svg>
                     <span>下載門市報表</span>
                 </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 盈利詳情查看模態視窗 -->
+    <div id="profit-detail-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-lg p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold text-white mb-6">🧮 結帳期間盈利詳情</h3>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 營業數據 -->
+                <div class="bg-gray-700/50 rounded-xl p-4">
+                    <h4 class="text-lg font-semibold text-white mb-3">📊 營業數據</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-300">結帳日期</span>
+                            <span class="text-white font-semibold" id="detail-checkout-date">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-300">當期營收</span>
+                            <span class="text-green-400 font-semibold" id="detail-revenue">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-300">當期出貨</span>
+                            <span class="text-blue-400 font-semibold" id="detail-payouts">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 成本設定 -->
+                <div class="bg-gray-700/50 rounded-xl p-4">
+                    <h4 class="text-lg font-semibold text-white mb-3">🔧 成本設定</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-300">禮品成本</span>
+                            <span class="text-white font-semibold" id="detail-gift-cost">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-300">店租比例</span>
+                            <span class="text-white font-semibold" id="detail-rent-percentage">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-300">稅金比例</span>
+                            <span class="text-white font-semibold" id="detail-tax-percentage">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 成本明細 -->
+                <div class="bg-gray-700/50 rounded-xl p-4">
+                    <h4 class="text-lg font-semibold text-white mb-3">💸 成本明細</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-300">禮品成本</span>
+                            <span class="text-red-400 font-semibold" id="detail-total-gift-cost">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-300">店租費用</span>
+                            <span class="text-red-400 font-semibold" id="detail-total-rent-cost">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-300">稅金費用</span>
+                            <span class="text-red-400 font-semibold" id="detail-total-tax-cost">-</span>
+                        </div>
+                        <div class="flex justify-between border-t border-gray-600 pt-2">
+                            <span class="text-red-300 font-semibold">總成本</span>
+                            <span class="text-red-300 font-bold" id="detail-total-cost">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 盈利分析 -->
+                <div class="bg-gray-700/50 rounded-xl p-4">
+                    <h4 class="text-lg font-semibold text-white mb-3">📈 盈利分析</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-300">營收</span>
+                            <span class="text-green-400 font-semibold" id="detail-profit-revenue">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-300">成本</span>
+                            <span class="text-red-400 font-semibold" id="detail-profit-cost">-</span>
+                        </div>
+                        <div class="flex justify-between border-t border-gray-600 pt-2">
+                            <span class="text-white font-semibold">淨利潤</span>
+                            <span class="font-bold text-lg" id="detail-net-profit">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-300">利潤率</span>
+                            <span class="font-semibold" id="detail-profit-margin">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end mt-6">
+                <button id="close-profit-detail" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">關閉</button>
             </div>
         </div>
     </div>
@@ -1198,13 +1330,14 @@
             customReportModal.classList.add('hidden');
         }
 
-        function setReportCheckboxes(summary, details, operationSummary, history, analysis, checkout) {
+        function setReportCheckboxes(summary, details, operationSummary, history, analysis, checkout, profit) {
             document.getElementById('include-summary').checked = summary;
             document.getElementById('include-details').checked = details;
             document.getElementById('include-operation-summary').checked = operationSummary;
             document.getElementById('include-history').checked = history;
             document.getElementById('include-analysis').checked = analysis;
             document.getElementById('include-checkout').checked = checkout;
+            document.getElementById('include-profit').checked = profit;
         }
 
         async function generateCustomReport() {
@@ -1214,9 +1347,10 @@
             const includeHistory = document.getElementById('include-history').checked;
             const includeAnalysis = document.getElementById('include-analysis').checked;
             const includeCheckout = document.getElementById('include-checkout').checked;
+            const includeProfit = document.getElementById('include-profit').checked;
             const format = document.querySelector('input[name="report-format"]:checked').value;
 
-            if (!includeSummary && !includeDetails && !includeOperationSummary && !includeHistory && !includeAnalysis && !includeCheckout) {
+            if (!includeSummary && !includeDetails && !includeOperationSummary && !includeHistory && !includeAnalysis && !includeCheckout && !includeProfit) {
                 alert('請至少選擇一項報表內容！');
                 return;
             }
@@ -1311,6 +1445,66 @@
                         checkouts.forEach(checkout => {
                             reportData.push(`${checkout.checkoutDate},${checkout.checkoutAmount},${checkout.cumulativeRevenueAtCheckout || 0},${checkout.notes || ''}`);
                         });
+                        reportData.push('');
+                    }
+
+                    if (includeProfit) {
+                        reportData.push('=== 盈利計算分析 ===');
+                        
+                        // 載入成本設定
+                        const settings = JSON.parse(localStorage.getItem(`costSettings_${selectedGroupId}_${selectedStoreId}`) || '{}');
+                        const giftCost = settings.giftCost || 50;
+                        const rentPercentage = settings.rentPercentage || 30;
+                        const taxPercentage = settings.taxPercentage || 5;
+                        
+                        // 計算營業數據
+                        const processedMachines = appData.machines.map(processMachineData);
+                        const totalPlays = processedMachines.reduce((sum, m) => sum + m.effectivePlays, 0);
+                        const totalRevenue = totalPlays * COIN_VALUE;
+                        const totalPayouts = processedMachines.reduce((sum, m) => sum + m.effectivePayouts, 0);
+                        
+                        // 計算各項成本
+                        const totalGiftCost = totalPayouts * giftCost;
+                        const totalRentCost = totalRevenue * (rentPercentage / 100);
+                        const totalTaxCost = totalRevenue * (taxPercentage / 100);
+                        const totalCost = totalGiftCost + totalRentCost + totalTaxCost;
+                        
+                        // 計算盈利指標
+                        const netProfit = totalRevenue - totalCost;
+                        const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+                        const profitPerPayout = totalPayouts > 0 ? netProfit / totalPayouts : 0;
+                        
+                        // 成本設定部分
+                        reportData.push('成本設定');
+                        reportData.push('項目,數值');
+                        reportData.push(`每次出貨禮品成本,${giftCost} 元`);
+                        reportData.push(`店租比例,${rentPercentage}%`);
+                        reportData.push(`稅金比例,${taxPercentage}%`);
+                        reportData.push('');
+                        
+                        // 營業數據部分
+                        reportData.push('營業數據');
+                        reportData.push('項目,數值');
+                        reportData.push(`總營業額,${totalRevenue} 元`);
+                        reportData.push(`總出貨次數,${totalPayouts} 次`);
+                        reportData.push('');
+                        
+                        // 成本明細部分
+                        reportData.push('成本明細');
+                        reportData.push('項目,金額');
+                        reportData.push(`禮品成本,${totalGiftCost} 元`);
+                        reportData.push(`店租費用,${totalRentCost} 元`);
+                        reportData.push(`稅金費用,${totalTaxCost} 元`);
+                        reportData.push(`總成本,${totalCost} 元`);
+                        reportData.push('');
+                        
+                        // 盈利分析部分
+                        reportData.push('盈利分析');
+                        reportData.push('項目,數值');
+                        reportData.push(`淨利潤,${netProfit} 元`);
+                        reportData.push(`利潤率,${profitMargin.toFixed(2)}%`);
+                        reportData.push(`每次出貨淨利,${profitPerPayout.toFixed(2)} 元`);
+                        reportData.push('');
                     }
 
                     // 下載 CSV
@@ -1348,12 +1542,13 @@
             customStoreReportModal.classList.add('hidden');
         }
 
-        function setStoreReportCheckboxes(summary, machines, performance, topMachines, periodSummary) {
+        function setStoreReportCheckboxes(summary, machines, performance, topMachines, periodSummary, profit) {
             document.getElementById('store-include-summary').checked = summary;
             document.getElementById('store-include-machines').checked = machines;
             document.getElementById('store-include-performance').checked = performance;
             document.getElementById('store-include-top-machines').checked = topMachines;
             document.getElementById('store-include-period-summary').checked = periodSummary;
+            document.getElementById('store-include-profit').checked = profit;
         }
 
         async function generateCustomStoreReport() {
@@ -1362,6 +1557,7 @@
             const includePerformance = document.getElementById('store-include-performance').checked;
             const includeTopMachines = document.getElementById('store-include-top-machines').checked;
             const includePeriodSummary = document.getElementById('store-include-period-summary').checked;
+            const includeProfit = document.getElementById('store-include-profit').checked;
             const period = document.querySelector('input[name="store-report-period"]:checked').value;
             const date = document.getElementById('store-report-date').value;
 
@@ -1377,7 +1573,7 @@
                 period, date, COIN_VALUE, selectedGroupId, selectedGroupName
             });
 
-            if (!includeSummary && !includeMachines && !includePerformance && !includeTopMachines && !includePeriodSummary) {
+            if (!includeSummary && !includeMachines && !includePerformance && !includeTopMachines && !includePeriodSummary && !includeProfit) {
                 alert('請至少選擇一項報表內容！');
                 return;
             }
@@ -1529,6 +1725,53 @@
                             } else {
                                 reportData.push('"1","無","無","0"');
                             }
+                            reportData.push('');
+                        }
+
+                        if (includeProfit && machines.length > 0) {
+                            // 載入該門市的成本設定
+                            const settings = JSON.parse(localStorage.getItem(`costSettings_${selectedGroupId}_${storeId}`) || '{}');
+                            const giftCost = settings.giftCost || 50;
+                            const rentPercentage = settings.rentPercentage || 30;
+                            const taxPercentage = settings.taxPercentage || 5;
+                            
+                            // 計算營業數據
+                            const processedMachines = machines.map(m => {
+                                const effectivePlays = Math.max(0, (m.plays || 0) - (m.initialPlays || 0));
+                                const effectivePayouts = Math.max(0, (m.payouts || 0) - (m.initialPayouts || 0));
+                                const revenue = effectivePlays * COIN_VALUE;
+                                return { ...m, effectivePlays, effectivePayouts, revenue };
+                            });
+
+                            const totalPlays = processedMachines.reduce((sum, m) => sum + m.effectivePlays, 0);
+                            const totalRevenue = totalPlays * COIN_VALUE;
+                            const totalPayouts = processedMachines.reduce((sum, m) => sum + m.effectivePayouts, 0);
+                            
+                            // 計算各項成本
+                            const totalGiftCost = totalPayouts * giftCost;
+                            const totalRentCost = totalRevenue * (rentPercentage / 100);
+                            const totalTaxCost = totalRevenue * (taxPercentage / 100);
+                            const totalCost = totalGiftCost + totalRentCost + totalTaxCost;
+                            
+                            // 計算盈利指標
+                            const netProfit = totalRevenue - totalCost;
+                            const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+                            const profitPerPayout = totalPayouts > 0 ? netProfit / totalPayouts : 0;
+                            
+                            reportData.push('盈利計算分析');
+                            reportData.push('項目,數值');
+                            reportData.push(`"成本設定 - 禮品成本","${giftCost} 元/次"`);
+                            reportData.push(`"成本設定 - 店租比例","${rentPercentage}%"`);
+                            reportData.push(`"成本設定 - 稅金比例","${taxPercentage}%"`);
+                            reportData.push(`"營業數據 - 總營業額","${totalRevenue} 元"`);
+                            reportData.push(`"營業數據 - 總出貨次數","${totalPayouts} 次"`);
+                            reportData.push(`"成本明細 - 禮品成本","${totalGiftCost} 元"`);
+                            reportData.push(`"成本明細 - 店租費用","${totalRentCost} 元"`);
+                            reportData.push(`"成本明細 - 稅金費用","${totalTaxCost} 元"`);
+                            reportData.push(`"成本明細 - 總成本","${totalCost} 元"`);
+                            reportData.push(`"盈利分析 - 淨利潤","${netProfit} 元"`);
+                            reportData.push(`"盈利分析 - 利潤率","${profitMargin.toFixed(2)}%"`);
+                            reportData.push(`"盈利分析 - 每次出貨淨利","${profitPerPayout.toFixed(2)} 元"`);
                             reportData.push('');
                         }
 
@@ -2392,10 +2635,61 @@
                 
                 showConfirmationModal(`您確定要結算本期營收 ${pendingAmount.toLocaleString()} 元嗎？`, async () => {
                      try {
+                        // 計算出貨數量和盈利數據
+                        const processedMachines = appData.machines.map(processMachineData);
+                        const totalPayouts = processedMachines.reduce((sum, m) => sum + m.effectivePayouts, 0);
+                        
+                        // 載入成本設定
+                        const settings = JSON.parse(localStorage.getItem(`costSettings_${selectedGroupId}_${selectedStoreId}`) || '{}');
+                        const giftCost = settings.giftCost || 50;
+                        const rentPercentage = settings.rentPercentage || 30;
+                        const taxPercentage = settings.taxPercentage || 5;
+                        
+                        // 計算各項成本（基於總營收）
+                        const totalGiftCost = totalPayouts * giftCost;
+                        const totalRentCost = currentTotalRevenue * (rentPercentage / 100);
+                        const totalTaxCost = currentTotalRevenue * (taxPercentage / 100);
+                        const totalCost = totalGiftCost + totalRentCost + totalTaxCost;
+                        const netProfit = currentTotalRevenue - totalCost;
+                        
+                        // 計算本期盈利（僅針對本期待結帳金額）
+                        let lastCheckoutPayouts = 0;
+                        if (!checkoutSnapshot.empty) {
+                            const lastCheckout = checkoutSnapshot.docs[0].data();
+                            lastCheckoutPayouts = lastCheckout.cumulativePayoutsAtCheckout || 0;
+                        }
+                        const pendingPayouts = totalPayouts - lastCheckoutPayouts;
+                        const pendingGiftCost = pendingPayouts * giftCost;
+                        const pendingRentCost = pendingAmount * (rentPercentage / 100);
+                        const pendingTaxCost = pendingAmount * (taxPercentage / 100);
+                        const pendingTotalCost = pendingGiftCost + pendingRentCost + pendingTaxCost;
+                        const pendingNetProfit = pendingAmount - pendingTotalCost;
+                        
                         const newCheckoutData = {
                             checkoutDate: firebase.firestore.FieldValue.serverTimestamp(),
                             checkoutAmount: pendingAmount,
-                            cumulativeRevenueAtCheckout: currentTotalRevenue
+                            cumulativeRevenueAtCheckout: currentTotalRevenue,
+                            // 新增出貨數量記錄
+                            checkoutPayouts: pendingPayouts,
+                            cumulativePayoutsAtCheckout: totalPayouts,
+                            // 新增總盈利計算
+                            totalProfit: {
+                                giftCost: totalGiftCost,
+                                rentCost: totalRentCost,
+                                taxCost: totalTaxCost,
+                                totalCost: totalCost,
+                                netProfit: netProfit,
+                                costSettings: { giftCost, rentPercentage, taxPercentage }
+                            },
+                            // 新增本期盈利計算
+                            periodProfit: {
+                                giftCost: pendingGiftCost,
+                                rentCost: pendingRentCost,
+                                taxCost: pendingTaxCost,
+                                totalCost: pendingTotalCost,
+                                netProfit: pendingNetProfit,
+                                payouts: pendingPayouts
+                            }
                         };
                         const newCheckoutRef = await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('checkouts').add(newCheckoutData);
                         
@@ -3071,24 +3365,54 @@
             const rentPercentage = parseFloat(document.getElementById('rent-percentage').value) || 30;
             const taxPercentage = parseFloat(document.getElementById('tax-percentage').value) || 5;
             
+            // 獲取計算範圍
+            const calculationScope = document.querySelector('input[name="profit-calculation-scope"]:checked').value;
+            
+            let calculationRevenue, calculationPayouts, scopeTitle;
+            
+            if (calculationScope === 'pending') {
+                // 計算待結帳期間的數據
+                const lastCheckoutData = JSON.parse(localStorage.getItem(`lastCheckout_${selectedGroupId}_${selectedStoreId}`) || '{}');
+                const lastCheckoutRevenue = lastCheckoutData.cumulativeRevenueAtCheckout || 0;
+                const lastCheckoutPayouts = lastCheckoutData.cumulativePayoutsAtCheckout || 0;
+                
+                calculationRevenue = totalRevenue - lastCheckoutRevenue;
+                calculationPayouts = totalPayouts - lastCheckoutPayouts;
+                scopeTitle = '本期待結帳';
+            } else {
+                // 總累積計算
+                calculationRevenue = totalRevenue;
+                calculationPayouts = totalPayouts;
+                scopeTitle = '總累積';
+            }
+            
             // 計算各項成本
-            const totalGiftCost = totalPayouts * giftCost;
-            const totalRentCost = totalRevenue * (rentPercentage / 100);
-            const totalTaxCost = totalRevenue * (taxPercentage / 100);
+            const totalGiftCost = calculationPayouts * giftCost;
+            const totalRentCost = calculationRevenue * (rentPercentage / 100);
+            const totalTaxCost = calculationRevenue * (taxPercentage / 100);
             const totalCost = totalGiftCost + totalRentCost + totalTaxCost;
             
             // 計算淨利潤
-            const netProfit = totalRevenue - totalCost;
-            const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-            const profitPerPayout = totalPayouts > 0 ? netProfit / totalPayouts : 0;
+            const netProfit = calculationRevenue - totalCost;
+            const profitMargin = calculationRevenue > 0 ? (netProfit / calculationRevenue) * 100 : 0;
+            const profitPerPayout = calculationPayouts > 0 ? netProfit / calculationPayouts : 0;
             
-            // 更新UI
+            // 更新UI - 顯示計算範圍
+            document.getElementById('profit-revenue').textContent = `${calculationRevenue.toLocaleString()} 元`;
+            document.getElementById('profit-payouts').textContent = `${calculationPayouts.toLocaleString()} 次`;
+            
+            // 更新成本明細標題以顯示計算範圍
+            const costDetailTitle = document.querySelector('.bg-gray-700\\/50 h4');
+            if (costDetailTitle && costDetailTitle.textContent.includes('成本明細')) {
+                costDetailTitle.textContent = `💸 成本明細 (${scopeTitle})`;
+            }
+            
             document.getElementById('total-gift-cost').textContent = `${totalGiftCost.toLocaleString()} 元`;
             document.getElementById('total-rent-cost').textContent = `${totalRentCost.toLocaleString()} 元`;
             document.getElementById('total-tax-cost').textContent = `${totalTaxCost.toLocaleString()} 元`;
             document.getElementById('total-cost').textContent = `${totalCost.toLocaleString()} 元`;
             
-            document.getElementById('profit-total-revenue').textContent = `${totalRevenue.toLocaleString()} 元`;
+            document.getElementById('profit-total-revenue').textContent = `${calculationRevenue.toLocaleString()} 元`;
             document.getElementById('profit-total-cost').textContent = `${totalCost.toLocaleString()} 元`;
             document.getElementById('net-profit').textContent = `${netProfit.toLocaleString()} 元`;
             document.getElementById('profit-net').textContent = `${netProfit.toLocaleString()} 元`;
@@ -3125,22 +3449,51 @@
                     const lastCheckout = checkouts[0];
                     lastCheckoutDateEl.textContent = new Date(lastCheckout.checkoutDate.toDate()).toLocaleString();
                     lastCheckoutRevenue = lastCheckout.cumulativeRevenueAtCheckout;
+                    
+                    // 保存最後結帳資訊到 localStorage 供盈利計算使用
+                    const lastCheckoutData = {
+                        cumulativeRevenueAtCheckout: lastCheckout.cumulativeRevenueAtCheckout,
+                        cumulativePayoutsAtCheckout: lastCheckout.cumulativePayoutsAtCheckout || 0,
+                        checkoutDate: lastCheckout.checkoutDate
+                    };
+                    localStorage.setItem(`lastCheckout_${selectedGroupId}_${selectedStoreId}`, JSON.stringify(lastCheckoutData));
 
                     checkouts.forEach((checkout, index) => {
                          const prevCheckoutDate = index < checkouts.length - 1 ? new Date(checkouts[index + 1].checkoutDate.toDate()).toLocaleString() : appData.startDate;
+                         
+                         // 取得當期出貨數量
+                         const currentPayouts = checkout.checkoutPayouts || 0;
+                         
+                         // 取得當期盈利信息
+                         const periodProfit = checkout.periodProfit || {};
+                         const periodNetProfit = periodProfit.netProfit || 0;
+                         const profitColor = periodNetProfit >= 0 ? 'text-green-400' : 'text-red-400';
+                         
+                         // 檢查是否有盈利計算數據
+                         const hasProfitData = checkout.periodProfit || checkout.totalProfit;
+                         
                         const row = `
                             <tr class="hover:bg-gray-700/50">
-                                <td class="p-4">${new Date(checkout.checkoutDate.toDate()).toLocaleString()}</td>
-                                <td class="p-4 text-right">${checkout.checkoutAmount.toLocaleString()} 元</td>
-                                <td class="p-4 text-right">${checkout.cumulativeRevenueAtCheckout.toLocaleString()} 元</td>
-                                <td class="p-4 text-right">
-                                    <button class="download-checkout-pdf-btn bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-1 px-3 rounded"
+                                <td class="p-3 text-sm">${new Date(checkout.checkoutDate.toDate()).toLocaleString()}</td>
+                                <td class="p-3 text-right text-sm font-semibold">${checkout.checkoutAmount.toLocaleString()} 元</td>
+                                <td class="p-3 text-right text-sm">${currentPayouts.toLocaleString()} 次</td>
+                                <td class="p-3 text-right text-sm font-semibold ${profitColor}">${periodNetProfit.toLocaleString()} 元</td>
+                                <td class="p-3 text-right text-sm text-gray-400">${checkout.cumulativeRevenueAtCheckout.toLocaleString()} 元</td>
+                                <td class="p-3 text-right text-sm">
+                                    ${hasProfitData ? 
+                                        `<button class="view-profit-detail-btn bg-purple-600 hover:bg-purple-700 text-white text-xs py-1 px-2 rounded mr-1"
+                                            data-checkout-data='${JSON.stringify(checkout)}'>詳情</button>` : 
+                                        '<span class="text-gray-500 text-xs">無數據</span>'
+                                    }
+                                </td>
+                                <td class="p-3 text-right">
+                                    <button class="download-checkout-pdf-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2 rounded"
                                         data-checkout-id="${checkout.id}"
                                         data-checkout-date="${new Date(checkout.checkoutDate.toDate()).toLocaleString()}"
                                         data-prev-checkout-date="${prevCheckoutDate}"
                                         data-amount="${checkout.checkoutAmount}"
                                         data-cumulative="${checkout.cumulativeRevenueAtCheckout}">
-                                        下載報告
+                                        報告
                                     </button>
                                 </td>
                             </tr>
@@ -3153,7 +3506,7 @@
                     renderCheckoutStats(checkouts);
                 } else {
                     lastCheckoutDateEl.textContent = '無 (以營業起始日為準)';
-                    checkoutHistoryBody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-gray-400">尚無結帳紀錄</td></tr>`;
+                    checkoutHistoryBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-gray-400">尚無結帳紀錄</td></tr>`;
                     
                     // 清空圖表和統計
                     clearCheckoutCharts();
@@ -3299,19 +3652,21 @@
             const avgAmount = totalAmount / totalCheckouts;
             const maxAmount = Math.max(...checkouts.map(c => c.checkoutAmount));
             
-            // 計算結帳頻率 (平均天數)
-            let frequency = 0;
-            if (checkouts.length > 1) {
-                const firstDate = new Date(checkouts[checkouts.length - 1].checkoutDate.toDate());
-                const lastDate = new Date(checkouts[0].checkoutDate.toDate());
-                const daysDiff = Math.ceil((lastDate - firstDate) / (1000 * 60 * 60 * 24));
-                frequency = Math.round(daysDiff / (checkouts.length - 1));
-            }
+            // 計算累計盈利 - 使用當期盈利記錄加總
+            const totalProfit = checkouts.reduce((sum, checkout) => {
+                const periodProfit = checkout.periodProfit || {};
+                return sum + (periodProfit.netProfit || 0);
+            }, 0);
 
             document.getElementById('total-checkouts').textContent = totalCheckouts.toLocaleString();
             document.getElementById('avg-checkout-amount').textContent = `${Math.round(avgAmount).toLocaleString()} 元`;
             document.getElementById('max-checkout-amount').textContent = `${maxAmount.toLocaleString()} 元`;
-            document.getElementById('checkout-frequency').textContent = frequency > 0 ? `${frequency} 天/次` : '無';
+            
+            // 更新累計盈利顯示
+            const profitColor = totalProfit >= 0 ? 'text-green-400' : 'text-red-400';
+            const totalProfitElement = document.getElementById('total-profit-summary');
+            totalProfitElement.textContent = `${totalProfit.toLocaleString()} 元`;
+            totalProfitElement.className = `text-2xl font-bold ${profitColor}`;
         }
 
         // 清空圖表
@@ -3336,7 +3691,8 @@
             document.getElementById('total-checkouts').textContent = '0';
             document.getElementById('avg-checkout-amount').textContent = '0 元';
             document.getElementById('max-checkout-amount').textContent = '0 元';
-            document.getElementById('checkout-frequency').textContent = '0 天/次';
+            document.getElementById('total-profit-summary').textContent = '0 元';
+            document.getElementById('total-profit-summary').className = 'text-2xl font-bold text-white';
         }
 
 
@@ -4195,19 +4551,19 @@
 
         // 快速選擇按鈕事件
         selectAllReportsBtn.addEventListener('click', () => {
-            setReportCheckboxes(true, true, true, true, true, true);
+            setReportCheckboxes(true, true, true, true, true, true, true);
         });
 
         selectBasicReportsBtn.addEventListener('click', () => {
-            setReportCheckboxes(true, true, true, false, false, false);
+            setReportCheckboxes(true, true, true, false, false, false, false);
         });
 
         selectDetailedReportsBtn.addEventListener('click', () => {
-            setReportCheckboxes(true, true, true, true, true, true);
+            setReportCheckboxes(true, true, true, true, true, true, true);
         });
 
         clearAllReportsBtn.addEventListener('click', () => {
-            setReportCheckboxes(false, false, false, false, false, false);
+            setReportCheckboxes(false, false, false, false, false, false, false);
         });
 
         // 模態視窗點擊外部關閉
@@ -4224,19 +4580,19 @@
 
         // 門市報表快速選擇按鈕事件
         selectAllStoreReportsBtn.addEventListener('click', () => {
-            setStoreReportCheckboxes(true, true, true, true, true);
+            setStoreReportCheckboxes(true, true, true, true, true, true);
         });
 
         selectBasicStoreReportsBtn.addEventListener('click', () => {
-            setStoreReportCheckboxes(true, true, false, false, false);
+            setStoreReportCheckboxes(true, true, false, false, false, false);
         });
 
         selectDetailedStoreReportsBtn.addEventListener('click', () => {
-            setStoreReportCheckboxes(true, true, true, true, true);
+            setStoreReportCheckboxes(true, true, true, true, true, true);
         });
 
         clearAllStoreReportsBtn.addEventListener('click', () => {
-            setStoreReportCheckboxes(false, false, false, false, false);
+            setStoreReportCheckboxes(false, false, false, false, false, false);
         });
 
         // 門市報表模態視窗點擊外部關閉
@@ -4273,6 +4629,83 @@
                 });
             }
         });
+
+        // 計算範圍變更事件
+        document.querySelectorAll('input[name="profit-calculation-scope"]').forEach(radio => {
+            radio.addEventListener('change', calculateProfit);
+        });
+
+        // 盈利詳情查看事件
+        const profitDetailModal = document.getElementById('profit-detail-modal');
+        const closeProfitDetailBtn = document.getElementById('close-profit-detail');
+
+        if (closeProfitDetailBtn) {
+            closeProfitDetailBtn.addEventListener('click', () => {
+                profitDetailModal.classList.add('hidden');
+            });
+        }
+
+        // 結帳歷史表格中的盈利詳情按鈕事件
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('view-profit-detail-btn')) {
+                const checkoutData = JSON.parse(e.target.dataset.checkoutData);
+                showProfitDetail(checkoutData);
+            }
+        });
+
+        function showProfitDetail(checkout) {
+            const periodProfit = checkout.periodProfit || {};
+            const totalProfit = checkout.totalProfit || {};
+            
+            // 營業數據
+            document.getElementById('detail-checkout-date').textContent = 
+                new Date(checkout.checkoutDate.toDate()).toLocaleString();
+            document.getElementById('detail-revenue').textContent = 
+                `${(checkout.checkoutAmount || 0).toLocaleString()} 元`;
+            document.getElementById('detail-payouts').textContent = 
+                `${(checkout.checkoutPayouts || 0).toLocaleString()} 次`;
+            
+            // 成本設定
+            const costSettings = totalProfit.costSettings || {};
+            document.getElementById('detail-gift-cost').textContent = 
+                `${costSettings.giftCost || 0} 元/次`;
+            document.getElementById('detail-rent-percentage').textContent = 
+                `${costSettings.rentPercentage || 0}%`;
+            document.getElementById('detail-tax-percentage').textContent = 
+                `${costSettings.taxPercentage || 0}%`;
+            
+            // 成本明細 (使用當期數據)
+            document.getElementById('detail-total-gift-cost').textContent = 
+                `${(periodProfit.giftCost || 0).toLocaleString()} 元`;
+            document.getElementById('detail-total-rent-cost').textContent = 
+                `${(periodProfit.rentCost || 0).toLocaleString()} 元`;
+            document.getElementById('detail-total-tax-cost').textContent = 
+                `${(periodProfit.taxCost || 0).toLocaleString()} 元`;
+            document.getElementById('detail-total-cost').textContent = 
+                `${(periodProfit.totalCost || 0).toLocaleString()} 元`;
+            
+            // 盈利分析
+            document.getElementById('detail-profit-revenue').textContent = 
+                `${(checkout.checkoutAmount || 0).toLocaleString()} 元`;
+            document.getElementById('detail-profit-cost').textContent = 
+                `${(periodProfit.totalCost || 0).toLocaleString()} 元`;
+                
+            const netProfit = periodProfit.netProfit || 0;
+            const profitColor = netProfit >= 0 ? 'text-green-400' : 'text-red-400';
+            const profitMargin = checkout.checkoutAmount > 0 ? 
+                (netProfit / checkout.checkoutAmount) * 100 : 0;
+                
+            document.getElementById('detail-net-profit').textContent = 
+                `${netProfit.toLocaleString()} 元`;
+            document.getElementById('detail-net-profit').className = 
+                `font-bold text-lg ${profitColor}`;
+            document.getElementById('detail-profit-margin').textContent = 
+                `${profitMargin.toFixed(2)}%`;
+            document.getElementById('detail-profit-margin').className = 
+                `font-semibold ${profitColor}`;
+            
+            profitDetailModal.classList.remove('hidden');
+        }
 
         // 下載結帳報表 CSV
         downloadCheckoutCsvBtn.addEventListener('click', async () => {
