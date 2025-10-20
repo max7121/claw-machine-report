@@ -275,7 +275,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
                         </svg>
-                        <span>下載報表</span>
+                        <span>自定義門市報表</span>
                     </button>
                 </div>
             </div>
@@ -831,6 +831,93 @@
         </div>
     </div>
     
+    <!-- Custom Store Report Modal -->
+    <div id="custom-store-report-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <h3 class="text-xl font-bold text-white mb-6">自定義門市報表內容</h3>
+            
+            <!-- 門市選擇提示 -->
+            <div class="mb-4 p-3 bg-blue-900/50 rounded-lg">
+                <p class="text-blue-300 text-sm">請先在門市列表中勾選要包含在報表中的門市</p>
+            </div>
+            
+            <!-- 報表內容選擇 -->
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-white mb-3">選擇報表內容</h4>
+                <div class="space-y-2">
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="store-include-summary" class="store-report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" checked>
+                        <span class="text-gray-300">📊 門市營業摘要</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="store-include-machines" class="store-report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" checked>
+                        <span class="text-gray-300">🎰 各門市機台明細</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="store-include-performance" class="store-report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                        <span class="text-gray-300">📈 門市績效比較</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="store-include-top-machines" class="store-report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                        <span class="text-gray-300">🏆 各門市優績機台</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="store-include-period-summary" class="store-report-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                        <span class="text-gray-300">📅 期間營運統計</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- 報表期間選擇 -->
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-white mb-3">報表期間</h4>
+                <div class="space-y-2">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="store-report-period" value="all" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500" checked>
+                        <span class="text-gray-300">全部期間</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="store-report-period" value="monthly" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500">
+                        <span class="text-gray-300">月報</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="store-report-period" value="quarterly" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500">
+                        <span class="text-gray-300">季報</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="store-report-period" value="yearly" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500">
+                        <span class="text-gray-300">年報</span>
+                    </label>
+                </div>
+                <div class="mt-2">
+                    <input type="date" id="store-report-date" class="bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 w-full" title="報表基準日期">
+                </div>
+            </div>
+            
+            <!-- 快速選擇按鈕 -->
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-white mb-3">快速選擇</h4>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" id="select-all-store-reports" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">全選</button>
+                    <button type="button" id="select-basic-store-reports" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">基本報表</button>
+                    <button type="button" id="select-detailed-store-reports" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm">詳細報表</button>
+                    <button type="button" id="clear-all-store-reports" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm">清空</button>
+                </div>
+            </div>
+            
+            <!-- 操作按鈕 -->
+            <div class="flex justify-end gap-4">
+                <button type="button" id="custom-store-report-cancel" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">取消</button>
+                <button type="button" id="custom-store-report-download" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    <span>下載門市報表</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <!-- PDF Loader Overlay -->
     <div id="pdf-loader-overlay" class="fixed inset-0 bg-black bg-opacity-75 flex-col items-center justify-center hidden z-50">
         <svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -965,6 +1052,15 @@
         const selectDetailedReportsBtn = document.getElementById('select-detailed-reports');
         const clearAllReportsBtn = document.getElementById('clear-all-reports');
 
+        // 自定義門市報表模態視窗元素
+        const customStoreReportModal = document.getElementById('custom-store-report-modal');
+        const customStoreReportDownloadBtn = document.getElementById('custom-store-report-download');
+        const customStoreReportCancelBtn = document.getElementById('custom-store-report-cancel');
+        const selectAllStoreReportsBtn = document.getElementById('select-all-store-reports');
+        const selectBasicStoreReportsBtn = document.getElementById('select-basic-store-reports');
+        const selectDetailedStoreReportsBtn = document.getElementById('select-detailed-store-reports');
+        const clearAllStoreReportsBtn = document.getElementById('clear-all-store-reports');
+
 
         // --- MODAL FUNCTIONS ---
         function showConfirmationModal(message, onConfirm) {
@@ -1032,9 +1128,9 @@
                         reportData.push('統計項目,數值');
                         reportData.push(`門市名稱,${storeName}`);
                         reportData.push(`統計期間,${appData.startDate} ~ ${new Date().toISOString().split('T')[0]}`);
-                        reportData.push(`總投幣次數,${totalPlays.toLocaleString()}`);
-                        reportData.push(`總營業額,${totalRevenue.toLocaleString()}`);
-                        reportData.push(`總出貨次數,${totalPayouts.toLocaleString()}`);
+                        reportData.push(`總投幣次數,${totalPlays}`);
+                        reportData.push(`總營業額,${totalRevenue}`);
+                        reportData.push(`總出貨次數,${totalPayouts}`);
                         reportData.push(`平均出貨成本,${avgCost.toFixed(2)}`);
                         reportData.push('');
                     }
@@ -1121,6 +1217,256 @@
 
             } catch (error) {
                 console.error('生成自定義報表時發生錯誤:', error);
+                showFeedback('報表生成失敗，請稍後再試。', true);
+            } finally {
+                pdfLoaderOverlay.classList.add('hidden');
+                pdfLoaderOverlay.classList.remove('flex');
+            }
+        }
+
+        // --- CUSTOM STORE REPORT FUNCTIONS ---
+        function showCustomStoreReportModal() {
+            customStoreReportModal.classList.remove('hidden');
+        }
+
+        function hideCustomStoreReportModal() {
+            customStoreReportModal.classList.add('hidden');
+        }
+
+        function setStoreReportCheckboxes(summary, machines, performance, topMachines, periodSummary) {
+            document.getElementById('store-include-summary').checked = summary;
+            document.getElementById('store-include-machines').checked = machines;
+            document.getElementById('store-include-performance').checked = performance;
+            document.getElementById('store-include-top-machines').checked = topMachines;
+            document.getElementById('store-include-period-summary').checked = periodSummary;
+        }
+
+        async function generateCustomStoreReport() {
+            const includeSummary = document.getElementById('store-include-summary').checked;
+            const includeMachines = document.getElementById('store-include-machines').checked;
+            const includePerformance = document.getElementById('store-include-performance').checked;
+            const includeTopMachines = document.getElementById('store-include-top-machines').checked;
+            const includePeriodSummary = document.getElementById('store-include-period-summary').checked;
+            const period = document.querySelector('input[name="store-report-period"]:checked').value;
+            const date = document.getElementById('store-report-date').value;
+
+            // 檢查必要的全域變數
+            if (!selectedGroupId) {
+                alert('錯誤：未選擇群組，請重新選擇群組！');
+                console.error('selectedGroupId 未設定:', selectedGroupId);
+                return;
+            }
+
+            console.log('自定義門市報表參數:', {
+                includeSummary, includeMachines, includePerformance, includeTopMachines, includePeriodSummary,
+                period, date, COIN_VALUE, selectedGroupId, selectedGroupName
+            });
+
+            if (!includeSummary && !includeMachines && !includePerformance && !includeTopMachines && !includePeriodSummary) {
+                alert('請至少選擇一項報表內容！');
+                return;
+            }
+
+            // 檢查選中的門市
+            const selectedStoreCheckboxes = document.querySelectorAll('.store-checkbox:checked');
+            if (selectedStoreCheckboxes.length === 0) {
+                alert('請先在門市列表中勾選要包含的門市！');
+                return;
+            }
+            
+            console.log('選中的門市數量:', selectedStoreCheckboxes.length);
+            console.log('選中的門市資訊:', Array.from(selectedStoreCheckboxes).map(cb => ({
+                value: cb.value,
+                storeName: cb.dataset.storeName
+            })));
+
+            pdfLoaderText.textContent = '正在生成自定義門市報表...';
+            pdfLoaderOverlay.classList.remove('hidden');
+            pdfLoaderOverlay.classList.add('flex');
+
+            try {
+                let reportData = [];
+                const timestamp = new Date().toLocaleString('zh-TW');
+                const periodText = document.querySelector(`input[name="store-report-period"]:checked`).parentElement.textContent.trim();
+
+                // 用來收集所有門市的總營業額
+                let allStoresRevenue = 0;
+                let storeRevenueData = [];
+
+                reportData.push('=== 自定義門市報表 ===');
+                reportData.push(`報表產生時間：${timestamp}`);
+                reportData.push(`報表期間：${periodText}${date ? ` (${date})` : ''}`);
+                reportData.push(`包含門市數："${selectedStoreCheckboxes.length}"`);
+                
+                // 先計算總營業額 (會在後面迴圈中填入)
+                reportData.push('');
+
+                // 為每個選中的門市生成報表
+                for (const checkbox of selectedStoreCheckboxes) {
+                    const storeId = checkbox.value;
+                    const storeName = checkbox.dataset.storeName;
+                    
+                    console.log(`處理門市: ID=${storeId}, Name=${storeName}`);
+
+                    reportData.push(`=== ${storeName} ===`);
+
+                    try {
+                        // 獲取門市資料  
+                        console.log(`正在獲取門市資料 - GroupId: ${selectedGroupId}, StoreId: ${storeId}, StoreName: ${storeName}`);
+                        
+                        // 使用完整的 Firebase 路徑和錯誤處理
+                        const storeRef = db.collection('groups').doc(selectedGroupId).collection('stores').doc(storeId);
+                        const machinesRef = storeRef.collection('machines');
+                        
+                        // 先檢查門市是否存在
+                        const storeDoc = await storeRef.get();
+                        if (!storeDoc.exists) {
+                            console.error(`門市不存在: ${storeId}`);
+                            throw new Error(`門市 ${storeName} 不存在於資料庫中`);
+                        }
+                        
+                        // 獲取機台資料
+                        const machinesSnapshot = await machinesRef.get();
+                        console.log(`機台資料查詢結果 - 文檔數量: ${machinesSnapshot.docs.length}, 是否為空: ${machinesSnapshot.empty}`);
+                        
+                        if (machinesSnapshot.empty) {
+                            console.log(`門市 ${storeName} 沒有機台資料`);
+                        }
+                        
+                        const machines = machinesSnapshot.docs.map(doc => {
+                            const data = doc.data();
+                            console.log(`機台原始資料 (${doc.id}):`, data);
+                            
+                            // 確保所有必要字段存在且為數字
+                            const machine = {
+                                docId: doc.id,
+                                id: data.id || doc.id,
+                                location: data.location || '未知位置',
+                                plays: Number(data.plays) || 0,
+                                payouts: Number(data.payouts) || 0,
+                                initialPlays: Number(data.initialPlays) || 0,
+                                initialPayouts: Number(data.initialPayouts) || 0
+                            };
+                            
+                            console.log(`機台轉換後資料 (${doc.id}):`, machine);
+                            return machine;
+                        });
+                        
+                        console.log(`門市 ${storeName} 最終機台資料:`, machines);
+                        console.log(`機台數量: ${machines.length}`);
+                        
+                        if (includeSummary) {
+                            const processedMachines = machines.map(m => {
+                                const effectivePlays = Math.max(0, (m.plays || 0) - (m.initialPlays || 0));
+                                const effectivePayouts = Math.max(0, (m.payouts || 0) - (m.initialPayouts || 0));
+                                const revenue = effectivePlays * COIN_VALUE;
+                                const cost = effectivePayouts > 0 ? revenue / effectivePayouts : 0;
+                                return { ...m, effectivePlays, effectivePayouts, revenue, cost };
+                            });
+
+                            console.log(`門市 ${storeName} 處理後機台資料:`, processedMachines);
+
+                            const totalPlays = processedMachines.reduce((sum, m) => sum + m.effectivePlays, 0);
+                            const totalRevenue = totalPlays * COIN_VALUE;
+                            const totalPayouts = processedMachines.reduce((sum, m) => sum + m.effectivePayouts, 0);
+                            const avgCost = totalPayouts > 0 ? totalRevenue / totalPayouts : 0;
+
+                            // 累加到總營業額
+                            allStoresRevenue += totalRevenue;
+                            storeRevenueData.push({name: storeName, revenue: totalRevenue});
+
+                            reportData.push('營業摘要');
+                            reportData.push('項目,數值');
+                            reportData.push(`機台數量,"${machines.length}"`);
+                            reportData.push(`總投幣次數,"${totalPlays}"`);
+                            reportData.push(`總營業額,"${totalRevenue}"`);
+                            reportData.push(`總出貨次數,"${totalPayouts}"`);
+                            reportData.push(`平均出貨成本,"${avgCost.toFixed(2)}"`);
+                            reportData.push('');
+                        }
+
+                        if (includeMachines && machines.length > 0) {
+                            reportData.push('機台明細');
+                            reportData.push('機台編號,位置,投幣次數,營業額,出貨次數,平均成本');
+                            machines.forEach(machine => {
+                                const effectivePlays = Math.max(0, (machine.plays || 0) - (machine.initialPlays || 0));
+                                const effectivePayouts = Math.max(0, (machine.payouts || 0) - (machine.initialPayouts || 0));
+                                const revenue = effectivePlays * COIN_VALUE;
+                                const cost = effectivePayouts > 0 ? revenue / effectivePayouts : 0;
+                                reportData.push(`"${machine.id || '未知'}","${machine.location || '未知'}","${effectivePlays}","${revenue}","${effectivePayouts}","${cost.toFixed(2)}"`);
+                            });
+                            reportData.push('');
+                        }
+
+                        if (includeTopMachines && machines.length > 0) {
+                            reportData.push('優績機台 TOP 3');
+                            reportData.push('排名,機台編號,位置,營業額');
+                            const processedMachines = machines.map(m => {
+                                const effectivePlays = Math.max(0, (m.plays || 0) - (m.initialPlays || 0));
+                                const revenue = effectivePlays * COIN_VALUE;
+                                return { ...m, revenue };
+                            }).filter(m => m.revenue > 0); // 過濾掉營收為0的機台
+                            
+                            if (processedMachines.length > 0) {
+                                processedMachines.sort((a, b) => b.revenue - a.revenue).slice(0, 3).forEach((machine, index) => {
+                                    reportData.push(`"${index + 1}","${machine.id || '未知'}","${machine.location || '未知'}","${machine.revenue}"`);
+                                });
+                            } else {
+                                reportData.push('"1","無","無","0"');
+                            }
+                            reportData.push('');
+                        }
+
+                    } catch (error) {
+                        console.error(`獲取門市 ${storeName} 資料失敗:`, error);
+                        console.error('詳細錯誤資訊:', {
+                            selectedGroupId,
+                            storeId,
+                            storeName,
+                            error: error.message,
+                            stack: error.stack
+                        });
+                        reportData.push(`資料獲取失敗: ${error.message}`);
+                        reportData.push('');
+                    }
+                }
+
+                // 在第5行插入總營業額資訊
+                reportData.splice(4, 0, `所有門市總營業額："${allStoresRevenue}"`);
+
+                // 總營業額統計
+                reportData.push('=== 總營業額統計 ===');
+                reportData.push('項目,金額');
+                storeRevenueData.forEach(store => {
+                    reportData.push(`"${store.name}","${store.revenue}"`);
+                });
+                reportData.push(`"所有門市總營業額","${allStoresRevenue}"`);
+                reportData.push('');
+
+                // 門市績效比較
+                if (includePerformance && selectedStoreCheckboxes.length > 1) {
+                    reportData.push('=== 門市績效比較 ===');
+                    reportData.push('門市名稱,機台數量,總營業額,平均每台營收');
+                    storeRevenueData.forEach(store => {
+                        reportData.push(`"${store.name}","--","${store.revenue}","--"`);
+                    });
+                    reportData.push('');
+                }
+
+                // 下載 CSV
+                const csvContent = reportData.join('\n');
+                const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `自定義門市報表_${selectedGroupName}_${new Date().toISOString().split('T')[0]}.csv`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+
+                hideCustomStoreReportModal();
+                showFeedback('自定義門市報表下載成功！', false);
+
+            } catch (error) {
+                console.error('生成門市報表時發生錯誤:', error);
                 showFeedback('報表生成失敗，請稍後再試。', true);
             } finally {
                 pdfLoaderOverlay.classList.add('hidden');
@@ -1687,31 +2033,75 @@
                 return;
             }
 
-            const oldInitialPlays = originalMachine.initialPlays || 0;
-            const oldInitialPayouts = originalMachine.initialPayouts || 0;
-
-            // Calculate the difference introduced by changing the initial values
-            const playsDiff = newInitialPlays - oldInitialPlays;
-            const payoutsDiff = newInitialPayouts - oldInitialPayouts;
-
-            // Adjust the current total plays and payouts
-            const newTotalPlays = originalMachine.plays + playsDiff;
-            const newTotalPayouts = originalMachine.payouts + payoutsDiff;
+            // 正確邏輯：只更新起始值，不改變總累積數值
+            // 營收計算：有效營收 = 總累積 - 新起始值
+            // 這樣修改起始值時，營收會正確地重新計算
             
             try {
+                // 顯示處理中狀態
+                const submitBtn = editMachineForm.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                submitBtn.textContent = '更新中...';
+                submitBtn.disabled = true;
+
+                // 更新機台資料 - 只更新起始值，總數保持不變
                 await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('machines').doc(docId).update({
                     id: newId,
                     location: newLocation,
                     initialPlays: newInitialPlays,
-                    initialPayouts: newInitialPayouts,
-                    plays: newTotalPlays,
-                    payouts: newTotalPayouts
+                    initialPayouts: newInitialPayouts
+                    // plays 和 payouts 保持原值，不更新
                 });
+
+                // 關閉編輯視窗
                 editMachineModal.classList.add('hidden');
-                loadStoreData();
+                
+                // 重新載入並重新計算所有資料
+                await loadStoreData();
+                
+                // 強制更新所有UI元件以反映新的計算結果
+                setTimeout(() => {
+                    updateUI();
+                    
+                    // 確保所有頁面的數據都被更新
+                    const activeTab = document.querySelector('.tab-btn.active');
+                    if (activeTab) {
+                        const tabName = activeTab.dataset.tab;
+                        switch(tabName) {
+                            case 'summary':
+                                renderSummaryTab();
+                                break;
+                            case 'analysis':
+                                renderAnalysisTab();
+                                break;
+                            case 'statistics':
+                                renderStatisticsTab();
+                                break;
+                            case 'charts':
+                                renderChartsTab();
+                                break;
+                            case 'checkout':
+                                renderCheckoutTab();
+                                break;
+                        }
+                    }
+                    
+                    console.log('機台資料更新完成，所有統計數據已重新計算');
+                }, 200);
+
+                showFeedback('✅ 機台起始值更新成功！<br>📊 營收計算基準已調整：營收 = 歷史累積 - 新起始值', false);
+
+                // 恢復按鈕狀態
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+                
             } catch (error) {
                 console.error("更新機台資訊失敗：", error);
-                alert('更新失敗，請稍後再試。');
+                showFeedback('更新機台資訊失敗，請稍後再試。', true);
+                
+                // 恢復按鈕狀態
+                const submitBtn = editMachineForm.querySelector('button[type="submit"]');
+                submitBtn.disabled = false;
             }
         }
 
@@ -1977,7 +2367,7 @@
                                 <div class="card-base store-card-main cursor-pointer flex-grow" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}">
                                     <h3 class="text-xl font-bold text-white truncate">${store.name}</h3>
                                 </div>
-                                <input type="checkbox" class="store-checkbox h-6 w-6 bg-gray-800 border-gray-600 rounded text-indigo-500 focus:ring-indigo-600 shrink-0 ml-3 cursor-pointer" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}" checked>
+                                <input type="checkbox" class="store-checkbox h-6 w-6 bg-gray-800 border-gray-600 rounded text-indigo-500 focus:ring-indigo-600 shrink-0 ml-3 cursor-pointer" value="${store.id}" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}" checked>
                             </div>
                         </div>
                         ${adminButtons}
@@ -3246,7 +3636,20 @@
         editStoreCancelBtn.addEventListener('click', () => editStoreModal.classList.add('hidden'));
 
         addMachineForm.addEventListener('submit', handleAddMachine);
-        downloadAllStoresBtn.addEventListener('click', handleDownloadAllStoresReport);
+        downloadAllStoresBtn.addEventListener('click', () => {
+            if (!selectedGroupId) {
+                alert('請先選擇單位群組');
+                return;
+            }
+            
+            const selectedStoreCheckboxes = document.querySelectorAll('.store-checkbox:checked');
+            if (selectedStoreCheckboxes.length === 0) {
+                alert('請先勾選要包含在報表中的門市');
+                return;
+            }
+            
+            showCustomStoreReportModal();
+        });
         trendChartDatePicker.addEventListener('change', renderTrendChartByDate);
 
         locationPresets.addEventListener('click', (e) => {
@@ -3610,6 +4013,35 @@
         customReportModal.addEventListener('click', (e) => {
             if (e.target === customReportModal) {
                 hideCustomReportModal();
+            }
+        });
+
+        // 自定義門市報表模態視窗事件監聽器
+        customStoreReportCancelBtn.addEventListener('click', hideCustomStoreReportModal);
+        
+        customStoreReportDownloadBtn.addEventListener('click', generateCustomStoreReport);
+
+        // 門市報表快速選擇按鈕事件
+        selectAllStoreReportsBtn.addEventListener('click', () => {
+            setStoreReportCheckboxes(true, true, true, true, true);
+        });
+
+        selectBasicStoreReportsBtn.addEventListener('click', () => {
+            setStoreReportCheckboxes(true, true, false, false, false);
+        });
+
+        selectDetailedStoreReportsBtn.addEventListener('click', () => {
+            setStoreReportCheckboxes(true, true, true, true, true);
+        });
+
+        clearAllStoreReportsBtn.addEventListener('click', () => {
+            setStoreReportCheckboxes(false, false, false, false, false);
+        });
+
+        // 門市報表模態視窗點擊外部關閉
+        customStoreReportModal.addEventListener('click', (e) => {
+            if (e.target === customStoreReportModal) {
+                hideCustomStoreReportModal();
             }
         });
 
