@@ -490,6 +490,26 @@
                                 原目標伺服器 (update.feiloli.com.tw:5438) 目前無法連線，可定期點擊「🔄 重試原伺服器」檢查是否恢復。
                             </p>
                         </div>
+
+                        <!-- HTTPS 安全警告 -->
+                        <div id="https-warning" class="mt-4 p-3 bg-orange-900/30 border border-orange-500/50 rounded-lg hidden">
+                            <div class="flex items-start space-x-2">
+                                <span class="text-orange-400 text-xl">⚠️</span>
+                                <div class="flex-1">
+                                    <p class="text-orange-400 text-sm font-medium">HTTPS 安全限制</p>
+                                    <p class="text-gray-400 text-xs mt-1">
+                                        偵測到頁面使用 HTTPS 載入。基於瀏覽器安全政策，系統會自動將 <code class="bg-gray-800 px-1 rounded">ws://</code> 轉換為 <code class="bg-gray-800 px-1 rounded">wss://</code> (安全 WebSocket)。
+                                    </p>
+                                    <p class="text-yellow-400 text-xs mt-1">
+                                        💡 <strong>建議方案：</strong>
+                                    </p>
+                                    <ul class="text-xs text-gray-400 ml-4 mt-1 list-disc">
+                                        <li>使用支援 wss:// 的伺服器（如 HiveMQ）</li>
+                                        <li>或透過 HTTP (非 HTTPS) 開啟此頁面以使用 ws:// 連線</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- MQTT 讀取資料功能 -->
@@ -1359,6 +1379,15 @@
         }
         // --- END: Firebase Initialization ---
 
+        // 偵測 HTTPS 並顯示警告
+        if (window.location.protocol === 'https:') {
+            const httpsWarning = document.getElementById('https-warning');
+            if (httpsWarning) {
+                httpsWarning.classList.remove('hidden');
+                console.warn('⚠️ 頁面使用 HTTPS，WebSocket 連線將自動從 ws:// 轉換為 wss://');
+            }
+        }
+
         // --- MQTT 相關變數和功能 ---
         let mqttClient = null;
         let mqttConnected = false;
@@ -1799,35 +1828,46 @@
                 updateMqttStatus(false, '建立連線中...');
                 console.log('開始連線到:', brokerUrl);
                 
+                // 自動偵測並修正協議（HTTPS 頁面需要使用 wss://）
+                let finalBrokerUrl = brokerUrl;
+                if (window.location.protocol === 'https:' && brokerUrl.startsWith('ws://')) {
+                    finalBrokerUrl = brokerUrl.replace('ws://', 'wss://');
+                    console.log('⚠️ 偵測到 HTTPS 頁面，自動將 ws:// 轉換為 wss://');
+                    console.log('原始 URL:', brokerUrl);
+                    console.log('修正後 URL:', finalBrokerUrl);
+                    addCommandLog('error', '⚠️ HTTPS 安全限制：自動將 ws:// 轉為 wss://');
+                }
+                
                 // 根據不同的伺服器調整配置
                 let customConfig = {...mqttConfig};
                 
                 // HiveMQ 需要特殊配置
-                if (brokerUrl.includes('broker.hivemq.com')) {
+                if (finalBrokerUrl.includes('broker.hivemq.com')) {
                     customConfig = {
                         keepalive: 60,
                         clean: true,
                         reconnectPeriod: 5000,
-                        connectTimeout: 10000, // HiveMQ 需要較短的超時
+                        connectTimeout: 10000,
                         clientId: 'mqtt_client_' + Math.random().toString(16).substr(2, 8)
                     };
                     console.log('使用 HiveMQ 配置');
-                } else if (brokerUrl.includes('test.mosquitto.org')) {
+                } else if (finalBrokerUrl.includes('test.mosquitto.org')) {
                     customConfig.connectTimeout = 8000;
                     console.log('使用 Mosquitto 配置');
-                } else if (brokerUrl.includes('broker.emqx.io')) {
+                } else if (finalBrokerUrl.includes('broker.emqx.io')) {
                     customConfig.connectTimeout = 8000;
                     console.log('使用 EMQX 配置');
                 }
                 
                 // 創建 MQTT 客戶端
-                mqttClient = mqtt.connect(brokerUrl, customConfig);
+                console.log('最終連線 URL:', finalBrokerUrl);
+                mqttClient = mqtt.connect(finalBrokerUrl, customConfig);
                 console.log('MQTT 客戶端已創建');
                 
                 // 設置連線超時
                 const connectTimeout = setTimeout(function() {
                     if (!mqttConnected) {
-                        const isOriginalServer = brokerUrl.includes('update.feiloli.com.tw');
+                        const isOriginalServer = finalBrokerUrl.includes('update.feiloli.com.tw');
                         
                         console.error('❌ MQTT 連線超時 (30秒)');
                         
