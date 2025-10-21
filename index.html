@@ -417,42 +417,9 @@
                     </div>
                 </div>
                 <div id="machines" class="tab-content hidden">
-                    <!-- MQTT 連線設定區域 -->
+                    <!-- MQTT 連線設定 -->
                     <div class="bg-gray-900/50 p-4 rounded-lg mb-6">
-                        <h3 class="text-xl font-bold text-white mb-4">MQTT 即時同步設定</h3>
-                        
-                        <!-- 快速連線選項 -->
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-300 mb-2">⚡ 快速連線選項</label>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
-                                <button onclick="setMqttServer('hivemq')" class="px-3 py-2 bg-yellow-400 text-black rounded-lg hover:bg-yellow-500 transition-colors text-sm font-medium shadow-lg">
-                                    ⭐ HiveMQ 公開<br><span class="text-xs">(推薦測試)</span>
-                                </button>
-                                <button onclick="setMqttServer('test1')" class="px-3 py-2 bg-yellow-200 text-gray-800 rounded-lg hover:bg-yellow-300 transition-colors text-sm">
-                                    🧪 Eclipse<br><span class="text-xs">Mosquitto</span>
-                                </button>
-                                <button onclick="setMqttServer('test2')" class="px-3 py-2 bg-yellow-200 text-gray-800 rounded-lg hover:bg-yellow-300 transition-colors text-sm">
-                                    🧪 EMQX<br><span class="text-xs">公開伺服器</span>
-                                </button>
-                                <button onclick="setMqttServer('original')" class="px-3 py-2 bg-red-200 text-red-800 rounded-lg hover:bg-red-300 transition-colors text-sm">
-                                    ❌ 原伺服器<br><span class="text-xs">(目前無法使用)</span>
-                                </button>
-                            </div>
-                            <button onclick="retryOriginalServer()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-                                🔄 重試原伺服器連線測試
-                            </button>
-                        </div>
-
-                        <!-- 連線資訊提示 -->
-                        <div id="mqtt-server-info" class="mb-4 p-3 bg-green-900/30 border border-green-500/50 rounded-lg">
-                            <div class="flex items-start space-x-2">
-                                <span class="text-green-400 text-xl">✓</span>
-                                <div class="flex-1">
-                                    <p class="text-green-400 text-sm font-medium">✨ 已預設 HiveMQ 公開測試伺服器</p>
-                                    <p class="text-gray-400 text-xs mt-1">這是一個免費的公開 MQTT 伺服器，適合開發測試使用。直接點擊「連接 MQTT」即可開始！</p>
-                                </div>
-                            </div>
-                        </div>
+                        <h3 class="text-xl font-bold text-white mb-4">MQTT 即時同步</h3>
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                             <div>
@@ -472,6 +439,28 @@
                                 </button>
                             </div>
                         </div>
+                        
+                        <!-- 輪詢控制 -->
+                        <div class="mt-4 flex items-center justify-between bg-gray-800/50 p-3 rounded-lg">
+                            <div class="flex items-center space-x-4">
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" id="auto-poll-enabled" class="rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-sm text-gray-300">啟用自動輪詢所有機台</span>
+                                </label>
+                                <div class="flex items-center space-x-2">
+                                    <label class="text-sm text-gray-300">間隔：</label>
+                                    <select id="poll-interval" class="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-sm">
+                                        <option value="10000">10秒</option>
+                                        <option value="30000" selected>30秒</option>
+                                        <option value="60000">1分鐘</option>
+                                        <option value="300000">5分鐘</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button id="poll-all-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                                📊 立即輪詢所有機台
+                            </button>
+                        </div>
                         <div class="mt-4 flex items-center space-x-4">
                             <div class="flex items-center space-x-2">
                                 <div id="mqtt-status-indicator" class="w-3 h-3 bg-red-500 rounded-full"></div>
@@ -483,33 +472,7 @@
                             </div>
                         </div>
 
-                        <!-- 使用說明 -->
-                        <div class="mt-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
-                            <p class="text-blue-400 text-xs">
-                                <strong>💡 使用提示：</strong> HiveMQ 伺服器已確認可用，所有 MQTT 功能都可以正常測試。
-                                原目標伺服器 (update.feiloli.com.tw:5438) 目前無法連線，可定期點擊「🔄 重試原伺服器」檢查是否恢復。
-                            </p>
-                        </div>
 
-                        <!-- HTTPS 安全警告 -->
-                        <div id="https-warning" class="mt-4 p-3 bg-orange-900/30 border border-orange-500/50 rounded-lg hidden">
-                            <div class="flex items-start space-x-2">
-                                <span class="text-orange-400 text-xl">⚠️</span>
-                                <div class="flex-1">
-                                    <p class="text-orange-400 text-sm font-medium">HTTPS 安全限制</p>
-                                    <p class="text-gray-400 text-xs mt-1">
-                                        偵測到頁面使用 HTTPS 載入。基於瀏覽器安全政策，系統會自動將 <code class="bg-gray-800 px-1 rounded">ws://</code> 轉換為 <code class="bg-gray-800 px-1 rounded">wss://</code> (安全 WebSocket)。
-                                    </p>
-                                    <p class="text-yellow-400 text-xs mt-1">
-                                        💡 <strong>建議方案：</strong>
-                                    </p>
-                                    <ul class="text-xs text-gray-400 ml-4 mt-1 list-disc">
-                                        <li>使用支援 wss:// 的伺服器（如 HiveMQ）</li>
-                                        <li>或透過 HTTP (非 HTTPS) 開啟此頁面以使用 ws:// 連線</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- MQTT 讀取資料功能 -->
@@ -519,7 +482,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div>
                                 <label for="read-machine-mac" class="block text-sm font-medium text-gray-300 mb-1">機台 MAC 位址</label>
-                                <input type="text" id="read-machine-mac" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" placeholder="083A8DE1EC88" value="083A8DE1EC88">
+                                <input type="text" id="read-machine-mac" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" placeholder="083A8DE1ED14" value="083A8DE1ED14">
                                 <p class="text-xs text-gray-500 mt-1">機台 WiFi 小卡的 MAC 位址</p>
                             </div>
                             <div>
@@ -530,7 +493,7 @@
                                 </select>
                             </div>
                             <div class="flex items-end">
-                                <button id="send-read-command" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition" disabled>
+                                <button id="send-read-command" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition">
                                     📤 發送讀取命令
                                 </button>
                             </div>
@@ -544,45 +507,10 @@
                             </div>
                         </div>
 
-                        <!-- 使用步驟說明 -->
-                        <div class="mt-4 p-3 bg-purple-900/20 border border-purple-500/30 rounded-lg">
-                            <p class="text-purple-400 text-xs font-medium mb-2">📚 使用步驟：</p>
-                            <ol class="text-xs text-gray-400 space-y-1 ml-4 list-decimal">
-                                <li>確認上方 MQTT 連線狀態為「✅ 已連接」</li>
-                                <li>輸入要讀取的機台 MAC 位址（預設已填入測試位址）</li>
-                                <li>選擇天車 ID（左天車或右天車）</li>
-                                <li>點擊「📤 發送讀取命令」按鈕</li>
-                                <li>系統會發送 JSON 格式命令到主題 <code class="bg-gray-700 px-1 rounded">mqtt/s</code></li>
-                                <li>機台收到命令後會回傳 65 位元組的參數資料</li>
-                                <li>回傳資料會自動顯示在下方的命令記錄中</li>
-                            </ol>
-                        </div>
 
-                        <!-- 命令格式說明 -->
-                        <details class="mt-3">
-                            <summary class="text-xs text-blue-400 cursor-pointer hover:text-blue-300">🔍 點擊查看命令格式說明</summary>
-                            <div class="mt-2 p-3 bg-gray-800/50 rounded text-xs text-gray-400">
-                                <p class="font-medium text-gray-300 mb-2">發送格式 (JSON):</p>
-                                <pre class="bg-gray-900 p-2 rounded overflow-x-auto">{
-  "cmd": "readdata",
-  "mac": "083A8DE1EC88",
-  "floor": "1",
-  "devid": "1",
-  "taskid": "時間戳"
-}</pre>
-                                <p class="font-medium text-gray-300 mt-3 mb-2">回應格式 (JSON):</p>
-                                <pre class="bg-gray-900 p-2 rounded overflow-x-auto">{
-  "cmd": "re_readdata",
-  "mac": "ClientID",
-  "floor": 1,
-  "devid": 1,
-  "parm": "65位元組HEX資料",
-  "taskid": "相同的時間戳"
-}</pre>
-                                <p class="mt-2 text-yellow-400">💡 parm 欄位包含 Byte8~Byte72 的所有機台參數（投幣設定、遊戲參數、電壓、統計等）</p>
-                            </div>
-                        </details>
                     </div>
+
+
 
                     <h3 class="text-xl font-bold text-white mb-4">建立新機台</h3>
                     <form id="add-machine-form" class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end bg-gray-900/50 p-4 rounded-lg mb-6">
@@ -634,6 +562,8 @@
                                 <tr>
                                     <th class="p-4">機台編號</th>
                                     <th class="p-4">位置</th>
+                                    <th class="p-4">MAC 位址</th>
+                                    <th class="p-4">設備ID</th>
                                     <th class="p-4 text-right">起始投幣</th>
                                     <th class="p-4 text-right">起始出貨</th>
                                     <th class="p-4 text-right">操作</th>
@@ -643,6 +573,112 @@
                                 <!-- 機台列表將動態插入 -->
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- 機台詳細資料面板 -->
+                    <div id="machine-detail-panel" class="hidden mt-6 bg-gray-800 rounded-lg p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold text-white">機台詳細資料</h3>
+                            <button id="close-detail-panel" class="text-gray-400 hover:text-white text-2xl">×</button>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- 電壓資料 -->
+                            <div class="bg-gray-700 rounded-lg p-4">
+                                <h4 class="text-lg font-semibold text-blue-400 mb-3">電壓資料</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">強電壓:</span>
+                                        <span id="detail-strong-voltage" class="text-white font-mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">中電壓:</span>
+                                        <span id="detail-medium-voltage" class="text-white font-mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">弱電壓:</span>
+                                        <span id="detail-weak-voltage" class="text-white font-mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">中壓距離頂點高度:</span>
+                                        <span id="detail-height-to-top" class="text-white font-mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">保夾強電壓:</span>
+                                        <span id="detail-clamp-voltage" class="text-white font-mono">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 營運資料 -->
+                            <div class="bg-gray-700 rounded-lg p-4">
+                                <h4 class="text-lg font-semibold text-green-400 mb-3">營運資料</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">中獎率銀行:</span>
+                                        <span id="detail-win-rate-bank" class="text-white font-mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">投幣遊戲次數:</span>
+                                        <span id="detail-coin-game-count" class="text-white font-mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">禮品出獎次數:</span>
+                                        <span id="detail-prize-count" class="text-white font-mono">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 累加金額資料 -->
+                            <div class="bg-gray-700 rounded-lg p-4">
+                                <h4 class="text-lg font-semibold text-yellow-400 mb-3">累加金額</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">第1筆:</span>
+                                        <span id="detail-amount-1" class="text-white font-mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">第2筆:</span>
+                                        <span id="detail-amount-2" class="text-white font-mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">第3筆:</span>
+                                        <span id="detail-amount-3" class="text-white font-mono">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 基本資料 -->
+                            <div class="bg-gray-700 rounded-lg p-4 md:col-span-2 lg:col-span-1">
+                                <h4 class="text-lg font-semibold text-purple-400 mb-3">基本資料</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">機台編號:</span>
+                                        <span id="detail-machine-id" class="text-white font-mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">MAC位址:</span>
+                                        <span id="detail-mac-address" class="text-white font-mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">設備ID:</span>
+                                        <span id="detail-device-id" class="text-white font-mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-300">最後更新:</span>
+                                        <span id="detail-last-update" class="text-white font-mono">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 原始資料 -->
+                            <div class="bg-gray-700 rounded-lg p-4 md:col-span-2">
+                                <h4 class="text-lg font-semibold text-red-400 mb-3">原始 Hex 資料</h4>
+                                <div class="bg-gray-900 rounded p-3 font-mono text-xs text-green-400 break-all">
+                                    <span id="detail-raw-hex">無資料</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div id="charts" class="tab-content hidden">
@@ -1387,44 +1423,63 @@
                 console.warn('⚠️ 頁面使用 HTTPS，WebSocket 連線將自動從 ws:// 轉換為 wss://');
             }
         }
+        
+        // 頁面載入完成後顯示 HTTP 配置資訊
+        console.log('🌐 HTTP GET 配置已載入');
+        console.log('📡 伺服器位址:', 'http://update.feiloli.com.tw:5539');
+        console.log('🔗 API 端點:', '/textselectdata/{mac}');
+        console.log('📋 範例 URL:', 'http://update.feiloli.com.tw:5539/textselectdata/083A8DE1ED14');
 
-        // --- MQTT 相關變數和功能 ---
+        // --- HTTP GET 輪詢配置 ---
+        let httpPollingEnabled = true;
+        let httpPollingTimer = null;
+        let httpPollingInterval = 5000; // 預設 5 秒輪詢一次
+        let httpLastRequestTime = 0;
+        let httpRequestCount = 0;
+        let httpErrorCount = 0;
+        let httpLastResponse = null;
+        
+        // 測試模式設定（用於 CORS 問題調試）
+        const isTestMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        // HTTP GET 伺服器配置
+        const httpConfig = {
+            // 根據是否為測試模式切換服務器
+            baseUrl: isTestMode 
+                ? 'http://localhost:8080'  // 本地代理伺服器
+                : 'http://update.feiloli.com.tw:5539',  // 正式伺服器
+            endpoint: '/textselectdata/{mac}', // {mac} 將被實際 MAC 地址替換
+            currentMac: '083A8DE1ED14', // 預設 MAC 地址
+            params: {},   // 不需要查詢參數（MAC 在路徑中）
+            headers: {},  // 不需要額外標頭
+            timeout: 10000 // 請求超時時間（毫秒）
+        };
+        
+        // 顯示當前模式
+        console.log(isTestMode ? '🧪 測試模式：使用本地服務器' : '🌐 正式模式：使用遠端服務器');
+        console.log('📡 目前使用的 baseUrl:', httpConfig.baseUrl);
+
+        // --- MQTT 相關變數和功能（已棄用，保留供參考） ---
         let mqttClient = null;
         let mqttConnected = false;
         let mqttReconnectTimer = null;
         let mqttHeartbeatTimer = null;
         let mqttReconnectAttempts = 0;
-        let mqttAutoReconnect = true;
+        let mqttAutoReconnect = false; // 改為 false，停用自動重連
         const mqttMaxReconnectAttempts = 10;
+        
+        // 將 MQTT 變數設為全域，供調試使用
+        window.mqttClient = null;
+        window.mqttConnected = false;
         const mqttReconnectInterval = 5000; // 5秒（一般伺服器）
         const mqttReconnectIntervalOriginal = 30000; // 30秒（原伺服器，較長間隔）
         const mqttHeartbeatInterval = 30000; // 30秒
         
-        // MQTT 伺服器配置預設
+        // MQTT 伺服器設定
         const mqttServerConfigs = {
             hivemq: {
                 url: 'ws://broker.hivemq.com:8000/mqtt',
-                topic: 'test/topic/123456789',
-                name: 'HiveMQ 公開伺服器',
-                description: '✅ 已確認可用，推薦測試使用'
-            },
-            test1: {
-                url: 'ws://test.mosquitto.org:8080',
-                topic: 'test/topic/123456789',
-                name: 'Eclipse Mosquitto',
-                description: '🧪 測試伺服器，可能可用'
-            },
-            test2: {
-                url: 'ws://broker.emqx.io:8083/mqtt',
-                topic: 'test/topic/123456789',
-                name: 'EMQX 公開伺服器',
-                description: '🧪 測試伺服器，可能可用'
-            },
-            original: {
-                url: 'ws://update.feiloli.com.tw:5438',
-                topic: 'mqtt/m/123456789',
-                name: 'jimchen',
-                description: '🧪 測試伺服器，可能可用'
+                topic: 'test/topic/123456789'
             }
         };
         
@@ -1443,152 +1498,332 @@
             document.getElementById('mqtt-broker-url').value = config.url;
             document.getElementById('mqtt-topic').value = config.topic;
             
-            // 更新提示訊息
-            const infoBox = document.getElementById('mqtt-server-info');
-            if (infoBox) {
-                let bgColor, borderColor, textColor, icon;
-                
-                if (serverKey === 'hivemq') {
-                    bgColor = 'bg-green-900/30';
-                    borderColor = 'border-green-500/50';
-                    textColor = 'text-green-400';
-                    icon = '✓';
-                } else if (serverKey === 'original') {
-                    bgColor = 'bg-red-900/30';
-                    borderColor = 'border-red-500/50';
-                    textColor = 'text-red-400';
-                    icon = '✗';
-                } else {
-                    bgColor = 'bg-yellow-900/30';
-                    borderColor = 'border-yellow-500/50';
-                    textColor = 'text-yellow-400';
-                    icon = '?';
-                }
-                
-                infoBox.className = `mb-4 p-3 ${bgColor} border ${borderColor} rounded-lg`;
-                infoBox.innerHTML = `
-                    <div class="flex items-start space-x-2">
-                        <span class="${textColor} text-xl">${icon}</span>
-                        <div class="flex-1">
-                            <p class="${textColor} text-sm font-medium">${config.name}</p>
-                            <p class="text-gray-400 text-xs mt-1">${config.description}</p>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            console.log(`已切換到 ${config.name}`);
-        }
-        
-        // 重試原伺服器連線
-        async function retryOriginalServer() {
-            const originalConfig = mqttServerConfigs.original;
-            const infoBox = document.getElementById('mqtt-server-info');
-            
-            // 顯示測試中狀態
-            if (infoBox) {
-                infoBox.className = 'mb-4 p-3 bg-blue-900/30 border border-blue-500/50 rounded-lg';
-                infoBox.innerHTML = `
-                    <div class="flex items-start space-x-2">
-                        <span class="text-blue-400 text-xl animate-spin">⟳</span>
-                        <div class="flex-1">
-                            <p class="text-blue-400 text-sm font-medium">🔄 正在測試原伺服器連線...</p>
-                            <p class="text-gray-400 text-xs mt-1">嘗試多種連線方式：WebSocket、WebSocket Secure、標準 MQTT 埠</p>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            // 測試多種連線方式
-            const testUrls = [
-                'ws://update.feiloli.com.tw:5438/mqtt',
-                'wss://update.feiloli.com.tw:5438/mqtt',
-                'ws://update.feiloli.com.tw:1883',
-                'ws://update.feiloli.com.tw:8883/mqtt',
-            ];
-            
-            let success = false;
-            
-            for (const url of testUrls) {
-                try {
-                    console.log(`測試連線: ${url}`);
-                    
-                    const testClient = mqtt.connect(url, {
-                        keepalive: 60,
-                        connectTimeout: 5000,
-                        clean: true
-                    });
-                    
-                    // 等待連線結果
-                    await new Promise((resolve, reject) => {
-                        const timeout = setTimeout(() => {
-                            testClient.end();
-                            reject(new Error('連線超時'));
-                        }, 5000);
-                        
-                        testClient.on('connect', () => {
-                            clearTimeout(timeout);
-                            testClient.end();
-                            success = true;
-                            resolve(url);
-                        });
-                        
-                        testClient.on('error', (err) => {
-                            clearTimeout(timeout);
-                            testClient.end();
-                            reject(err);
-                        });
-                    });
-                    
-                    if (success) {
-                        // 找到可用的連線方式
-                        if (infoBox) {
-                            infoBox.className = 'mb-4 p-3 bg-green-900/30 border border-green-500/50 rounded-lg';
-                            infoBox.innerHTML = `
-                                <div class="flex items-start space-x-2">
-                                    <span class="text-green-400 text-xl">✓</span>
-                                    <div class="flex-1">
-                                        <p class="text-green-400 text-sm font-medium">🎉 原伺服器已恢復！</p>
-                                        <p class="text-gray-400 text-xs mt-1">可用連線方式：${url}</p>
-                                        <button onclick="setMqttServer('original')" class="mt-2 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-md">
-                                            立即切換到原伺服器
-                                        </button>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        
-                        // 更新原伺服器配置
-                        mqttServerConfigs.original.url = url;
-                        console.log(`原伺服器恢復，可用 URL: ${url}`);
-                        return;
-                    }
-                    
-                } catch (err) {
-                    console.log(`${url} 連線失敗:`, err.message);
-                }
-            }
-            
-            // 所有測試都失敗
-            if (!success && infoBox) {
-                infoBox.className = 'mb-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg';
-                infoBox.innerHTML = `
-                    <div class="flex items-start space-x-2">
-                        <span class="text-red-400 text-xl">✗</span>
-                        <div class="flex-1">
-                            <p class="text-red-400 text-sm font-medium">❌ 原伺服器仍無法連線</p>
-                            <p class="text-gray-400 text-xs mt-1">已測試多種連線方式，建議繼續使用 HiveMQ 進行開發測試</p>
-                        </div>
-                    </div>
-                `;
-            }
+            console.log(`已設定 MQTT 伺服器: ${config.url}`);
         }
         
         // 讓函數在全域範圍可用
         window.setMqttServer = setMqttServer;
-        window.retryOriginalServer = retryOriginalServer;
         
-        // MQTT 配置
+        // ========================================
+        // HTTP GET 輪詢功能
+        // ========================================
+        
+        // 建構完整的 HTTP GET URL
+        function buildHttpUrl(mac = null) {
+            if (!httpConfig.baseUrl || !httpConfig.endpoint) {
+                console.error('❌ HTTP 配置不完整：缺少 baseUrl 或 endpoint');
+                return null;
+            }
+            
+            // 使用提供的 MAC 或預設的 MAC
+            const macAddress = mac || httpConfig.currentMac;
+            
+            // 替換路徑中的 {mac} 參數
+            let endpointPath = httpConfig.endpoint.replace('{mac}', macAddress);
+            
+            // 建構完整 URL
+            const fullUrl = httpConfig.baseUrl + endpointPath;
+            
+            // 如果有查詢參數，添加到 URL
+            if (httpConfig.params && Object.keys(httpConfig.params).length > 0) {
+                const url = new URL(fullUrl);
+                Object.keys(httpConfig.params).forEach(key => {
+                    url.searchParams.append(key, httpConfig.params[key]);
+                });
+                return url.toString();
+            }
+            
+            return fullUrl;
+        }
+        
+        // 發送 HTTP GET 請求
+        async function sendHttpRequest(mac = null) {
+            const url = buildHttpUrl(mac);
+            if (!url) {
+                updateHttpStatus(false, '配置錯誤');
+                return null;
+            }
+            
+            httpLastRequestTime = Date.now();
+            httpRequestCount++;
+            
+            // 更新請求計數顯示
+            const countElement = document.getElementById('http-request-count');
+            if (countElement) {
+                countElement.textContent = httpRequestCount;
+            }
+            
+            console.log(`📤 [${httpRequestCount}] 發送 HTTP GET 請求: ${url}`);
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), httpConfig.timeout);
+                
+                let response;
+                
+                // 第一次嘗試：正常 CORS 請求
+                try {
+                    response = await fetch(url, {
+                        method: 'GET',
+                        headers: httpConfig.headers || {},
+                        signal: controller.signal,
+                        mode: 'cors'
+                    });
+                } catch (corsError) {
+                    clearTimeout(timeoutId);
+                    
+                    // 嘗試使用 CORS 代理服務
+                    console.warn('❌ 直接請求失敗，嘗試 CORS 代理服務...');
+                    
+                    const proxyConfigs = [
+                        { name: 'AllOrigins', url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, responseType: 'text' },
+                        { name: 'corsproxy.io', url: `https://corsproxy.io/?${encodeURIComponent(url)}`, responseType: 'text' },
+                        { name: 'ThingProxy', url: `https://thingproxy.freeboard.io/fetch/${url}`, responseType: 'text' }
+                    ];
+                    
+                    let proxySuccess = false;
+                    
+                    for (const proxyConfig of proxyConfigs) {
+                        try {
+                            console.log(`🔄 嘗試代理 (${proxyConfig.name}): ${proxyConfig.url}`);
+                            const proxyResponse = await fetch(proxyConfig.url, {
+                                signal: controller.signal
+                            });
+                            
+                            if (proxyResponse.ok) {
+                                const rawText = await proxyResponse.text();
+                                let parsedData = rawText;
+                                
+                                // 嘗試解析 JSON
+                                try {
+                                    parsedData = JSON.parse(rawText);
+                                } catch (jsonErr) {
+                                    // 不是 JSON，維持原始字串
+                                    console.debug('ℹ️ 代理回應不是 JSON，已以文字形式處理');
+                                }
+                                
+                                httpLastResponse = parsedData;
+                                console.log(`✅ 代理請求成功 (${proxyConfig.name}):`, parsedData);
+                                updateHttpStatus(true, `已透過 ${proxyConfig.name} 代理取得資料 (${new Date().toLocaleTimeString()})`);
+                                
+                                // 代理成功時同樣進行資料處理
+                                handleHttpResponse(parsedData);
+                                httpErrorCount = 0; // 重置錯誤計數
+                                
+                                proxySuccess = true;
+                                return parsedData;
+                            }
+                        } catch (proxyError) {
+                            console.warn(`❌ 代理 ${proxyConfig.name} 失敗:`, proxyError.message);
+                            continue;
+                        }
+                    }
+                    
+                    if (!proxySuccess) {
+                        // 所有代理都失敗，顯示完整的解決方案
+                        console.error('❌ CORS 錯誤:', corsError.message);
+                        updateHttpStatus(false, 'CORS 錯誤 - 請參考解決方案');
+                        
+                        // 顯示詳細的解決方案
+                        const solutions = [
+                            '🌐 方案1: 在新分頁直接開啟 URL 查看資料',
+                            '🚀 方案2: 使用本地伺服器 (Live Server 擴充功能)',
+                            '⚙️ 方案3: 伺服器端設定 CORS 標頭',
+                            '🔧 方案4: 使用瀏覽器擴充功能暫時停用 CORS',
+                            '📱 方案5: 使用手機瀏覽器 (部分限制較少)'
+                        ];
+                        
+                        alert(`❌ CORS 錯誤：瀏覽器阻止了跨域請求\n\n${solutions.join('\n')}\n\n🌐 URL: ${url}\n\n點擊確定後將自動開啟新分頁`);
+                        window.open(url, '_blank');
+                        
+                        httpErrorCount++;
+                        const errorCountElement = document.getElementById('http-error-count');
+                        if (errorCountElement) {
+                            errorCountElement.textContent = httpErrorCount;
+                        }
+                        
+                        return null;
+                    }
+                }
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // 嘗試解析回應
+                let data;
+                const contentType = response.headers.get('content-type');
+                
+                try {
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await response.json();
+                    } else {
+                        data = await response.text();
+                    }
+                } catch (parseError) {
+                    console.warn('⚠️ 無法解析回應:', parseError);
+                    data = await response.text();
+                }
+                
+                httpLastResponse = data;
+                httpErrorCount = 0; // 重置錯誤計數
+                
+                console.log('📥 收到回應:', data);
+                console.log('📊 資料類型:', typeof data);
+                console.log('📏 資料長度:', typeof data === 'string' ? data.length : JSON.stringify(data).length);
+                
+                updateHttpStatus(true, '請求成功');
+                
+                // 處理回應資料
+                handleHttpResponse(data);
+                
+                return data;
+                
+            } catch (error) {
+                httpErrorCount++;
+                
+                // 更新錯誤計數顯示
+                const errorCountElement = document.getElementById('http-error-count');
+                if (errorCountElement) {
+                    errorCountElement.textContent = httpErrorCount;
+                }
+                
+                console.error(`❌ HTTP 請求失敗 (${httpErrorCount}):`, error.message);
+                console.error('錯誤詳情:', error);
+                
+                if (error.name === 'AbortError') {
+                    updateHttpStatus(false, '請求超時');
+                } else if (error.message.includes('CORS') || error.message.includes('fetch')) {
+                    updateHttpStatus(false, 'CORS 錯誤');
+                } else {
+                    updateHttpStatus(false, `錯誤: ${error.message}`);
+                }
+                
+                return null;
+            }
+        }
+        
+        // 處理 HTTP 回應資料
+        function handleHttpResponse(data) {
+            console.log('🔄 處理 HTTP 回應資料:', data);
+            
+            // 更新最後回應顯示
+            const lastResponseElement = document.getElementById('http-last-response');
+            if (lastResponseElement) {
+                if (typeof data === 'string') {
+                    lastResponseElement.textContent = data.substring(0, 50) + (data.length > 50 ? '...' : '');
+                } else {
+                    lastResponseElement.textContent = JSON.stringify(data).substring(0, 50) + '...';
+                }
+            }
+            
+            // 添加到命令記錄
+            addCommandLog('success', `收到回應資料：${JSON.stringify(data).substring(0, 100)}...`, {
+                timestamp: new Date().toLocaleTimeString(),
+                dataPreview: data
+            });
+            
+            // TODO: 根據實際需求處理資料
+            // 例如：解析特定欄位、儲存到 Firebase、更新 UI 等
+            
+            // 範例：如果回應是文字格式的機台參數
+            if (typeof data === 'string') {
+                console.log('📄 收到文字資料，長度:', data.length);
+                // 可在此解析文字資料
+            } else if (typeof data === 'object') {
+                console.log('📦 收到 JSON 物件:', Object.keys(data));
+                // 可在此處理 JSON 資料
+            }
+        }
+        
+        // 開始 HTTP 輪詢
+        function startHttpPolling() {
+            if (httpPollingTimer) {
+                console.log('⚠️ HTTP 輪詢已在運行中');
+                return;
+            }
+            
+            httpPollingEnabled = true;
+            console.log(`🚀 開始 HTTP 輪詢（間隔: ${httpPollingInterval}ms）`);
+            updateHttpStatus(true, '輪詢中...');
+            
+            // 立即發送第一次請求
+            sendHttpRequest();
+            
+            // 設定定時輪詢
+            httpPollingTimer = setInterval(() => {
+                if (httpPollingEnabled) {
+                    sendHttpRequest();
+                }
+            }, httpPollingInterval);
+        }
+        
+        // 停止 HTTP 輪詢
+        function stopHttpPolling() {
+            if (httpPollingTimer) {
+                clearInterval(httpPollingTimer);
+                httpPollingTimer = null;
+            }
+            
+            httpPollingEnabled = false;
+            console.log('⏹️ HTTP 輪詢已停止');
+            updateHttpStatus(false, '已停止');
+        }
+        
+        // 更新 HTTP 連線狀態顯示
+        function updateHttpStatus(connected, message = '') {
+            const indicator = document.getElementById('mqtt-status-indicator'); // 暫時使用 MQTT 的元素
+            const statusText = document.getElementById('mqtt-status-text');
+            
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('zh-TW');
+            const updateElement = document.getElementById('mqtt-last-update');
+            if (updateElement) {
+                updateElement.textContent = timeStr;
+            }
+            
+            if (connected) {
+                if (indicator) {
+                    indicator.className = 'w-3 h-3 bg-green-500 rounded-full animate-pulse';
+                }
+                if (statusText) {
+                    statusText.textContent = `✅ HTTP 連線中 - ${message} - ${timeStr}`;
+                }
+            } else {
+                if (indicator) {
+                    indicator.className = 'w-3 h-3 bg-red-500 rounded-full';
+                }
+                if (statusText) {
+                    statusText.textContent = `❌ HTTP 未連線 - ${message} - ${timeStr}`;
+                }
+            }
+            
+            console.log(`📊 HTTP 狀態: ${connected ? '連線中' : '未連線'} - ${message}`);
+        }
+        
+        // 測試 HTTP 連線
+        async function testHttpConnection() {
+            console.log('🧪 測試 HTTP 連線...');
+            const result = await sendHttpRequest();
+            
+            if (result) {
+                alert('✅ HTTP 連線測試成功！\n\n' + JSON.stringify(result, null, 2));
+            } else {
+                alert('❌ HTTP 連線測試失敗，請檢查控制台查看詳細錯誤訊息。');
+            }
+        }
+        
+        // 讓 HTTP 函數在全域範圍可用
+        window.startHttpPolling = startHttpPolling;
+        window.stopHttpPolling = stopHttpPolling;
+        window.testHttpConnection = testHttpConnection;
+        window.sendHttpRequest = sendHttpRequest;
+        
+        // ========================================
+        // MQTT 配置（已棄用）
+        // ========================================
         const mqttConfig = {
             keepalive: 60,
             protocolId: 'MQTT',
@@ -1676,6 +1911,7 @@
             }
             
             mqttConnected = connected;
+            window.mqttConnected = connected; // 同步到全域變數
             
             // 控制台日誌
             console.log('MQTT 狀態更新: ' + (connected ? '已連接' : '未連接') + (message ? ' - ' + message : '') + ' (' + timeStr + ')');
@@ -1862,7 +2098,8 @@
                 // 創建 MQTT 客戶端
                 console.log('最終連線 URL:', finalBrokerUrl);
                 mqttClient = mqtt.connect(finalBrokerUrl, customConfig);
-                console.log('MQTT 客戶端已創建');
+                window.mqttClient = mqttClient; // 同步到全域變數
+                console.log('MQTT 客戶端已創建並設為全域');
                 
                 // 設置連線超時
                 const connectTimeout = setTimeout(function() {
@@ -1907,6 +2144,12 @@
                 mqttClient.on('connect', function() {
                     clearTimeout(connectTimeout);
                     console.log('✅ MQTT 連線成功！');
+                    
+                    // 確保全域變數同步
+                    window.mqttClient = mqttClient;
+                    window.mqttConnected = true;
+                    console.log('✅ 全域 MQTT 變數已同步');
+                    
                     updateMqttStatus(true, '連線成功');
                     addCommandLog('receive', '✅ MQTT 連線建立成功');
                     
@@ -2003,6 +2246,7 @@
         
         // 斷開 MQTT 連線
         function disconnectMqtt() {
+            console.log('執行 MQTT 斷開連接');
             mqttAutoReconnect = false; // 停止自動重連
             stopMqttReconnect(); // 停止重連定時器
             stopMqttHeartbeat(); // 停止心跳檢測
@@ -2016,6 +2260,11 @@
                 }
             }
             
+            // 清理全域變數
+            window.mqttClient = null;
+            window.mqttConnected = false;
+            console.log('✅ 全域 MQTT 變數已清理');
+            
             updateMqttStatus(false, '已斷開連線');
             mqttReconnectAttempts = 0;
         }
@@ -2023,10 +2272,23 @@
         // 解析娃娃機 MQTT 資料
         function parseMachineData(hexData) {
             // 解析娃娃機回傳的 hex 資料
-            // 資料格式範例: "02020a2c010002010001000201000800000000000000860628210b0001280000230005000a00780032000a000a00000000000000000000000000323232320a0a00"
             try {
-                if (!hexData || hexData.length < 20) {
+                if (!hexData || hexData.length < 2) { // 至少需要 1 byte (2 hex chars)
+                    console.warn('資料長度不足:', hexData?.length);
                     return null;
+                }
+                
+                console.log('收到機台資料，長度:', hexData.length, '內容:', hexData);
+                
+                // 處理簡短的狀態回應（如 "1"）
+                if (hexData.length < 20) {
+                    return {
+                        rawHex: hexData,
+                        statusCode: parseInt(hexData, 16),
+                        parseTime: new Date().toLocaleString(),
+                        isStatusOnly: true,
+                        message: `收到狀態碼: ${hexData}`
+                    };
                 }
                 
                 // 將 hex 字串轉換為 bytes
@@ -2035,38 +2297,44 @@
                     bytes.push(parseInt(hexData.substr(i, 2), 16));
                 }
                 
-                // 根據娃娃機協議解析資料 (需要根據實際協議調整)
+                // 根據您提供的協議解析所有資料
                 const data = {
+                    // 基本帳務資料
                     coinCount: 0,
                     payoutCount: 0,
-                    temperature: 0,
-                    voltage: 0,
-                    status: 0
+                    
+                    // 詳細電壓資料 (Byte33-38)
+                    voltageData: {
+                        strongVoltage: bytes[33] || 0,        // B1.強電壓
+                        mediumVoltage: bytes[34] || 0,        // B2.中電壓  
+                        weakVoltage: bytes[35] || 0,          // B3.弱電壓
+                        heightToTop: bytes[36] || 0,          // B4.中壓距離頂點高度
+                        clampVoltage: bytes[37] || 0          // B5.保夾強電壓
+                    },
+                    
+                    // 營運資料 (Byte39-48)
+                    operationData: {
+                        winRateBank: (bytes[40] << 8) | bytes[39],          // C1.中獎率銀行
+                        coinGameCount: (bytes[42] << 8) | bytes[41],        // C2.投幣遊戲次數
+                        prizeCount: (bytes[44] << 8) | bytes[43],           // C3.禮品出獎次數
+                        accumulatedAmount1: (bytes[46] << 8) | bytes[45],   // C4.累加金額查詢第1筆
+                        accumulatedAmount2: (bytes[48] << 8) | bytes[47],   // C4.累加金額查詢第2筆
+                        accumulatedAmount3: (bytes[50] << 8) | bytes[49]    // C4.累加金額查詢第3筆
+                    },
+                    
+                    // 原始 bytes 陣列供除錯使用
+                    rawBytes: bytes,
+                    rawHex: hexData,
+                    parseTime: new Date().toLocaleString()
                 };
                 
-                // 假設資料結構 (需要根據實際協議文件調整):
-                // bytes[0-1]: 標頭
-                // bytes[2-5]: 投幣總數 (4 bytes, little endian)
-                // bytes[6-9]: 出貨總數 (4 bytes, little endian)
-                // bytes[10-11]: 溫度
-                // bytes[12-13]: 電壓
-                // 其他...
-                
+                // 解析基本投幣和出貨數據 (假設在前面的 bytes)
                 if (bytes.length >= 10) {
-                    // 解析投幣數 (假設在 byte 2-5 位置，little endian)
                     data.coinCount = bytes[2] | (bytes[3] << 8) | (bytes[4] << 16) | (bytes[5] << 24);
-                    
-                    // 解析出貨數 (假設在 byte 6-9 位置，little endian)
                     data.payoutCount = bytes[6] | (bytes[7] << 8) | (bytes[8] << 16) | (bytes[9] << 24);
                 }
                 
-                // 如果解析出的數值過大，可能是解析錯誤
-                if (data.coinCount > 1000000 || data.payoutCount > 1000000) {
-                    console.warn('解析的數值過大，可能是協議錯誤');
-                    return null;
-                }
-                
-                console.log('解析機台資料:', data);
+                console.log('完整解析機台資料:', data);
                 return data;
                 
             } catch (error) {
@@ -2095,14 +2363,28 @@
                 }
                 
                 // 處理機台回應資料
-                if (data.cmd === 're_readdata' && data.parm) {
+                if ((data.cmd === 're_readdata' || data.cmd === 're_stat') && data.parm) {
+                    console.log(`收到 ${data.cmd} 回應，MAC: ${data.mac}, 資料: ${data.parm}`);
+                    
                     const machineData = parseMachineData(data.parm);
                     if (machineData) {
                         // 根據 MAC 位址找到對應的機台
                         const machineInfo = findMachineByMac(data.mac);
                         if (machineInfo) {
-                            updateMachineFromMqtt(machineInfo, machineData);
+                            console.log('找到對應機台:', machineInfo.id);
+                            
+                            // 如果只是狀態回應，顯示簡化信息
+                            if (machineData.isStatusOnly) {
+                                showStatusMessage(`機台 ${machineInfo.id} 狀態: ${machineData.message}`, 'info');
+                            } else {
+                                updateMachineFromMqtt(machineInfo, machineData);
+                            }
+                        } else {
+                            console.warn('找不到 MAC 對應的機台:', data.mac);
+                            showStatusMessage(`收到未知機台 ${data.mac} 的回應`, 'info');
                         }
+                    } else {
+                        console.warn('無法解析機台資料:', data.parm);
                     }
                 }
                 
@@ -2123,6 +2405,12 @@
             // 計算新增的投幣和出貨數
             const newCoins = Math.max(0, mqttData.coinCount - (machine.mqttLastCoinCount || 0));
             const newPayouts = Math.max(0, mqttData.payoutCount - (machine.mqttLastPayoutCount || 0));
+            
+            // 儲存完整的 MQTT 資料到機台物件
+            machine.mqttDetailData = mqttData;
+            
+            // 顯示詳細資料面板
+            showMachineDetailPanel(machine, mqttData);
             
             if (newCoins > 0 || newPayouts > 0) {
                 // 自動新增記帳記錄
@@ -3780,21 +4068,45 @@
         function renderMachineManagementTab() {
             machineListTableBody.innerHTML = '';
             if (!appData.machines || appData.machines.length === 0) {
-                machineListTableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-400">此門市尚無機台，請先建立一台。</td></tr>`;
+                machineListTableBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-gray-400">此門市尚無機台，請先建立一台。</td></tr>`;
                 return;
             }
             appData.machines.forEach(machine => {
+                console.log('渲染機台:', machine); // 調試用
                 const row = `
-                    <tr class="hover:bg-gray-700/50">
+                    <tr class="hover:bg-gray-700/50" data-machine-id="${machine.docId}">
                         <td class="p-4 font-medium text-white">${machine.id}</td>
                         <td class="p-4">${machine.location}</td>
+                        <td class="p-4">
+                            <input type="text" 
+                                class="mac-address-input bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 w-full font-mono text-sm" 
+                                value="${machine.mac || ''}" 
+                                placeholder="083A8DE1ED14"
+                                data-doc-id="${machine.docId}">
+                        </td>
+                        <td class="p-4 text-right">
+                            <input type="number" 
+                                class="device-id-input bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 w-16 text-center" 
+                                value="${machine.devid || 1}" 
+                                min="1" max="9"
+                                data-doc-id="${machine.docId}">
+                        </td>
                         <td class="p-4 text-right">${machine.initialPlays || 0}</td>
                         <td class="p-4 text-right">${machine.initialPayouts || 0}</td>
                         <td class="p-4 text-right">
+                            <button class="poll-machine-btn bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1 px-2 rounded mr-1" 
+                                data-doc-id="${machine.docId}"
+                                data-mac="${machine.mac || ''}"
+                                data-devid="${machine.devid || 1}"
+                                title="讀取機台資料">
+                                📊
+                            </button>
                             <button class="edit-machine-btn bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-1 px-3 rounded mr-2" 
                                 data-doc-id="${machine.docId}" 
                                 data-id="${machine.id}"
                                 data-location="${machine.location}"
+                                data-mac="${machine.mac || ''}"
+                                data-devid="${machine.devid || 1}"
                                 data-initial-plays="${machine.initialPlays || 0}"
                                 data-initial-payouts="${machine.initialPayouts || 0}">
                                 修改
@@ -5206,7 +5518,7 @@
         });
         modalCancelBtn.addEventListener('click', hideConfirmationModal);
         
-        machineListTableBody.addEventListener('click', (e) => {
+        machineListTableBody.addEventListener('click', async (e) => {
             if (e.target.classList.contains('delete-machine-btn')) {
                 handleDeleteMachine(e.target.dataset.docId);
             } else if (e.target.classList.contains('edit-machine-btn')) {
@@ -5214,9 +5526,31 @@
                 document.getElementById('edit-machine-doc-id').value = btn.dataset.docId;
                 document.getElementById('edit-machine-id').value = btn.dataset.id;
                 document.getElementById('edit-machine-location').value = btn.dataset.location;
+                document.getElementById('edit-machine-mac').value = btn.dataset.mac || '';
+                document.getElementById('edit-machine-devid').value = btn.dataset.devid || '';
                 document.getElementById('edit-machine-initial-plays').value = btn.dataset.initialPlays;
                 document.getElementById('edit-machine-initial-payouts').value = btn.dataset.initialPayouts;
                 editMachineModal.classList.remove('hidden');
+            } else if (e.target.classList.contains('poll-machine-btn')) {
+                const btn = e.target;
+                const mac = btn.dataset.mac;
+                const devid = btn.dataset.devid;
+                
+                if (!mac) {
+                    alert('請先設定機台 MAC 位址');
+                    return;
+                }
+                
+                btn.disabled = true;
+                btn.textContent = '📊';
+                btn.classList.add('opacity-50');
+                
+                try {
+                    await pollSingleMachine(mac, devid || 1);
+                } finally {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50');
+                }
             }
         });
         editMachineForm.addEventListener('submit', handleUpdateMachine);
@@ -5310,74 +5644,38 @@
             }
         });
 
-        // --- MQTT 事件監聽器 ---
+        // --- MQTT 連接按鈕事件監聽器 ---
         document.getElementById('mqtt-connect-btn').addEventListener('click', function() {
-            if (mqttConnected) {
+            console.log('MQTT 連接按鈕被點擊');
+            console.log('當前 mqttConnected 狀態:', mqttConnected);
+            console.log('當前 mqttClient 存在:', !!mqttClient);
+            
+            if (mqttConnected && mqttClient) {
                 // 中斷連接
+                console.log('執行 MQTT 中斷連接');
                 disconnectMqtt();
             } else {
                 // 建立連接
-                mqttAutoReconnect = true; // 啟用自動重連
-                mqttReconnectAttempts = 0; // 重置重連次數
+                console.log('執行 MQTT 連接');
                 connectMqtt();
             }
         });
         
-        document.getElementById('mqtt-test-btn').addEventListener('click', function() {
-            if (!mqttConnected || !mqttClient) {
-                alert('❌ 請先連接 MQTT');
-                return;
-            }
-            
-            try {
-                // 生成測試命令
-                const testCommand = {
-                    cmd: "readdata",
-                    mac: "083A8DE1EC88", // 預設測試 MAC 地址
-                    floor: "1",
-                    devid: "1",
-                    taskid: Date.now().toString()
-                };
-                
-                const publishTopic = 'mqtt/s'; // 固定發布主題
-                
-                // 發送測試命令
-                mqttClient.publish(publishTopic, JSON.stringify(testCommand), { qos: 1 }, function(err) {
-                    if (err) {
-                        console.error('❌ 發送測試命令失敗:', err);
-                        alert('❌ 發送測試命令失敗: ' + err.message);
-                    } else {
-                        console.log('✅ 測試命令發送成功:', testCommand);
-                        
-                        // 更新狀態顯示
-                        updateMqttStatus(true, '已發送測試命令 - 任務ID: ' + testCommand.taskid);
-                        
-                        // 更新最後命令信息
-                        const commandInfo = document.getElementById('last-command-info');
-                        if (commandInfo) {
-                            commandInfo.textContent = '最後命令: 讀取資料測試 (' + new Date().toLocaleTimeString() + ') - 任務ID: ' + testCommand.taskid;
-                        }
-                        
-                        alert('✅ 已發送測試命令\n\n任務ID: ' + testCommand.taskid + '\nMAC: ' + testCommand.mac + '\n設備ID: ' + testCommand.devid + '\n\n請等待機台回應...');
-                    }
-                });
-                
-            } catch (error) {
-                console.error('❌ 測試命令執行錯誤:', error);
-                alert('❌ 測試命令執行錯誤: ' + error.message);
-            }
+        document.getElementById('mqtt-test-btn').addEventListener('click', async function() {
+            // 測試 HTTP 連線
+            await testHttpConnection();
         });
 
-        // 發送讀取命令按鈕
-        document.getElementById('send-read-command').addEventListener('click', function() {
-            if (!mqttConnected || !mqttClient) {
-                alert('❌ 請先連接 MQTT');
-                addCommandLog('error', '連線失敗：請先建立 MQTT 連線');
-                return;
-            }
-            
+        // 立即輪詢所有機台按鈕
+        document.getElementById('poll-all-btn').addEventListener('click', async function() {
+            console.log('立即輪詢按鈕被點擊');
+            await pollAllMachines();
+        });
+
+        // 發送讀取命令按鈕（改為 HTTP GET）
+        document.getElementById('send-read-command').addEventListener('click', async function() {
             try {
-                // 獲取用戶輸入
+                // 獲取用戶輸入的 MAC 地址
                 const mac = document.getElementById('read-machine-mac').value.trim();
                 const devid = document.getElementById('read-device-id').value;
                 
@@ -5387,38 +5685,38 @@
                     return;
                 }
                 
-                // 生成讀取命令
-                const taskid = Date.now().toString();
-                const readCommand = {
-                    cmd: "readdata",
-                    mac: mac,
-                    floor: "1",
-                    devid: devid,
-                    taskid: taskid
-                };
+                // 按鈕載入狀態
+                this.disabled = true;
+                this.innerHTML = '🔄 請求中...';
                 
-                const publishTopic = 'mqtt/s'; // 固定發布主題
+                // 記錄到命令日誌
+                addCommandLog('send', `發送 HTTP GET 請求 - MAC: ${mac}`, { mac, devid });
                 
-                // 發送命令
-                mqttClient.publish(publishTopic, JSON.stringify(readCommand), { qos: 1 }, function(err) {
-                    if (err) {
-                        console.error('❌ 發送讀取命令失敗:', err);
-                        alert('❌ 發送讀取命令失敗: ' + err.message);
-                        addCommandLog('error', '發送失敗: ' + err.message);
-                    } else {
-                        console.log('✅ 讀取命令發送成功:', readCommand);
-                        
-                        // 記錄到命令日誌
-                        addCommandLog('send', `發送讀取命令 - MAC: ${mac}, 設備ID: ${devid}, 任務ID: ${taskid}`, readCommand);
-                        
-                        // 更新狀態顯示
-                        updateMqttStatus(true, '已發送讀取命令 - 任務ID: ' + taskid);
-                        
-                        // 顯示成功訊息
-                        const deviceName = devid === '1' ? '左天車' : '右天車';
-                        alert(`✅ 讀取命令已發送！\n\n📡 主題: ${publishTopic}\n🔧 機台: ${mac}\n🎯 設備: ${deviceName}\n📋 任務ID: ${taskid}\n\n⏳ 請等待機台回應...`);
-                    }
-                });
+                // 發送 HTTP GET 請求
+                const result = await sendHttpRequest(mac);
+                
+                // 恢復按鈕狀態
+                this.disabled = false;
+                this.innerHTML = '📤 發送讀取命令';
+                
+                if (result) {
+                    console.log('✅ HTTP 請求成功:', result);
+                    
+                    // 記錄成功
+                    addCommandLog('success', `收到資料 - MAC: ${mac}`, result);
+                    
+                    // 顯示成功訊息
+                    const deviceName = devid === '1' ? '左天車' : '右天車';
+                    const dataPreview = typeof result === 'string' 
+                        ? result.substring(0, 100) 
+                        : JSON.stringify(result, null, 2).substring(0, 200);
+                    
+                    alert(`✅ 資料讀取成功！\n\n🔧 機台: ${mac}\n🎯 設備: ${deviceName}\n\n� 資料預覽:\n${dataPreview}${dataPreview.length >= 100 ? '...' : ''}\n\n完整資料請查看控制台 (F12)`);
+                } else {
+                    console.error('❌ HTTP 請求失敗');
+                    addCommandLog('error', `請求失敗 - MAC: ${mac}`);
+                    alert('❌ 請求失敗，請檢查控制台查看詳細錯誤訊息。');
+                }
                 
             } catch (error) {
                 console.error('❌ 讀取命令執行錯誤:', error);
@@ -5889,7 +6187,539 @@
             }
         });
 
+        // === 機台詳細資料顯示功能 ===
+        
+        // 顯示機台詳細資料面板
+        function showMachineDetailPanel(machine, mqttData) {
+            const panel = document.getElementById('machine-detail-panel');
+            
+            // 更新基本資料
+            document.getElementById('detail-machine-id').textContent = machine.id;
+            document.getElementById('detail-mac-address').textContent = machine.mac || '--';
+            document.getElementById('detail-device-id').textContent = machine.devid || '--';
+            document.getElementById('detail-last-update').textContent = mqttData.parseTime;
+            
+            // 檢查是否為狀態回應
+            if (mqttData.isStatusOnly) {
+                // 清空詳細資料，只顯示狀態
+                ['detail-strong-voltage', 'detail-medium-voltage', 'detail-weak-voltage', 
+                 'detail-height-to-top', 'detail-clamp-voltage', 'detail-win-rate-bank',
+                 'detail-coin-game-count', 'detail-prize-count', 'detail-amount-1',
+                 'detail-amount-2', 'detail-amount-3'].forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) element.textContent = '--';
+                });
+                
+                // 顯示狀態信息
+                document.getElementById('detail-raw-hex').textContent = `狀態回應: ${mqttData.rawHex} (狀態碼: ${mqttData.statusCode})`;
+            } else {
+                // 更新電壓資料
+                const voltage = mqttData.voltageData || {};
+                document.getElementById('detail-strong-voltage').textContent = voltage.strongVoltage || '--';
+                document.getElementById('detail-medium-voltage').textContent = voltage.mediumVoltage || '--';
+                document.getElementById('detail-weak-voltage').textContent = voltage.weakVoltage || '--';
+                document.getElementById('detail-height-to-top').textContent = voltage.heightToTop || '--';
+                document.getElementById('detail-clamp-voltage').textContent = voltage.clampVoltage || '--';
+                
+                // 更新營運資料
+                const operation = mqttData.operationData || {};
+                document.getElementById('detail-win-rate-bank').textContent = operation.winRateBank || '--';
+                document.getElementById('detail-coin-game-count').textContent = operation.coinGameCount || '--';
+                document.getElementById('detail-prize-count').textContent = operation.prizeCount || '--';
+                
+                // 更新累加金額
+                document.getElementById('detail-amount-1').textContent = operation.accumulatedAmount1 || '--';
+                document.getElementById('detail-amount-2').textContent = operation.accumulatedAmount2 || '--';
+                document.getElementById('detail-amount-3').textContent = operation.accumulatedAmount3 || '--';
+                
+                // 更新原始資料
+                document.getElementById('detail-raw-hex').textContent = mqttData.rawHex || '--';
+            }
+            
+            // 顯示面板
+            panel.classList.remove('hidden');
+            
+            // 滾動到面板位置
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            // 添加高亮效果
+            panel.classList.add('ring-2', 'ring-blue-500');
+            setTimeout(() => {
+                panel.classList.remove('ring-2', 'ring-blue-500');
+            }, 2000);
+        }
+        
+        // 關閉詳細資料面板 (安全初始化)
+        function initializeDetailPanel() {
+            const closeBtn = document.getElementById('close-detail-panel');
+            if (closeBtn && !closeBtn._initialized) {
+                closeBtn._initialized = true;
+                closeBtn.addEventListener('click', () => {
+                    document.getElementById('machine-detail-panel').classList.add('hidden');
+                });
+            }
+        }
+        
+        // === MQTT 輪詢功能 ===
+        let pollInterval = null;
+        
+        // 初始化 MQTT 輪詢功能 (確保元素已載入)
+        function initializeMqttPolling() {
+            try {
+                const machineListTableBody = document.getElementById('machine-list-table-body');
+                if (!machineListTableBody) {
+                    console.warn('machineListTableBody not found, retrying...');
+                    setTimeout(initializeMqttPolling, 100);
+                    return;
+                }
+
+                // MAC 位址輸入框即時更新 (使用事件委派避免重複監聽)
+                if (!machineListTableBody._mqttInputHandler) {
+                    machineListTableBody._mqttInputHandler = true;
+                    machineListTableBody.addEventListener('input', async (e) => {
+                        if (e.target.classList.contains('mac-address-input') || e.target.classList.contains('device-id-input')) {
+                            const docId = e.target.dataset.docId;
+                            if (!selectedGroupId || !selectedStoreId || !docId) return;
+                            
+                            const updateData = {};
+                            
+                            if (e.target.classList.contains('mac-address-input')) {
+                                updateData.mac = e.target.value.trim();
+                            } else if (e.target.classList.contains('device-id-input')) {
+                                updateData.devid = parseInt(e.target.value, 10) || null;
+                            }
+                            
+                            try {
+                                await db.collection('groups').doc(selectedGroupId)
+                                    .collection('stores').doc(selectedStoreId)
+                                    .collection('machines').doc(docId).update(updateData);
+                                
+                                // 更新本地資料
+                                if (appData && appData.machines) {
+                                    const machine = appData.machines.find(m => m.docId === docId);
+                                    if (machine) {
+                                        Object.assign(machine, updateData);
+                                    }
+                                }
+                            } catch (error) {
+                                console.error('更新機台資料失敗:', error);
+                            }
+                        }
+                    });
+                }
+
+                console.log('MQTT 輪詢功能初始化完成');
+            } catch (error) {
+                console.error('初始化 MQTT 輪詢功能失敗:', error);
+            }
+        }
+
+        // 初始化 MQTT 控制面板事件監聽器
+        function initializeMqttControls() {
+            try {
+                // 自動輪詢控制 (使用正確的 ID)
+                const autoPollCheckbox = document.getElementById('auto-poll-enabled');
+                if (autoPollCheckbox && !autoPollCheckbox._initialized) {
+                    autoPollCheckbox._initialized = true;
+                    autoPollCheckbox.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            startAutoPolling();
+                        } else {
+                            stopAutoPolling();
+                        }
+                    });
+                }
+
+                // 手動觸發輪詢 (使用正確的 ID)
+                const pollTriggerBtn = document.getElementById('poll-all-btn');
+                if (pollTriggerBtn && !pollTriggerBtn._initialized) {
+                    pollTriggerBtn._initialized = true;
+                    pollTriggerBtn.addEventListener('click', () => {
+                        pollAllMachines();
+                    });
+                }
+
+                // 輪詢間隔更改 (使用正確的 ID)
+                const intervalSelect = document.getElementById('poll-interval');
+                if (intervalSelect && !intervalSelect._initialized) {
+                    intervalSelect._initialized = true;
+                    intervalSelect.addEventListener('change', (e) => {
+                        const autoPoll = document.getElementById('auto-poll-enabled');
+                        if (autoPoll && autoPoll.checked) {
+                            stopAutoPolling();
+                            startAutoPolling();
+                        }
+                    });
+                }
+                
+                console.log('MQTT 控制面板初始化完成');
+            } catch (error) {
+                console.warn('初始化 MQTT 控制面板時發生錯誤:', error);
+            }
+        }
+
+        // 單台機台輪詢
+        async function pollSingleMachine(mac, devid) {
+            console.log('=== 單台輪詢診斷 ===');
+            
+            // 檢查本地和全域變數
+            const localClient = mqttClient;
+            const globalClient = window.mqttClient;
+            const localConnected = mqttConnected;
+            const globalConnected = window.mqttConnected;
+            
+            console.log('本地 mqttClient:', !!localClient);
+            console.log('全域 mqttClient:', !!globalClient);
+            console.log('本地 mqttConnected:', localConnected);
+            console.log('全域 mqttConnected:', globalConnected);
+            
+            // 使用任一可用的客戶端
+            const activeClient = localClient || globalClient;
+            const isConnected = localConnected || globalConnected;
+            
+            console.log('使用的客戶端:', !!activeClient);
+            console.log('連接狀態:', isConnected);
+            
+            if (!activeClient) {
+                const message = '請先點擊「連接 MQTT」建立連線';
+                console.error('無 MQTT 客戶端可用');
+                showStatusMessage(message, 'error');
+                alert(message);
+                return;
+            }
+            
+            console.log('準備發送輪詢命令到', mac, 'DevID:', devid);
+
+            const topic = `ESP32/${mac}/req`;
+            const message = `查詢,${devid}`;
+            
+            try {
+                // 嘗試發送 MQTT 訊息
+                console.log(`準備輪詢機台 - 主題: ${topic}, 訊息: ${message}`);
+                
+                activeClient.publish(topic, message, { qos: 0 }, function(err) {
+                    if (err) {
+                        console.error('MQTT 發送失敗:', err);
+                        showStatusMessage(`輪詢失敗: ${err.message}`, 'error');
+                    } else {
+                        console.log(`✅ 輪詢命令已發送 - MAC: ${mac}, 設備ID: ${devid}`);
+                        showStatusMessage(`✅ 已發送輪詢命令到 ${mac}`, 'success');
+                    }
+                });
+                
+            } catch (error) {
+                console.error('輪詢機台失敗:', error);
+                showStatusMessage(`輪詢機台失敗: ${error.message}`, 'error');
+            }
+        }
+
+        // 輪詢所有機台
+        async function pollAllMachines() {
+            console.log('=== 輪詢所有機台診斷 ===');
+            
+            // 檢查本地和全域變數
+            const localClient = mqttClient;
+            const globalClient = window.mqttClient;
+            const localConnected = mqttConnected;
+            const globalConnected = window.mqttConnected;
+            
+            console.log('本地 mqttClient:', !!localClient);
+            console.log('全域 mqttClient:', !!globalClient);
+            console.log('本地 mqttConnected:', localConnected);
+            console.log('全域 mqttConnected:', globalConnected);
+            
+            // 使用任一可用的客戶端
+            let activeClient = localClient || globalClient;
+            const isConnected = localConnected || globalConnected;
+            
+            if (!activeClient) {
+                console.warn('第一次檢查未找到客戶端，嘗試同步狀態...');
+                
+                // 嘗試同步 MQTT 狀態
+                if (window.syncMqttStatus) {
+                    const syncResult = window.syncMqttStatus();
+                    activeClient = window.mqttClient || mqttClient;
+                    console.log('同步後結果:', syncResult);
+                }
+                
+                if (!activeClient) {
+                    console.error('=== MQTT 客戶端檢查失敗 ===');
+                    console.error('本地 mqttClient 存在:', !!localClient);
+                    console.error('全域 window.mqttClient 存在:', !!globalClient);
+                    
+                    // 檢查 UI 狀態
+                    const statusText = document.getElementById('mqtt-status-text');
+                    const connectBtn = document.getElementById('mqtt-connect-btn');
+                    console.error('UI 狀態文字:', statusText?.textContent);
+                    console.error('連接按鈕文字:', connectBtn?.textContent);
+                    
+                    const message = '無法找到 MQTT 客戶端，請重新連接 MQTT';
+                    showStatusMessage(message, 'error');
+                    alert(message + '\n\n建議步驟：\n1. 點擊「重新連線」按鈕\n2. 等待連接成功後再試\n3. 或重新整理頁面');
+                    return;
+                }
+            }
+            
+            console.log('MQTT 客戶端可用，準備輪詢所有機台...');
+
+            if (!appData.machines || appData.machines.length === 0) {
+                alert('沒有機台可以輪詢');
+                return;
+            }
+
+            const machinesWithMac = appData.machines.filter(m => m.mac && m.mac.trim());
+            if (machinesWithMac.length === 0) {
+                alert('沒有設定 MAC 位址的機台');
+                return;
+            }
+
+            showStatusMessage(`開始輪詢 ${machinesWithMac.length} 台機台...`, 'info');
+
+            for (const machine of machinesWithMac) {
+                try {
+                    await pollSingleMachine(machine.mac, machine.devid || 1);
+                    // 每台機台間隔 500ms 避免同時發送過多請求
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (error) {
+                    console.error(`輪詢機台 ${machine.mac} 失敗:`, error);
+                }
+            }
+
+            showStatusMessage(`輪詢完成，已查詢 ${machinesWithMac.length} 台機台`, 'success');
+        }
+
+        // 開始自動輪詢
+        function startAutoPolling() {
+            const intervalSelect = document.getElementById('poll-interval');
+            const interval = intervalSelect ? parseInt(intervalSelect.value) : 30000;
+            
+            stopAutoPolling(); // 確保沒有重複的輪詢
+            
+            pollInterval = setInterval(() => {
+                pollAllMachines();
+            }, interval);
+            
+            showStatusMessage(`已啟動自動輪詢，間隔 ${interval/1000} 秒`, 'success');
+        }
+
+        // 停止自動輪詢
+        function stopAutoPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+                showStatusMessage('已停止自動輪詢', 'info');
+            }
+        }
+
+        // 狀態訊息顯示
+        function showStatusMessage(message, type = 'info') {
+            console.log(`狀態訊息: ${message} (${type})`); // 調試用
+            
+            // 尋找或創建狀態訊息容器
+            let statusContainer = document.getElementById('mqtt-status-messages');
+            if (!statusContainer) {
+                statusContainer = document.createElement('div');
+                statusContainer.id = 'mqtt-status-messages';
+                statusContainer.className = 'fixed top-4 right-4 z-50 max-w-sm';
+                document.body.appendChild(statusContainer);
+            }
+
+            const messageDiv = document.createElement('div');
+            const bgColors = {
+                info: 'bg-blue-600',
+                success: 'bg-green-600', 
+                error: 'bg-red-600'
+            };
+
+            messageDiv.className = `${bgColors[type]} text-white px-4 py-2 rounded-lg mb-2 shadow-lg transform transition-all duration-300`;
+            messageDiv.textContent = message;
+
+            statusContainer.appendChild(messageDiv);
+
+            // 自動移除訊息
+            setTimeout(() => {
+                messageDiv.style.opacity = '0';
+                messageDiv.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.parentNode.removeChild(messageDiv);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
         // --- INITIAL LOAD ---
+        // 延遲初始化 MQTT 功能，確保不影響主要載入流程
+        setTimeout(() => {
+            try {
+                console.log('開始初始化 MQTT 功能...');
+                initializeMqttPolling();
+                initializeMqttControls();
+                initializeDetailPanel();
+                console.log('MQTT 功能初始化完成');
+                
+                // 添加全域測試函數供調試使用
+                window.testMqttPolling = function() {
+                    console.log('=== 測試 MQTT 輪詢功能 ===');
+                    console.log('MQTT 客戶端:', mqttClient);
+                    console.log('MQTT 連接狀態:', mqttConnected);
+                    console.log('appData:', appData);
+                    
+                    if (appData && appData.machines) {
+                        console.log('當前機台列表:', appData.machines);
+                        const machinesWithMac = appData.machines.filter(m => m.mac && m.mac.trim());
+                        console.log('有 MAC 位址的機台:', machinesWithMac);
+                        if (machinesWithMac.length > 0) {
+                            pollAllMachines();
+                        } else {
+                            console.log('沒有設定 MAC 位址的機台');
+                        }
+                    } else {
+                        console.log('appData 或機台列表不存在');
+                    }
+                };
+                
+                // 添加 MQTT 狀態檢查函數
+                window.checkMqttStatus = function() {
+                    console.log('=== MQTT 狀態檢查 ===');
+                    console.log('mqttClient 存在:', !!mqttClient);
+                    console.log('mqttConnected 狀態:', mqttConnected);
+                    
+                    // 檢查 MQTT 狀態指示器
+                    const statusIndicator = document.getElementById('mqtt-status-indicator');
+                    const statusText = document.getElementById('mqtt-status-text');
+                    if (statusIndicator) {
+                        console.log('狀態指示器 class:', statusIndicator.className);
+                    }
+                    if (statusText) {
+                        console.log('狀態文字:', statusText.textContent);
+                    }
+                    
+                    return { client: !!mqttClient, connected: mqttConnected };
+                };
+                
+                // 添加快速測試輪詢功能（使用圖片中的 MAC 位址）
+                window.testQuickPoll = function() {
+                    console.log('=== 快速輪詢測試 ===');
+                    const testMac = '083A8DE1ED14';
+                    const testDevId = 1;
+                    
+                    // 檢查本地和全域 MQTT 客戶端
+                    const localClient = mqttClient;
+                    const globalClient = window.mqttClient;
+                    const activeClient = localClient || globalClient;
+                    
+                    console.log('本地客戶端:', !!localClient);
+                    console.log('全域客戶端:', !!globalClient);
+                    console.log('使用客戶端:', !!activeClient);
+                    
+                    if (activeClient) {
+                        console.log('嘗試輪詢測試機台...');
+                        pollSingleMachine(testMac, testDevId);
+                    } else {
+                        console.log('無 MQTT 客戶端可用');
+                        alert('請先連接 MQTT 再進行測試');
+                    }
+                };
+                
+                // 添加 MQTT 狀態檢查功能
+                window.checkMqttStatus = function() {
+                    console.log('=== MQTT 狀態檢查 ===');
+                    console.log('本地 mqttClient:', !!mqttClient);
+                    console.log('本地 mqttConnected:', mqttConnected);
+                    console.log('全域 window.mqttClient:', !!window.mqttClient);
+                    console.log('全域 window.mqttConnected:', window.mqttConnected);
+                    
+                    if (mqttClient) {
+                        console.log('mqttClient.connected:', mqttClient.connected);
+                        console.log('mqttClient.disconnected:', mqttClient.disconnected);
+                        console.log('mqttClient.reconnecting:', mqttClient.reconnecting);
+                    }
+                    
+                    const statusElement = document.getElementById('mqtt-status-text');
+                    if (statusElement) {
+                        console.log('UI 狀態文字:', statusElement.textContent);
+                    }
+                };
+                
+                // 強制同步 MQTT 狀態
+                window.syncMqttStatus = function() {
+                    console.log('=== 強制同步 MQTT 狀態 ===');
+                    
+                    // 如果本地 mqttClient 存在但全域沒有，同步到全域
+                    if (mqttClient && !window.mqttClient) {
+                        console.log('同步本地客戶端到全域');
+                        window.mqttClient = mqttClient;
+                    }
+                    
+                    // 如果全域 mqttClient 存在但本地沒有，從全域取得
+                    if (!mqttClient && window.mqttClient) {
+                        console.log('從全域取得客戶端到本地');
+                        mqttClient = window.mqttClient;
+                    }
+                    
+                    // 同步連接狀態
+                    if (mqttClient && mqttClient.connected) {
+                        console.log('偵測到客戶端已連接，同步狀態');
+                        mqttConnected = true;
+                        window.mqttConnected = true;
+                        updateMqttStatus(true, '狀態已同步');
+                    }
+                    
+                    console.log('同步完成 - 本地客戶端:', !!mqttClient, '全域客戶端:', !!window.mqttClient);
+                    return {
+                        localClient: !!mqttClient,
+                        globalClient: !!window.mqttClient,
+                        localConnected: mqttConnected,
+                        globalConnected: window.mqttConnected
+                    };
+                };
+
+                // 簡易診斷和修復功能
+                window.fixMqttPolling = function() {
+                    console.log('=== MQTT 輪詢修復程序 ===');
+                    
+                    // 1. 檢查 UI 狀態
+                    const statusText = document.getElementById('mqtt-status-text');
+                    const connectBtn = document.getElementById('mqtt-connect-btn');
+                    console.log('UI 狀態:', statusText?.textContent);
+                    console.log('按鈕文字:', connectBtn?.textContent);
+                    
+                    // 2. 檢查變數狀態
+                    console.log('變數狀態 - 本地客戶端:', !!mqttClient, '全域客戶端:', !!window.mqttClient);
+                    console.log('連接狀態 - 本地:', mqttConnected, '全域:', window.mqttConnected);
+                    
+                    // 3. 如果 UI 顯示已連接但變數未同步，強制同步
+                    if (statusText?.textContent.includes('已連接') || statusText?.textContent.includes('連線成功')) {
+                        console.log('UI 顯示已連接，但變數可能未同步，執行修復...');
+                        
+                        // 如果沒有客戶端但 UI 說已連接，可能需要重新連接
+                        if (!mqttClient && !window.mqttClient) {
+                            console.log('未找到客戶端，建議重新連接');
+                            alert('檢測到連接異常，請點擊「重新連線」按鈕');
+                            return false;
+                        }
+                        
+                        // 同步狀態
+                        window.syncMqttStatus();
+                    }
+                    
+                    // 4. 測試輪詢
+                    console.log('嘗試測試輪詢...');
+                    if (window.testQuickPoll) {
+                        window.testQuickPoll();
+                        return true;
+                    } else {
+                        console.error('testQuickPoll 函數不存在');
+                        return false;
+                    }
+                };
+                
+            } catch (error) {
+                console.error('初始化 MQTT 功能時發生錯誤:', error);
+            }
+        }, 2000); // 增加到 2 秒確保頁面完全載入
+        
         // 不再直接載入群組頁面，由登入邏輯控制
         // showGroupSelectionPage(); 
         
