@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>互動式查帳系統 - 娃娃機營業報告 (多單位雲端版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MQTT 客戶端庫 -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
@@ -405,38 +407,9 @@
                             <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">新增紀錄</button>
                         </form>
                         <div id="form-feedback" class="text-center p-3 rounded-lg transition-opacity duration-500 opacity-0"></div>
-                        
-                        <!-- 輪詢帶入按鈕 -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                            <button id="import-from-poll-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2">
-                                <span>📥 從輪詢帶入</span>
-                            </button>
-                            <button id="batch-add-all-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2">
-                                <span>✅ 批量新增所有機台</span>
-                            </button>
-                        </div>
                     </div>
 
-                    <h3 class="text-xl font-bold text-white mb-4 mt-6">📊 HTTP 輪詢自動記帳</h3>
-                    <p class="text-sm text-gray-400 mb-4">從 HTTP 端點自動輪詢收集的每日記帳數據（devid=1 左天車、devid=2 右天車）</p>
-                    <div class="overflow-x-auto max-h-96">
-                        <table class="w-full text-left">
-                            <thead class="bg-gray-700/50 text-gray-300 uppercase text-sm sticky top-0">
-                                <tr>
-                                    <th class="p-4">日期</th>
-                                    <th class="p-4">天車</th>
-                                    <th class="p-4 text-right">投幣數</th>
-                                    <th class="p-4 text-right">出獎數</th>
-                                    <th class="p-4 text-center">更新次數</th>
-                                    <th class="p-4 text-center">最後更新</th>
-                                    <th class="p-4 text-center">建立時間</th>
-                                </tr>
-                            </thead>
-                            <tbody id="auto-record-table-body" class="divide-y divide-gray-700"></tbody>
-                        </table>
-                    </div>
-
-                    <h3 class="text-xl font-bold text-white mb-4 mt-6">記帳歷史紀錄</h3>
+                    <h3 class="text-xl font-bold text-white mb-4 mt-4">記帳歷史紀錄</h3>
                     <div class="overflow-x-auto max-h-96">
                         <table class="w-full text-left">
                             <thead class="bg-gray-700/50 text-gray-300 uppercase text-sm sticky top-0">
@@ -454,13 +427,40 @@
                     </div>
                 </div>
                 <div id="machines" class="tab-content hidden">
-                    <!-- HTTP 即時同步區塊 -->
+                    <!-- MQTT 連線設定 -->
                     <div class="bg-gray-900/50 p-4 rounded-lg mb-6">
-                        <h3 class="text-xl font-bold text-white mb-4">HTTP 即時同步</h3>
+                        <h3 class="text-xl font-bold text-white mb-4">MQTT 即時同步</h3>
 
-                        <!-- HTTP 輪詢控制 -->
-                        <div class="mt-4 flex flex-col lg:flex-row items-start lg:items-center justify-between bg-gray-800/50 p-3 rounded-lg gap-4">
-                            <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 flex-1">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                            <div>
+                                <label for="mqtt-broker-url" class="block text-sm font-medium text-gray-300 mb-1">MQTT Broker 位址</label>
+                                <input type="text" id="mqtt-broker-url" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" placeholder="ws://broker.hivemq.com:8000/mqtt" value="ws://broker.hivemq.com:8000/mqtt">
+                            </div>
+                            <div>
+                                <label for="mqtt-topic" class="block text-sm font-medium text-gray-300 mb-1">訂閱主題</label>
+                                <input type="text" id="mqtt-topic" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" placeholder="coffeelens/resp" value="coffeelens/resp">
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="mqtt-connect-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                                    <span id="mqtt-connect-text">連接 MQTT</span>
+                                </button>
+                                <button id="mqtt-test-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition" disabled>
+                                    測試查詢
+                                </button>
+                                <button id="mqtt-diagnose-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition text-xs" disabled>
+                                    診斷回應
+                                </button>
+                            </div>
+                            <div class="flex space-x-2 mt-2">
+                                <button id="mqtt-business-test-btn" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition text-xs" disabled>
+                                    營業資料測試
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 輪詢控制 -->
+                        <div class="mt-4 flex items-center justify-between bg-gray-800/50 p-3 rounded-lg">
+                            <div class="flex items-center space-x-4">
                                 <label class="flex items-center space-x-2">
                                     <input type="checkbox" id="auto-poll-enabled" class="rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500">
                                     <span class="text-sm text-gray-300">啟用自動輪詢所有機台</span>
@@ -468,23 +468,18 @@
                                 <div class="flex items-center space-x-2">
                                     <label class="text-sm text-gray-300">間隔：</label>
                                     <select id="poll-interval" class="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-sm">
-                                        <option value="500">0.5秒</option>
-                                        <option value="1000">1秒</option>
-                                        <option value="2000">2秒</option>
-                                        <option value="3000">3秒</option>
-                                        <option value="5000">5秒</option>
-                                        <option value="10000" selected>10秒</option>
-                                        <option value="30000">30秒</option>
+                                        <option value="10000">10秒</option>
+                                        <option value="30000" selected>30秒</option>
                                         <option value="60000">1分鐘</option>
                                         <option value="300000">5分鐘</option>
                                     </select>
                                 </div>
                             </div>
-                            <button id="poll-all-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition shrink-0 w-full sm:w-auto">
+                            <button id="poll-all-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition">
                                 📊 立即輪詢所有機台
                             </button>
                         </div>
-                        <div class="mt-4 flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                        <div class="mt-4 flex items-center space-x-4">
                             <div class="flex items-center space-x-2">
                                 <div id="mqtt-status-indicator" class="w-3 h-3 bg-red-500 rounded-full"></div>
                                 <span id="mqtt-status-text" class="text-sm text-gray-400">未連接</span>
@@ -495,11 +490,12 @@
                             </div>
                         </div>
 
+
                     </div>
 
-                    <!-- HTTP 讀取資料功能 -->
+                    <!-- MQTT 讀取資料功能 -->
                     <div class="bg-gray-900/50 p-4 rounded-lg mb-6">
-                        <h3 class="text-xl font-bold text-white mb-4">📖 讀取機台資料 (HTTP GET)</h3>
+                        <h3 class="text-xl font-bold text-white mb-4">📖 讀取機台資料 (CommandV0.0)</h3>
                         
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div>
@@ -516,25 +512,19 @@
                             </div>
                             <div class="flex items-end">
                                 <button id="send-read-command" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition">
-                                    📤 測試查詢
+                                    📤 發送讀取命令
                                 </button>
                             </div>
-                        </div>
-
-                        <!-- HTTP 連線測試按鈕 -->
-                        <div class="mb-4">
-                            <button id="mqtt-test-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
-                                🔗 測試 HTTP 連線
-                            </button>
                         </div>
 
                         <!-- 命令記錄 -->
                         <div class="bg-gray-800/50 p-3 rounded-lg">
                             <h4 class="text-sm font-medium text-gray-300 mb-2">📋 命令記錄</h4>
                             <div id="mqtt-command-log" class="space-y-2 max-h-40 overflow-y-auto">
-                                <p class="text-xs text-gray-500">HTTP 命令記錄將在此顯示...</p>
+                                <p class="text-xs text-gray-500">等待連線後發送命令...</p>
                             </div>
                         </div>
+
 
                     </div>
 
@@ -1456,8 +1446,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="admin-config.js"></script>
-    <script src="login.js"></script>
+
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -1503,7 +1492,6 @@
         let httpRequestCount = 0;
         let httpErrorCount = 0;
         let httpLastResponse = null;
-        let corsQuietMode = true; // ✅ 啟用 CORS 靜默模式 - 錯誤只記錄到控制台，不顯示警告框
         
         // 測試模式設定（用於 CORS 問題調試）
         const isTestMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -1523,7 +1511,6 @@
         
         // 顯示當前模式
         console.log(isTestMode ? '🧪 測試模式：使用本地服務器' : '🌐 正式模式：使用遠端服務器');
-        console.log(corsQuietMode ? '🔇 CORS 靜默模式已啟用 - 錯誤只在控制台顯示' : '🔔 CORS 詳細模式已啟用 - 將顯示警告框');
         console.log('📡 目前使用的 baseUrl:', httpConfig.baseUrl);
 
         // --- MQTT 相關變數和功能（已棄用，保留供參考） ---
@@ -1642,81 +1629,43 @@
                     // 嘗試使用 CORS 代理服務
                     console.warn('❌ 直接請求失敗，嘗試 CORS 代理服務...');
                     
-                    // 改進的代理配置 - 使用更可靠的格式
                     const proxyConfigs = [
-                        { 
-                            name: 'AllOrigins (GET)', 
-                            buildUrl: (targetUrl) => `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}&pretty=true`,
-                            parseResponse: async (response) => {
-                                const data = await response.json();
-                                return data.contents;
-                            }
-                        },
-                        { 
-                            name: 'CORS-Anywhere', 
-                            buildUrl: (targetUrl) => `https://cors-anywhere.herokuapp.com/${targetUrl}`,
-                            parseResponse: async (response) => response.text()
-                        },
-                        { 
-                            name: 'HTTP-Proxy', 
-                            buildUrl: (targetUrl) => {
-                                // 移除 http:// 前綴，以適應某些代理
-                                const cleanUrl = targetUrl.replace(/^https?:\/\//, '');
-                                return `https://httpbin.org/get?url=${encodeURIComponent(targetUrl)}`;
-                            },
-                            parseResponse: async (response) => {
-                                const data = await response.json();
-                                return data.args.url || JSON.stringify(data);
-                            }
-                        }
+                        { name: 'AllOrigins', url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, responseType: 'text' },
+                        { name: 'corsproxy.io', url: `https://corsproxy.io/?${encodeURIComponent(url)}`, responseType: 'text' },
+                        { name: 'ThingProxy', url: `https://thingproxy.freeboard.io/fetch/${url}`, responseType: 'text' }
                     ];
                     
                     let proxySuccess = false;
                     
                     for (const proxyConfig of proxyConfigs) {
                         try {
-                            const proxyUrl = proxyConfig.buildUrl(url);
-                            console.log(`🔄 嘗試代理 (${proxyConfig.name}): ${proxyUrl.substring(0, 80)}...`);
-                            
-                            const proxyResponse = await fetch(proxyUrl, {
-                                signal: controller.signal,
-                                method: 'GET',
-                                headers: {
-                                    'Accept': 'application/json, text/plain, */*'
-                                }
+                            console.log(`🔄 嘗試代理 (${proxyConfig.name}): ${proxyConfig.url}`);
+                            const proxyResponse = await fetch(proxyConfig.url, {
+                                signal: controller.signal
                             });
                             
                             if (proxyResponse.ok) {
-                                let parsedData;
+                                const rawText = await proxyResponse.text();
+                                let parsedData = rawText;
                                 
+                                // 嘗試解析 JSON
                                 try {
-                                    parsedData = await proxyConfig.parseResponse(proxyResponse);
-                                } catch (parseErr) {
-                                    console.warn(`⚠️ 代理回應解析失敗:`, parseErr);
-                                    parsedData = await proxyResponse.text();
-                                }
-                                
-                                // 嘗試解析為 JSON
-                                if (typeof parsedData === 'string') {
-                                    try {
-                                        parsedData = JSON.parse(parsedData);
-                                    } catch (jsonErr) {
-                                        // 不是 JSON，維持文字格式
-                                    }
+                                    parsedData = JSON.parse(rawText);
+                                } catch (jsonErr) {
+                                    // 不是 JSON，維持原始字串
+                                    console.debug('ℹ️ 代理回應不是 JSON，已以文字形式處理');
                                 }
                                 
                                 httpLastResponse = parsedData;
                                 console.log(`✅ 代理請求成功 (${proxyConfig.name}):`, parsedData);
-                                updateHttpStatus(true, `✅ 已透過 ${proxyConfig.name} 代理取得資料 (${new Date().toLocaleTimeString()})`);
+                                updateHttpStatus(true, `已透過 ${proxyConfig.name} 代理取得資料 (${new Date().toLocaleTimeString()})`);
                                 
-                                // 代理成功時進行資料處理
+                                // 代理成功時同樣進行資料處理
                                 handleHttpResponse(parsedData);
-                                httpErrorCount = 0;
+                                httpErrorCount = 0; // 重置錯誤計數
                                 
                                 proxySuccess = true;
                                 return parsedData;
-                            } else {
-                                console.warn(`⚠️ 代理 ${proxyConfig.name} 返回 HTTP ${proxyResponse.status}`);
                             }
                         } catch (proxyError) {
                             console.warn(`❌ 代理 ${proxyConfig.name} 失敗:`, proxyError.message);
@@ -1725,27 +1674,27 @@
                     }
                     
                     if (!proxySuccess) {
-                        // 所有代理都失敗
+                        // 所有代理都失敗，顯示完整的解決方案
                         console.error('❌ CORS 錯誤:', corsError.message);
-                        console.error('📝 所有代理服務均失敗，可選方案：');
-                        console.log('   1️⃣ 檢查網路連線是否正常');
-                        console.log('   2️⃣ 檢查目標伺服器 ' + url + ' 是否在線');
-                        console.log('   3️⃣ 在新分頁中直接訪問此 URL 測試');
-                        console.log('   4️⃣ 聯繫後端管理員啟用 CORS 支持');
+                        updateHttpStatus(false, 'CORS 錯誤 - 請參考解決方案');
                         
-                        updateHttpStatus(false, '❌ 網路連線或伺服器異常 - 請檢查');
+                        // 顯示詳細的解決方案
+                        const solutions = [
+                            '🌐 方案1: 在新分頁直接開啟 URL 查看資料',
+                            '🚀 方案2: 使用本地伺服器 (Live Server 擴充功能)',
+                            '⚙️ 方案3: 伺服器端設定 CORS 標頭',
+                            '🔧 方案4: 使用瀏覽器擴充功能暫時停用 CORS',
+                            '📱 方案5: 使用手機瀏覽器 (部分限制較少)'
+                        ];
+                        
+                        alert(`❌ CORS 錯誤：瀏覽器阻止了跨域請求\n\n${solutions.join('\n')}\n\n🌐 URL: ${url}\n\n點擊確定後將自動開啟新分頁`);
+                        window.open(url, '_blank');
                         
                         httpErrorCount++;
                         const errorCountElement = document.getElementById('http-error-count');
                         if (errorCountElement) {
                             errorCountElement.textContent = httpErrorCount;
                         }
-                        
-                        // 記錄到命令日誌
-                        addCommandLog('error', `HTTP 請求失敗: ${corsError.message}`, {
-                            url: url,
-                            error: corsError.message
-                        });
                         
                         return null;
                     }
@@ -1811,362 +1760,8 @@
         }
         
         // 處理 HTTP 回應資料
-        // 每日記錄管理函數 - 重構版本（使用機台編號+位置+日期作為 key）
-        function updateDailyRecord(machineId, location, plays, payouts, date = null) {
-            console.log(`📝 檢查並更新每日記錄 - 機台: ${machineId}/${location}, plays: ${plays}, payouts: ${payouts}`);
-            
-            // 初始化存儲
-            if (!window.dailyRecords) {
-                window.dailyRecords = {};
-            }
-            
-            // 使用提供的日期或取得今天的日期
-            const recordDate = date || new Date().toISOString().split('T')[0];
-            const recordKey = `${machineId}_${location}_${recordDate}`;
-            
-            // 獲取該機台今天的記錄
-            let todayRecord = window.dailyRecords[recordKey];
-            
-            if (!todayRecord) {
-                // 新建今天的記錄
-                todayRecord = {
-                    machineId: machineId,
-                    location: location,
-                    date: recordDate,
-                    plays: plays,
-                    payouts: payouts,
-                    createdAt: new Date().toLocaleString('zh-TW'),
-                    updatedAt: new Date().toLocaleString('zh-TW'),
-                    updateCount: 1,
-                    history: [{
-                        timestamp: new Date().toLocaleTimeString('zh-TW'),
-                        plays: plays,
-                        payouts: payouts
-                    }]
-                };
-                window.dailyRecords[recordKey] = todayRecord;
-                console.log(`✅ 新建今日記錄 - 機台: ${machineId}/${location}, 日期: ${recordDate}, plays: ${plays}, payouts: ${payouts}`);
-                
-                return { status: 'created', record: todayRecord };
-            }
-            
-            // 與今天的記錄比對
-            const isChanged = (todayRecord.plays !== plays) || (todayRecord.payouts !== payouts);
-            
-            if (isChanged) {
-                // 數據有變化，更新記錄
-                console.log(`🔄 數據有變化 - 舊: plays=${todayRecord.plays}, payouts=${todayRecord.payouts}, 新: plays=${plays}, payouts=${payouts}`);
-                
-                // 保存到歷史記錄
-                todayRecord.history.push({
-                    timestamp: new Date().toLocaleTimeString('zh-TW'),
-                    plays: plays,
-                    payouts: payouts
-                });
-                
-                // 更新主記錄
-                todayRecord.plays = plays;
-                todayRecord.payouts = payouts;
-                todayRecord.updatedAt = new Date().toLocaleString('zh-TW');
-                todayRecord.updateCount = (todayRecord.updateCount || 0) + 1;
-                
-                window.dailyRecords[recordKey] = todayRecord;
-                console.log(`✅ 已更新今日記錄 - 機台: ${machineId}/${location}, plays: ${plays}, payouts: ${payouts}, 更新次數: ${todayRecord.updateCount}`);
-                
-                return { status: 'updated', record: todayRecord };
-            } else {
-                // 數據相同，不更新
-                console.log(`ℹ️ 數據未變化 - 機台: ${machineId}/${location}, plays: ${plays}, payouts: ${payouts} (維持不變)`);
-                return { status: 'unchanged', record: todayRecord };
-            }
-        }
-        
-        // 構建動態機台配置映射表 {MAC_devid} -> {machineId, location}
-        function buildMachineConfigMap() {
-            if (window.machineConfigMap) {
-                return window.machineConfigMap;
-            }
-            
-            window.machineConfigMap = {};
-            
-            if (!appData || !appData.machines) {
-                console.warn('⚠️ appData.machines 未初始化');
-                return window.machineConfigMap;
-            }
-            
-            // 遍歷所有機台配置
-            appData.machines.forEach(machine => {
-                // 每個機台可能有 MAC 和 devid 信息
-                if (machine.mac && machine.devidData) {
-                    // 如果機台有多個 devid（如 devid=1 和 devid=2）
-                    Object.keys(machine.devidData).forEach(devid => {
-                        const mapKey = `${machine.mac}_${devid}`;
-                        window.machineConfigMap[mapKey] = {
-                            machineId: machine.id,
-                            location: machine.location,
-                            mac: machine.mac,
-                            devid: parseInt(devid)
-                        };
-                        console.log(`📌 映射: ${mapKey} -> ${machine.id}/${machine.location}`);
-                    });
-                } else if (machine.mac && machine.devid) {
-                    // 簡單情況：單個 devid
-                    const mapKey = `${machine.mac}_${machine.devid}`;
-                    window.machineConfigMap[mapKey] = {
-                        machineId: machine.id,
-                        location: machine.location,
-                        mac: machine.mac,
-                        devid: parseInt(machine.devid)
-                    };
-                    console.log(`📌 映射: ${mapKey} -> ${machine.id}/${machine.location}`);
-                }
-            });
-            
-            console.log(`✅ 已構建機台配置映射表，共 ${Object.keys(window.machineConfigMap).length} 條映射`);
-            return window.machineConfigMap;
-        }
-        
-        // 刷新自動記帳表格
-        function refreshAutoRecordTable() {
-            const tableBody = document.getElementById('auto-record-table-body');
-            if (!tableBody) {
-                console.warn('⚠️ 找不到自動記帳表格');
-                return;
-            }
-            
-            // 清空表格
-            tableBody.innerHTML = '';
-            
-            // 檢查是否有記錄
-            if (!window.dailyRecords || Object.keys(window.dailyRecords).length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">暫無記錄</td></tr>';
-                return;
-            }
-            
-            // 按日期排序記錄
-            const sortedRecords = Object.values(window.dailyRecords)
-                .sort((a, b) => {
-                    // 先按日期降序（新的在前）
-                    const dateCompare = new Date(b.date) - new Date(a.date);
-                    if (dateCompare !== 0) return dateCompare;
-                    // 相同日期按機台編號和位置排序
-                    if (a.machineId !== b.machineId) {
-                        return a.machineId.localeCompare(b.machineId);
-                    }
-                    return a.location.localeCompare(b.location);
-                });
-            
-            // 填充表格
-            sortedRecords.forEach(record => {
-                const row = document.createElement('tr');
-                const statusIcon = record.updateCount > 1 ? '🔄' : '✨';
-                const machineLabel = `${record.machineId} / ${record.location}`;
-                
-                row.innerHTML = `
-                    <td class="p-4">${record.date}</td>
-                    <td class="p-4 font-semibold text-blue-400">${machineLabel}</td>
-                    <td class="p-4 text-right font-semibold text-blue-300">${record.plays.toLocaleString()}</td>
-                    <td class="p-4 text-right font-semibold text-green-300">${record.payouts.toLocaleString()}</td>
-                    <td class="p-4 text-center">${statusIcon} ${record.updateCount}</td>
-                    <td class="p-4 text-center text-xs text-gray-400">${record.updatedAt}</td>
-                    <td class="p-4 text-center text-xs text-gray-400">${record.createdAt}</td>
-                `;
-                tableBody.appendChild(row);
-            });
-            
-            console.log(`✅ 已刷新自動記帳表格，共 ${sortedRecords.length} 筆記錄`);
-        }
-        
-        // 建立 devid 與機台的映射關係
-        function buildDevidMachineMap() {
-            if (!window.devidMachineMap) {
-                window.devidMachineMap = {
-                    1: { label: '左天車', machineId: 'A001', location: '上1' },
-                    2: { label: '右天車', machineId: 'A001', location: '上2' }
-                };
-            }
-            return window.devidMachineMap;
-        }
-        
-        // 從輪詢帶入數據到表單
-        function importFromPoll() {
-            console.log('📥 從輪詢帶入數據...');
-            
-            // 檢查是否有輪詢數據
-            if (!window.dailyRecords || Object.keys(window.dailyRecords).length === 0) {
-                alert('❌ 暫無輪詢數據，請先進行輪詢');
-                return;
-            }
-            
-            // 建構動態機台映射
-            buildMachineConfigMap();
-            
-            const today = new Date().toISOString().split('T')[0];
-            
-            // 優先取最新的記錄（從 appData.machines 中尋找）
-            let selectedRecord = null;
-            let selectedMachine = null;
-            
-            if (appData && appData.machines) {
-                for (let machine of appData.machines) {
-                    const recordKey = `${machine.id}_${machine.location}_${today}`;
-                    if (window.dailyRecords[recordKey]) {
-                        selectedRecord = window.dailyRecords[recordKey];
-                        selectedMachine = machine;
-                        console.log(`✅ 找到記錄: ${recordKey}`, selectedRecord);
-                        break;
-                    }
-                }
-            }
-            
-            if (!selectedRecord || !selectedMachine) {
-                alert('❌ 找不到今天的輪詢記錄');
-                return;
-            }
-            
-            // 填入表單
-            const machineSelector = document.getElementById('machine-selector');
-            const entryDate = document.getElementById('entry-date');
-            const cumulativePlays = document.getElementById('cumulative-plays');
-            const cumulativePayouts = document.getElementById('cumulative-payouts');
-            
-            // 填入日期
-            if (entryDate) {
-                entryDate.value = selectedRecord.date;
-            }
-            
-            // 填入投幣數和出獎數
-            if (cumulativePlays) {
-                cumulativePlays.value = selectedRecord.plays;
-            }
-            if (cumulativePayouts) {
-                cumulativePayouts.value = selectedRecord.payouts;
-            }
-            
-            // 選擇機台（使用 docId）
-            if (machineSelector && selectedMachine) {
-                machineSelector.value = selectedMachine.docId;
-                console.log(`✅ 已選擇機台: ${selectedMachine.id}/${selectedMachine.location} (docId: ${selectedMachine.docId})`);
-            }
-            
-            console.log(`✅ 已帶入數據: ${selectedRecord.machineId}/${selectedRecord.location}, plays=${selectedRecord.plays}, payouts=${selectedRecord.payouts}`);
-        }
-        
-        // 批量新增所有機台記錄
-        function batchAddAllMachines() {
-            console.log('✅ 批量新增所有機台記錄...');
-            
-            // 檢查是否有輪詢數據
-            if (!window.dailyRecords || Object.keys(window.dailyRecords).length === 0) {
-                alert('❌ 暫無輪詢數據，請先進行輪詢');
-                return;
-            }
-            
-            // 檢查 appData 和 machines
-            if (!appData || !appData.machines || appData.machines.length === 0) {
-                alert('❌ 沒有可用的機台列表');
-                return;
-            }
-            
-            const machineSelector = document.getElementById('machine-selector');
-            const entryDate = document.getElementById('entry-date');
-            const cumulativePlays = document.getElementById('cumulative-plays');
-            const cumulativePayouts = document.getElementById('cumulative-payouts');
-            const dailyEntryForm = document.getElementById('daily-entry-form');
-            
-            if (!dailyEntryForm) {
-                alert('❌ 找不到表單');
-                return;
-            }
-            
-            // 建構動態機台映射
-            buildMachineConfigMap();
-            
-            const today = new Date().toISOString().split('T')[0];
-            let addedCount = 0;
-            let failedCount = 0;
-            
-            // 遍歷所有機台並查找對應的記錄
-            for (let machine of appData.machines) {
-                const recordKey = `${machine.id}_${machine.location}_${today}`;
-                const record = window.dailyRecords[recordKey];
-                
-                if (record) {
-                    console.log(`✅ 找到 ${machine.id}/${machine.location} 的記錄`);
-                    
-                    // 驗證選擇器中是否存在此機台
-                    const options = Array.from(machineSelector.options);
-                    const hasOption = options.some(opt => opt.value === machine.docId);
-                    
-                    if (!hasOption) {
-                        console.warn(`⚠️ 機台選擇器中找不到 docId=${machine.docId}，跳過`);
-                        failedCount++;
-                        continue;
-                    }
-                    
-                    // 選擇機台（使用 docId）
-                    machineSelector.value = machine.docId;
-                    
-                    // 觸發 change 事件以自動填入投幣數和出獎數
-                    machineSelector.dispatchEvent(new Event('change', { bubbles: true }));
-                    
-                    console.log(`✅ 已設置選擇器: docId=${machine.docId}, value=${machineSelector.value}`);
-                    
-                    // 驗證選擇是否成功
-                    if (machineSelector.value !== machine.docId) {
-                        console.error(`❌ 設置選擇器失敗: 期望=${machine.docId}, 實際=${machineSelector.value}`);
-                        failedCount++;
-                        continue;
-                    }
-                    
-                    // 設置日期（如果之前沒有自動填入）
-                    if (!entryDate.value) {
-                        entryDate.value = record.date;
-                    }
-                    
-                    // 檢查是否需要覆蓋投幣數和出獎數（在某些情況下）
-                    // 或保持 change 事件帶入的值
-                    if (cumulativePlays.value === '' || parseInt(cumulativePlays.value) === 0) {
-                        cumulativePlays.value = record.plays;
-                    }
-                    if (cumulativePayouts.value === '' || parseInt(cumulativePayouts.value) === 0) {
-                        cumulativePayouts.value = record.payouts;
-                    }
-                    
-                    console.log(`📋 表單已填入:`, {
-                        date: entryDate.value,
-                        machineDocId: machineSelector.value,
-                        plays: cumulativePlays.value,
-                        payouts: cumulativePayouts.value
-                    });
-                    
-                    // 觸發表單提交
-                    dailyEntryForm.dispatchEvent(new Event('submit'));
-                    addedCount++;
-                    
-                    console.log(`✅ 已新增 ${machine.id}/${machine.location} 的記錄`);
-                }
-            }
-            
-            if (addedCount === 0) {
-                alert(`❌ 找不到輪詢數據 (失敗: ${failedCount})`);
-            } else {
-                const message = failedCount > 0 
-                    ? `✅ 已成功新增 ${addedCount} 筆機台記錄 (失敗: ${failedCount})`
-                    : `✅ 已成功新增 ${addedCount} 筆機台記錄`;
-                alert(message);
-                
-                // 批量新增完成後，清除 HTTP 輪詢自動記帳表格
-                console.log('🗑️ 清除 HTTP 輪詢自動記帳表格...');
-                window.dailyRecords = {};
-                if (typeof refreshAutoRecordTable === 'function') {
-                    refreshAutoRecordTable();
-                }
-            }
-        }
-        
-        function handleHttpResponse(data, mac = null, devid = null) {
-            console.log('🔄 處理 HTTP 回應資料:', data, 'MAC:', mac, 'DevID:', devid);
+        function handleHttpResponse(data) {
+            console.log('🔄 處理 HTTP 回應資料:', data);
             
             // 更新最後回應顯示
             const lastResponseElement = document.getElementById('http-last-response');
@@ -2184,659 +1779,16 @@
                 dataPreview: data
             });
             
-            // 初始化 devid 對應的存儲
-            if (!window.machineDataByDevid) {
-                window.machineDataByDevid = {};
-            }
+            // TODO: 根據實際需求處理資料
+            // 例如：解析特定欄位、儲存到 Firebase、更新 UI 等
             
-            // 如果是陣列，優先按指定的 devid 解析，否則解析所有 devid
-            if (Array.isArray(data)) {
-                console.log('📊 檢測到陣列數據，處理多 devid... (指定DevID:', devid, ')');
-                
-                if (devid !== null && devid !== undefined) {
-                    // ✅ 優先按指定的 devid 解析
-                    console.log(`⭐ 優先解析指定的 devid: ${devid}`);
-                    const parsedData = parseHttpData(data, devid);
-                    
-                    if (parsedData && parsedData.plays !== null) {
-                        window.machineDataByDevid[devid] = parsedData;
-                        console.log(`✅ devid ${devid} 數據已儲存:`, parsedData);
-                        
-                        // 📝 使用新的 updateDailyRecord 簽名
-                        // 从 MAC + devid 获取 machineId 和 location
-                        buildMachineConfigMap(); // 确保映射已构建
-                        const mapKey = `${mac}_${devid}`;
-                        const machineConfig = window.machineConfigMap[mapKey];
-                        
-                        if (machineConfig) {
-                            const recordResult = updateDailyRecord(machineConfig.machineId, machineConfig.location, parsedData.plays, parsedData.payouts);
-                            console.log(`📋 每日記錄更新結果 (${recordResult.status}):`, recordResult.record);
-                        } else {
-                            console.warn(`⚠️ 找不到機台配置: ${mapKey}，跳過記錄更新`);
-                        }
-                        
-                        // 🔄 刷新自動記帳表格
-                        refreshAutoRecordTable();
-                        
-                        updateMachineDataDisplay(parsedData, devid);
-                    }
-                } else {
-                    // 如果沒指定 devid，則提取所有唯一的 devid
-                    const devidSet = new Set();
-                    data.forEach(record => {
-                        if (record.data && typeof record.data === 'string') {
-                            try {
-                                const parsed = JSON.parse(record.data);
-                                if (parsed.devid) {
-                                    devidSet.add(parseInt(parsed.devid));
-                                }
-                            } catch (e) {}
-                        }
-                    });
-                    
-                    console.log('🔍 找到的 devid:', Array.from(devidSet));
-                    
-                    // 為每個 devid 解析最新數據
-                    devidSet.forEach(targetDevid => {
-                        const parsedData = parseHttpData(data, targetDevid);
-                        
-                        if (parsedData && parsedData.plays !== null) {
-                            window.machineDataByDevid[targetDevid] = parsedData;
-                            console.log(`✅ devid ${targetDevid} 數據已儲存:`, parsedData);
-                            
-                            // 📝 使用新的 updateDailyRecord 簽名
-                            // 从 MAC + devid 获取 machineId 和 location
-                            buildMachineConfigMap(); // 确保映射已构建
-                            const mapKey = `${mac}_${targetDevid}`;
-                            const machineConfig = window.machineConfigMap[mapKey];
-                            
-                            if (machineConfig) {
-                                const recordResult = updateDailyRecord(machineConfig.machineId, machineConfig.location, parsedData.plays, parsedData.payouts);
-                                console.log(`📋 每日記錄更新結果 (${recordResult.status}):`, recordResult.record);
-                            } else {
-                                console.warn(`⚠️ 找不到機台配置: ${mapKey}，跳過記錄更新`);
-                            }
-                            
-                            // 🔄 刷新自動記帳表格
-                            refreshAutoRecordTable();
-                            
-                            // 顯示該 devid 的數據
-                            updateMachineDataDisplay(parsedData, targetDevid);
-                        }
-                    });
-                }
-                
-                // 儲存到全域變數供後續使用
-                window.lastParsedMachineData = window.machineDataByDevid;
-            } else {
-                // 單個數據處理
-                const parsedData = parseHttpData(data, devid);
-                
-                // 如果成功解析，記錄提取的數據
-                if (parsedData) {
-                    console.log('✅ 數據解析成功:', parsedData);
-                    
-                    // 按 devid 儲存
-                    if (parsedData.devid || devid) {
-                        const saveDevid = parsedData.devid || devid;
-                        if (!window.machineDataByDevid) {
-                            window.machineDataByDevid = {};
-                        }
-                        window.machineDataByDevid[saveDevid] = parsedData;
-                        console.log(`💾 devid ${saveDevid} 數據已保存`);
-                    }
-                    
-                    // 更新 UI 中顯示的機台數據
-                    updateMachineDataDisplay(parsedData, devid);
-                    
-                    // 儲存到全域變數供後續使用
-                    window.lastParsedMachineData = parsedData;
-                } else {
-                    console.warn('⚠️ 無法解析數據');
-                }
-            }
-        }
-        
-        // 解析 HTTP 回應數據 - 支持多種格式和多個 devid
-        function parseHttpData(data, targetDevid = null) {
-            try {
-                console.log('📥 開始解析數據，類型:', typeof data, targetDevid ? `，目標 devid: ${targetDevid}` : '');
-                
-                // 情況 1: 如果是陣列，尋找對應 devid 的 re_readdata 命令
-                if (Array.isArray(data)) {
-                    console.log('🔍 檢測到陣列結構，共 ' + data.length + ' 條記錄');
-                    
-                    // 先列出所有 re_readdata 記錄以便調試
-                    const reReadRecords = [];
-                    for (let i = 0; i < data.length; i++) {
-                        const record = data[i];
-                        if (record.data && typeof record.data === 'string') {
-                            try {
-                                const parsed = JSON.parse(record.data);
-                                if (parsed.cmd === 're_readdata' && parsed.parm) {
-                                    reReadRecords.push({
-                                        index: i,
-                                        date: record.date,
-                                        devid: parsed.devid,
-                                        timestamp: new Date(record.date).getTime(),
-                                        record: record,
-                                        parsed: parsed
-                                    });
-                                }
-                            } catch (e) {}
-                        }
-                    }
-                    
-                    if (reReadRecords.length > 0) {
-                        console.log('📋 發現所有 re_readdata 記錄:');
-                        reReadRecords.forEach(r => console.log(`   [${r.index}] ${r.date} (devid=${r.devid})`));
-                    }
-                    
-                    // ✅ 關鍵修正：按時間戳排序，找最新的符合條件的記錄
-                    // 如果指定了 devid，則先過濾該 devid，再按時間排序
-                    let targetRecords = reReadRecords;
-                    if (targetDevid !== null) {
-                        targetRecords = reReadRecords.filter(r => parseInt(r.devid) == parseInt(targetDevid));
-                        console.log(`🔎 過濾 devid=${targetDevid} 的記錄，找到 ${targetRecords.length} 條`);
-                    }
-                    
-                    if (targetRecords.length > 0) {
-                        // 按時間戳倒序排列（最新的在前）
-                        targetRecords.sort((a, b) => b.timestamp - a.timestamp);
-                        const newestRecord = targetRecords[0];
-                        
-                        console.log(`✅ 選擇最新記錄: [${newestRecord.index}] ${newestRecord.date} (devid=${newestRecord.devid})`);
-                        console.log(`   時間戳: ${newestRecord.timestamp}, 比較其他記錄:`);
-                        targetRecords.slice(1, 3).forEach(r => console.log(`   - [${r.index}] ${r.date}`));
-                        
-                        return parseReReadData(newestRecord.parsed);
-                    }
-                    
-                    // 如果指定了 devid 但沒找到，記錄
-                    if (targetDevid !== null) {
-                        console.warn(`⚠️ 未找到 devid ${targetDevid} 的 re_readdata 命令`);
-                    } else {
-                        console.warn('⚠️ 未找到有效的 re_readdata 命令');
-                    }
-                    
-                    return {
-                        plays: null,
-                        payouts: null,
-                        timestamp: new Date().toLocaleTimeString('zh-TW'),
-                        format: 'array_no_data',
-                        hasData: false,
-                        devid: targetDevid
-                    };
-                }
-                
-                let jsonData = data;
-                
-                // 情況 2: 如果是字符串，嘗試解析為 JSON
-                if (typeof data === 'string') {
-                    // 嘗試 JSON 解析
-                    try {
-                        jsonData = JSON.parse(data);
-                        // 如果解析後是陣列，遞歸處理
-                        if (Array.isArray(jsonData)) {
-                            return parseHttpData(jsonData, targetDevid);
-                        }
-                    } catch (e) {
-                        // 如果不是有效的 JSON，嘗試提取數據
-                        console.log('📄 接收到文本數據，嘗試提取結構化信息...');
-                        return parseTextData(data);
-                    }
-                }
-                
-                // 情況 3: 如果是對象
-                if (typeof jsonData === 'object' && jsonData !== null) {
-                    // 首先檢查是否是 re_readdata 命令
-                    if (jsonData.cmd === 're_readdata' && jsonData.parm) {
-                        console.log('🔍 檢測到 re_readdata 命令，解析 parm 字段...');
-                        return parseReReadData(jsonData);
-                    }
-                    // 否則使用通用 JSON 解析
-                    return extractMachineData(jsonData);
-                }
-                
-                return null;
-            } catch (error) {
-                console.error('❌ 數據解析失敗:', error);
-                return null;
-            }
-        }
-        
-        // 解析 re_readdata 命令的 parm 十六進位字段
-        function parseReReadData(jsonData) {
-            console.log('⚙️ 解析 re_readdata 協議數據...');
-            
-            const result = {
-                raw: jsonData,
-                plays: null,        // 累積投幣數
-                payouts: null,      // 累積出獎次數
-                timestamp: new Date().toLocaleTimeString('zh-TW'),
-                format: 're_readdata',
-                hasData: false
-            };
-            
-            try {
-                const parm = jsonData.parm;
-                if (!parm || typeof parm !== 'string') {
-                    console.warn('⚠️ parm 字段無效');
-                    return result;
-                }
-                
-                console.log('📝 parm 十六進位字符串: ' + parm);
-                console.log('📊 parm 字符串長度: ' + parm.length + ' 字符 (' + (parm.length / 2) + ' 字節)');
-                
-                // 保存到全局變數便於查詢
-                if (!window.parmByDevid) window.parmByDevid = {};
-                window.parmByDevid[jsonData.devid] = parm;
-                console.log(`💾 已保存到 window.parmByDevid[${jsonData.devid}]`);
-                
-                // 將十六進位字符串轉換為字節陣列
-                const bytes = [];
-                for (let i = 0; i < parm.length; i += 2) {
-                    const hex = parm.substring(i, i + 2);
-                    bytes.push(parseInt(hex, 16));
-                }
-                
-                console.log('🔍 前 40 個字節值(十進位): ' + bytes.slice(0, 40).join(', '));
-                
-                // ✅ 主要位置: 嘗試多個已知位置
-                // ✅ 主要位置: 投幣數和出貨次數位置
-                // 根據實際 parm 數據分析：
-                // 字節: ... 11, 0, 1, 40, 0, 0, 135, 0, 9, 0, 210, 0, 94, 1, ...
-                // 位置: ... 26 27 28 29 30 31 32  33 34 35 36   37 38  39 ...
-                //
-                // Byte[32] = 135, Byte[33] = 0   → plays = 135 + (0 << 8) = 135 ✅
-                // Byte[34] = 9,   Byte[35] = 0   → payouts = 9 + (0 << 8) = 9 ✅
-                
-                console.log(`🔍 devid=${parseInt(jsonData.devid) || 1}, 嘗試多個位置...`);
-                
-                // 📍 正確位置 (32-35)
-                if (bytes.length >= 36) {
-                    const plays = bytes[32] + (bytes[33] << 8);
-                    const payouts = bytes[34] + (bytes[35] << 8);
-                    const isValid = isValidPair(plays, payouts);
-                    
-                    console.log(`📍 試 位置32-35 (正確位置): bytes[32]=${bytes[32]?.toString(16).padStart(2,'0')}, bytes[33]=${bytes[33]?.toString(16).padStart(2,'0')}, bytes[34]=${bytes[34]?.toString(16).padStart(2,'0')}, bytes[35]=${bytes[35]?.toString(16).padStart(2,'0')} → plays=${plays}, payouts=${payouts}, 有效=${isValid}`);
-                    
-                    if (isValid) {
-                        result.plays = plays;
-                        result.payouts = payouts;
-                        result.hasData = true;
-                        console.log(`✅ 位置32-35 成功提取: plays=${plays}, payouts=${payouts}`);
-                        return result;
-                    } else {
-                        console.log(`⚠️ 位置32-35 數據無效，嘗試備用位置...`);
-                    }
-                }
-                
-                // 🔄 備用位置: 嘗試其他已知位置
-                const knownPositions = [
-                    {name: '位置36-39', start: 36},
-                    {name: '位置42-45', start: 42},
-                    {name: '位置52-55', start: 52}
-                ];
-                
-                for (const pos of knownPositions) {
-                    if (bytes.length >= pos.start + 4) {
-                        const plays = bytes[pos.start] + (bytes[pos.start+1] << 8);
-                        const payouts = bytes[pos.start+2] + (bytes[pos.start+3] << 8);
-                        const isValid = isValidPair(plays, payouts);
-                        
-                        console.log(`📍 試 ${pos.name}: bytes[${pos.start}]=${bytes[pos.start]?.toString(16).padStart(2,'0')}, bytes[${pos.start+1}]=${bytes[pos.start+1]?.toString(16).padStart(2,'0')}, bytes[${pos.start+2}]=${bytes[pos.start+2]?.toString(16).padStart(2,'0')}, bytes[${pos.start+3}]=${bytes[pos.start+3]?.toString(16).padStart(2,'0')} → plays=${plays}, payouts=${payouts}, 有效=${isValid}`);
-                        
-                        if (isValid) {
-                            result.plays = plays;
-                            result.payouts = payouts;
-                            result.hasData = true;
-                            console.log(`✅ ${pos.name} 成功提取: plays=${plays}, payouts=${payouts}`);
-                            return result;
-                        }
-                    }
-                }
-                
-                // 備用位置: 多個固定位置 (4字節)
-                const positions = [
-                    {name: '位置A (2-6, 6-10)', plays: [2, 6], payouts: [6, 10]},
-                    {name: '位置B (4-8, 8-12)', plays: [4, 8], payouts: [8, 12]},
-                    {name: '位置C (8-12, 12-16)', plays: [8, 12], payouts: [12, 16]},
-                    {name: '位置D (10-14, 14-18)', plays: [10, 14], payouts: [14, 18]},
-                    {name: '位置E (16-20, 20-24)', plays: [16, 20], payouts: [20, 24]},
-                    {name: '位置F (18-22, 22-26)', plays: [18, 22], payouts: [22, 26]},
-                    {name: '位置G (24-28, 28-32)', plays: [24, 28], payouts: [28, 32]},
-                ];
-                
-                console.log('🔎 嘗試備用 4字節位置...');
-                for (const pos of positions) {
-                    if (bytes.length >= pos.payouts[1]) {
-                        const p1 = bytes[pos.plays[0]] | (bytes[pos.plays[0]+1] << 8) | (bytes[pos.plays[0]+2] << 16) | (bytes[pos.plays[0]+3] << 24);
-                        const p2 = bytes[pos.payouts[0]] | (bytes[pos.payouts[0]+1] << 8) | (bytes[pos.payouts[0]+2] << 16) | (bytes[pos.payouts[0]+3] << 24);
-                        
-                        console.log(`  試 ${pos.name}: plays=${p1}, payouts=${p2}`);
-                        
-                        if (isValidPair(p1, p2)) {
-                            result.plays = p1;
-                            result.payouts = p2;
-                            result.hasData = true;
-                            console.log(`✅ ${pos.name} 成功: plays=${p1}, payouts=${p2}`);
-                            return result;
-                        }
-                    }
-                }
-                
-                // 備用方法: 動態掃描 - 嘗試所有可能的 4 字節對
-                console.log('🔎 開始動態掃描所有 4字節 位置...');
-                for (let i = 0; i < bytes.length - 15; i += 2) {
-                    const val1 = bytes[i] | (bytes[i+1] << 8) | (bytes[i+2] << 16) | (bytes[i+3] << 24);
-                    const val2 = bytes[i+4] | (bytes[i+5] << 8) | (bytes[i+6] << 16) | (bytes[i+7] << 24);
-                    
-                    if (isValidPair(val1, val2)) {
-                        result.plays = val1;
-                        result.payouts = val2;
-                        result.hasData = true;
-                        console.log(`✅ 動態掃描成功 (位置 ${i}): plays=${val1}, payouts=${val2}`);
-                        return result;
-                    }
-                }
-                
-                // 備用方法: 嘗試 2 字節組合 (動態)
-                console.log('🔎 嘗試 2字節組合 (動態掃描)...');
-                for (let i = 0; i < bytes.length - 3; i += 2) {
-                    const val1 = bytes[i] | (bytes[i+1] << 8);
-                    const val2 = bytes[i+2] | (bytes[i+3] << 8);
-                    
-                    if (isValidPair(val1, val2)) {
-                        result.plays = val1;
-                        result.payouts = val2;
-                        result.hasData = true;
-                        console.log(`✅ 2字節成功 (位置 ${i}): plays=${val1}, payouts=${val2}`);
-                        return result;
-                    }
-                }
-                
-                console.warn('⚠️ 嘗試了所有方法，無法從 parm 中提取有效數據');
-                console.log('💡 parm 樣本: ' + parm);
-                result.hasData = false;
-                
-            } catch (error) {
-                console.error('❌ re_readdata 解析錯誤:', error);
-                result.hasData = false;
-            }
-            
-            return result;
-        }
-        
-        // 驗證投幣和出獎數據是否有效
-        function isValidPair(plays, payouts) {
-            // 投幣數應該大於 0，小於 100 萬
-            // 出獎數應該大於等於 0，小於等於投幣數，小於 100 萬
-            const playsValid = plays > 0 && plays < 1000000;
-            const payoutsValid = payouts >= 0 && payouts <= plays && payouts < 1000000;
-            
-            return playsValid && payoutsValid;
-        }
-        
-        // 從文本格式解析數據
-        function parseTextData(textData) {
-            console.log('🔍 分析文本數據結構...');
-            
-            const result = {
-                raw: textData,
-                plays: null,        // 累積投幣數
-                payouts: null,      // 累積出貨次數
-                timestamp: new Date().toLocaleTimeString('zh-TW'),
-                format: 'text'
-            };
-            
-            // 嘗試多種常見的分隔符格式
-            // 格式 1: "plays:123,payouts:456" 或類似
-            const colonFormat = textData.match(/plays[:\s]+(\d+).*?payouts[:\s]+(\d+)/i);
-            if (colonFormat) {
-                result.plays = parseInt(colonFormat[1]);
-                result.payouts = parseInt(colonFormat[2]);
-                console.log('✅ 格式識別: 冒號分隔符');
-                return result;
-            }
-            
-            // 格式 2: "123,456" (假設第一個數字是投幣，第二個是出貨)
-            const commaFormat = textData.match(/^(\d+)[,\s]+(\d+)$/);
-            if (commaFormat) {
-                result.plays = parseInt(commaFormat[1]);
-                result.payouts = parseInt(commaFormat[2]);
-                console.log('✅ 格式識別: 逗號分隔符');
-                return result;
-            }
-            
-            // 格式 3: 換行分隔 "123\n456"
-            const lineFormat = textData.match(/(\d+)\s+(\d+)/);
-            if (lineFormat) {
-                result.plays = parseInt(lineFormat[1]);
-                result.payouts = parseInt(lineFormat[2]);
-                console.log('✅ 格式識別: 空白分隔符');
-                return result;
-            }
-            
-            // 格式 4: 只提取所有數字
-            const numbers = textData.match(/\d+/g);
-            if (numbers && numbers.length >= 2) {
-                result.plays = parseInt(numbers[0]);
-                result.payouts = parseInt(numbers[1]);
-                console.log('✅ 格式識別: 自動提取數字');
-                return result;
-            }
-            
-            return null;
-        }
-        
-        // 從 JSON 對象提取機台數據
-        function extractMachineData(jsonData) {
-            console.log('📦 分析 JSON 結構...');
-            
-            const result = {
-                raw: jsonData,
-                plays: null,
-                payouts: null,
-                timestamp: new Date().toLocaleTimeString('zh-TW'),
-                format: 'json'
-            };
-            
-            // 常見的欄位名稱列表
-            const playsKeywords = ['plays', 'play', 'coins', 'coin', '投幣', '投币', 'investment', 'cumulative_plays', 'total_plays', 'count'];
-            const payoutsKeywords = ['payouts', 'payout', 'dispense', 'dispenses', '出貨', '出货', 'distribution', 'cumulative_payouts', 'total_payouts', 'times'];
-            
-            // 尋找投幣數
-            for (const key of playsKeywords) {
-                if (jsonData[key] !== undefined) {
-                    result.plays = parseInt(jsonData[key]);
-                    console.log(`✅ 找到投幣欄位: "${key}" = ${result.plays}`);
-                    break;
-                }
-            }
-            
-            // 如果沒找到，嘗試查找嵌套欄位
-            if (result.plays === null) {
-                for (const key in jsonData) {
-                    if (typeof jsonData[key] === 'object' && jsonData[key] !== null) {
-                        for (const subKey of playsKeywords) {
-                            if (jsonData[key][subKey] !== undefined) {
-                                result.plays = parseInt(jsonData[key][subKey]);
-                                console.log(`✅ 找到嵌套投幣欄位: "${key}.${subKey}" = ${result.plays}`);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // 尋找出貨次數
-            for (const key of payoutsKeywords) {
-                if (jsonData[key] !== undefined) {
-                    result.payouts = parseInt(jsonData[key]);
-                    console.log(`✅ 找到出貨欄位: "${key}" = ${result.payouts}`);
-                    break;
-                }
-            }
-            
-            // 如果沒找到，嘗試查找嵌套欄位
-            if (result.payouts === null) {
-                for (const key in jsonData) {
-                    if (typeof jsonData[key] === 'object' && jsonData[key] !== null) {
-                        for (const subKey of payoutsKeywords) {
-                            if (jsonData[key][subKey] !== undefined) {
-                                result.payouts = parseInt(jsonData[key][subKey]);
-                                console.log(`✅ 找到嵌套出貨欄位: "${key}.${subKey}" = ${result.payouts}`);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // 如果還是沒找到，嘗試按位置猜測（第一個和第二個數字值）
-            if (result.plays === null || result.payouts === null) {
-                let numberCount = 0;
-                for (const key in jsonData) {
-                    const value = jsonData[key];
-                    if (typeof value === 'number' && !isNaN(value)) {
-                        numberCount++;
-                        if (numberCount === 1 && result.plays === null) {
-                            result.plays = value;
-                            console.log(`⚠️ 按位置推測投幣欄位: "${key}" = ${result.plays}`);
-                        } else if (numberCount === 2 && result.payouts === null) {
-                            result.payouts = value;
-                            console.log(`⚠️ 按位置推測出貨欄位: "${key}" = ${result.payouts}`);
-                        }
-                    }
-                }
-            }
-            
-            return result;
-        }
-        
-        // 更新 UI 顯示機台數據 - 支持多 devid
-        function updateMachineDataDisplay(machineData, devid = null) {
-            console.log('🖼️ 更新 UI 顯示:', machineData, 'devid:', devid);
-            
-            if (!machineData) {
-                console.warn('⚠️ 無效的數據對象');
-                return;
-            }
-            
-            // 查找命令記錄容器的父容器
-            const commandLogParent = document.getElementById('mqtt-command-log')?.parentElement;
-            if (!commandLogParent) {
-                console.warn('⚠️ 找不到命令記錄容器');
-                return;
-            }
-            
-            // 根據 devid 生成唯一的容器 ID
-            const containerId = devid ? `machine-data-display-devid-${devid}` : 'machine-data-display';
-            const displayLabel = devid ? `天車 ${devid === 1 ? '左' : devid === 2 ? '右' : devid}` : '機台';
-            
-            // 查找或創建顯示容器
-            let displayContainer = document.getElementById(containerId);
-            
-            if (!displayContainer) {
-                // 創建新的顯示容器
-                displayContainer = document.createElement('div');
-                displayContainer.id = containerId;
-                displayContainer.className = 'mt-4 p-4 bg-gray-800/50 rounded-lg border-l-4 border-blue-500';
-                
-                // 插入到命令記錄容器的下方
-                commandLogParent.appendChild(displayContainer);
-                console.log(`✅ 已創建 ${displayLabel} 數據顯示容器`);
-            }
-            
-            // 構建 HTML 內容
-            let html = `<h4 class="text-sm font-medium text-yellow-300 mb-3">📊 ${displayLabel}數據解析結果</h4>`;
-            
-            // 檢查是否有有效的數據
-            const hasValidData = machineData.plays !== null || machineData.payouts !== null;
-            const isReReadData = machineData.format === 're_readdata';
-            
-            // 如果是 re_readdata 但沒有提取到數據
-            if (isReReadData && !hasValidData && machineData.hasData === false) {
-                html += `
-                    <div class="bg-yellow-900/40 p-4 rounded-lg border border-yellow-500/50">
-                        <div class="text-center">
-                            <div class="text-lg font-semibold text-yellow-300">⚠️ 無資訊更新</div>
-                            <div class="text-xs text-yellow-200 mt-2">無法從伺服器回應中解析有效的投幣或出獎數據</div>
-                            <div class="text-xs text-gray-400 mt-3">
-                                <div>命令: ${machineData.raw.cmd || 'N/A'}</div>
-                                <div>MAC: ${machineData.raw.mac || 'N/A'}</div>
-                                <div>格式: ${machineData.format} | 時間: ${machineData.timestamp}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else if (!hasValidData) {
-                // 如果是其他格式且沒有有效的數據
-                html += `
-                    <div class="bg-orange-900/40 p-4 rounded-lg border border-orange-500/50">
-                        <div class="text-center">
-                            <div class="text-lg font-semibold text-orange-300">⚠️ 無法識別數據</div>
-                            <div class="text-xs text-orange-200 mt-2">無法從伺服器回應中提取投幣或出獎信息</div>
-                            <div class="text-xs text-gray-400 mt-3">
-                                <div>格式: ${machineData.format} | 時間: ${machineData.timestamp}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                // 有效的數據顯示
-                html += '<div class="grid grid-cols-2 gap-4 mb-3">';
-                
-                // 顯示投幣數
-                if (machineData.plays !== null) {
-                    html += `
-                        <div class="bg-blue-900/50 p-4 rounded-lg border border-blue-500/50">
-                            <div class="text-xs text-blue-300 font-semibold mb-1">✅ 投幣遊戲次數</div>
-                            <div class="text-3xl font-bold text-blue-300">${machineData.plays.toLocaleString()}</div>
-                        </div>
-                    `;
-                } else {
-                    html += `
-                        <div class="bg-gray-700/30 p-4 rounded-lg border border-gray-600/30">
-                            <div class="text-xs text-gray-400 font-semibold mb-1">投幣遊戲次數</div>
-                            <div class="text-lg font-bold text-gray-500">N/A</div>
-                        </div>
-                    `;
-                }
-                
-                // 顯示出貨次數
-                if (machineData.payouts !== null) {
-                    html += `
-                        <div class="bg-green-900/50 p-4 rounded-lg border border-green-500/50">
-                            <div class="text-xs text-green-300 font-semibold mb-1">✅ 禮品出獎次數</div>
-                            <div class="text-3xl font-bold text-green-300">${machineData.payouts.toLocaleString()}</div>
-                        </div>
-                    `;
-                } else {
-                    html += `
-                        <div class="bg-gray-700/30 p-4 rounded-lg border border-gray-600/30">
-                            <div class="text-xs text-gray-400 font-semibold mb-1">禮品出獎次數</div>
-                            <div class="text-lg font-bold text-gray-500">N/A</div>
-                        </div>
-                    `;
-                }
-                
-                html += '</div>';
-            }
-            
-            // 顯示數據格式和時間戳
-            const statusColor = isReReadData && !hasValidData ? 'text-yellow-400' : 'text-cyan-400';
-            html += `<div class="text-xs text-gray-400 bg-gray-900/50 p-2 rounded">
-                <div>格式: <span class="${statusColor} font-semibold">${machineData.format}</span> | 時間: <span class="text-cyan-400 font-semibold">${machineData.timestamp}</span></div>
-            </div>`;
-            
-            displayContainer.innerHTML = html;
-            
-            if (hasValidData) {
-                console.log('✅ UI 已成功更新 - 投幣數: ' + machineData.plays + ', 出獎數: ' + machineData.payouts);
-            } else {
-                console.log('⚠️ 無法提取有效的數據');
+            // 範例：如果回應是文字格式的機台參數
+            if (typeof data === 'string') {
+                console.log('📄 收到文字資料，長度:', data.length);
+                // 可在此解析文字資料
+            } else if (typeof data === 'object') {
+                console.log('📦 收到 JSON 物件:', Object.keys(data));
+                // 可在此處理 JSON 資料
             }
         }
         
@@ -2908,95 +1860,14 @@
         // 測試 HTTP 連線
         async function testHttpConnection() {
             console.log('🧪 測試 HTTP 連線...');
-            console.log('📍 目標 URL:', buildHttpUrl());
-            console.log('🌐 當前域名:', window.location.origin);
-            
             const result = await sendHttpRequest();
             
             if (result) {
-                console.log('✅ HTTP 連線測試成功');
-                alert('✅ HTTP 連線測試成功！\n\n數據已成功返回');
+                alert('✅ HTTP 連線測試成功！\n\n' + JSON.stringify(result, null, 2));
             } else {
-                console.log('❌ HTTP 連線測試失敗');
-                alert('❌ HTTP 連線測試失敗\n\n建議：\n1. 檢查目標伺服器是否在線\n2. 查看瀏覽器控制台 (F12) 的 Console 選項卡\n3. 確認網路連接是否正常');
+                alert('❌ HTTP 連線測試失敗，請檢查控制台查看詳細錯誤訊息。');
             }
         }
-        
-        // 診斷 HTTP 連線問題
-        async function diagnoseHttpConnection() {
-            console.clear();
-            console.log('🔍 ===== HTTP 連線診斷開始 =====');
-            console.log('⏰ 診斷時間:', new Date().toLocaleString('zh-TW'));
-            console.log('');
-            
-            console.log('📋 === 環境信息 ===');
-            console.log('🌐 當前頁面 URL:', window.location.href);
-            console.log('📍 當前域名:', window.location.hostname);
-            console.log('🔗 當前協議:', window.location.protocol);
-            console.log('');
-            
-            console.log('🎯 === 目標伺服器信息 ===');
-            const targetUrl = buildHttpUrl();
-            console.log('🔗 目標 URL:', targetUrl);
-            console.log('📡 伺服器位址:', httpConfig.baseUrl);
-            console.log('🔌 API 端點:', httpConfig.endpoint);
-            console.log('');
-            
-            console.log('🧪 === 連線測試 ===');
-            console.log('📤 嘗試直接請求...');
-            
-            try {
-                const response = await fetch(targetUrl, {
-                    method: 'GET',
-                    mode: 'cors',
-                    timeout: 5000
-                });
-                console.log('✅ 直接請求成功！');
-                console.log('📊 HTTP 狀態碼:', response.status);
-                console.log('📋 Content-Type:', response.headers.get('content-type'));
-                const data = await response.text();
-                console.log('📥 收到資料長度:', data.length, '字元');
-                console.log('📄 資料預覽:', data.substring(0, 200));
-            } catch (directError) {
-                console.warn('❌ 直接請求失敗:', directError.message);
-                console.log('🔄 嘗試代理服務...');
-                
-                // 嘗試最簡單的代理
-                try {
-                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-                    console.log('🚀 代理 URL:', proxyUrl.substring(0, 100) + '...');
-                    
-                    const proxyResponse = await fetch(proxyUrl, {
-                        method: 'GET',
-                        timeout: 5000
-                    });
-                    
-                    if (proxyResponse.ok) {
-                        const proxyData = await proxyResponse.json();
-                        console.log('✅ 代理請求成功！');
-                        console.log('📝 代理回應:', proxyData.contents.substring(0, 200));
-                    } else {
-                        console.error('❌ 代理返回 HTTP', proxyResponse.status);
-                    }
-                } catch (proxyError) {
-                    console.error('❌ 代理請求也失敗:', proxyError.message);
-                    console.error('💥 根本原因：', proxyError.name);
-                    
-                    if (proxyError.message.includes('ERR_NAME_NOT_RESOLVED')) {
-                        console.error('🔴 DNS 解析失敗 - 可能的原因：');
-                        console.error('  • 網路連線中斷');
-                        console.error('  • 域名伺服器無響應');
-                        console.error('  • 防火牆或代理阻止');
-                    }
-                }
-            }
-            
-            console.log('');
-            console.log('🔍 ===== 診斷結束 =====');
-        }
-        
-        // 把診斷函數暴露到全域
-        window.diagnoseHttpConnection = diagnoseHttpConnection;
         
         // 讓 HTTP 函數在全域範圍可用
         window.startHttpPolling = startHttpPolling;
@@ -4504,13 +3375,6 @@
             selectedStoreId = storeId;
             selectedStoreName = storeName;
             appData.startDate = startDate;
-            
-            // 切換到新門市時，清除 HTTP 輪詢自動記帳表格
-            console.log('🗑️ 切換門市，清除 HTTP 輪詢自動記帳表格...');
-            window.dailyRecords = {};
-            if (typeof refreshAutoRecordTable === 'function') {
-                refreshAutoRecordTable();
-            }
             
             document.getElementById('report-title-main').textContent = `${selectedStoreName} - 營業報告`;
             document.getElementById('report-period').textContent = `統計期間：${startDate} ～ 現在`;
@@ -7310,148 +6174,213 @@
             }
         });
 
-        // --- HTTP 連接狀態管理 (已停用 MQTT) ---
-        // MQTT 按鈕事件已停用，改用 HTTP 方式
-        // const mqttConnectBtn = document.getElementById('mqtt-connect-btn');
-        // if (mqttConnectBtn) {
-        //     mqttConnectBtn.addEventListener('click', function() { /* MQTT 已停用 */ });
-        // }
+        // --- MQTT 連接按鈕事件監聽器 ---
+        document.getElementById('mqtt-connect-btn').addEventListener('click', function() {
+            console.log('MQTT 連接按鈕被點擊');
+            console.log('當前 mqttConnected 狀態:', mqttConnected);
+            console.log('當前 mqttClient 存在:', !!mqttClient);
+            
+            if (mqttConnected && mqttClient) {
+                // 中斷連接
+                console.log('執行 MQTT 中斷連接');
+                disconnectMqtt();
+            } else {
+                // 建立連接
+                console.log('執行 MQTT 連接');
+                connectMqtt();
+            }
+        });
         
-        // HTTP 測試連線按鈕
-        const mqttTestBtn = document.getElementById('mqtt-test-btn');
-        if (mqttTestBtn) {
-            mqttTestBtn.addEventListener('click', async function() {
-                // 測試 HTTP 連線
-                await testHttpConnection();
-            });
-        }
+        document.getElementById('mqtt-test-btn').addEventListener('click', async function() {
+            // 測試 HTTP 連線
+            await testHttpConnection();
+        });
+
+        // MQTT 診斷按鈕
+        document.getElementById('mqtt-diagnose-btn').addEventListener('click', async function() {
+            console.log('=== 開始 MQTT 診斷 ===');
+            
+            // 按鈕載入狀態
+            this.disabled = true;
+            this.innerHTML = '🔍 診斷中...';
+            
+            try {
+                // 1. 測試連接狀態
+                console.log('1. 測試 MQTT 連接狀態...');
+                const connectionStatus = window.testMqttConnection();
+                console.log('連接狀態結果:', connectionStatus);
+                
+                // 2. 訂閱機台回應主題
+                console.log('2. 訂閱機台回應主題...');
+                window.testMachineTopics();
+                
+                // 3. 等待一段時間然後發送測試命令
+                setTimeout(() => {
+                    console.log('3. 發送測試讀取命令...');
+                    window.testDirectMqttSend();
+                }, 3000);
+                
+                // 4. 測試不同格式
+                setTimeout(() => {
+                    console.log('4. 測試不同命令格式...');
+                    window.testDifferentFormats();
+                }, 6000);
+                
+                // 5. 測試營業資料命令
+                setTimeout(() => {
+                    console.log('5. 測試營業資料命令...');
+                    window.testBusinessDataCommands();
+                }, 9000);
+                
+                // 顯示診斷結果
+                setTimeout(() => {
+                    console.log('=== 診斷完成 ===');
+                    addCommandLog('send', '🔍 MQTT 診斷完成 - 已測試多種營業資料命令格式');
+                    
+                    // 恢復按鈕狀態
+                    this.disabled = false;
+                    this.innerHTML = '診斷回應';
+                }, 20000);
+                
+            } catch (error) {
+                console.error('診斷過程中發生錯誤:', error);
+                addCommandLog('error', '診斷錯誤: ' + error.message);
+                
+                // 恢復按鈕狀態
+                this.disabled = false;
+                this.innerHTML = '診斷回應';
+            }
+        });
+
+        // 營業資料測試按鈕
+        document.getElementById('mqtt-business-test-btn').addEventListener('click', function() {
+            console.log('=== 營業資料測試開始 ===');
+            
+            this.disabled = true;
+            this.innerHTML = '🔄 測試中...';
+            
+            try {
+                // 針對已知機台發送營業資料查詢
+                window.testBusinessDataCommands();
+                
+                // 3 秒後恢復按鈕
+                setTimeout(() => {
+                    this.disabled = false;
+                    this.innerHTML = '營業資料測試';
+                    addCommandLog('send', '✅ 營業資料測試完成 - 已發送多種命令格式');
+                }, 15000);
+                
+            } catch (error) {
+                console.error('營業資料測試錯誤:', error);
+                this.disabled = false;
+                this.innerHTML = '營業資料測試';
+                addCommandLog('error', '營業資料測試錯誤: ' + error.message);
+            }
+        });
 
         // 立即輪詢所有機台按鈕
-        const pollAllBtn = document.getElementById('poll-all-btn');
-        if (pollAllBtn) {
-            pollAllBtn.addEventListener('click', async function() {
-                console.log('立即輪詢按鈕被點擊');
-                await pollAllMachines();
-            });
-        }
+        document.getElementById('poll-all-btn').addEventListener('click', async function() {
+            console.log('立即輪詢按鈕被點擊');
+            await pollAllMachines();
+        });
 
-        // 從輪詢帶入按鈕
-        const importFromPollBtn = document.getElementById('import-from-poll-btn');
-        if (importFromPollBtn) {
-            importFromPollBtn.addEventListener('click', function() {
-                console.log('📥 從輪詢帶入按鈕被點擊');
-                importFromPoll();
-            });
-        }
-
-        // 批量新增所有機台按鈕
-        const batchAddAllBtn = document.getElementById('batch-add-all-btn');
-        if (batchAddAllBtn) {
-            batchAddAllBtn.addEventListener('click', function() {
-                console.log('✅ 批量新增按鈕被點擊');
-                batchAddAllMachines();
-            });
-        }
-
-        // 發送讀取命令按鈕（使用 HTTP）
-        const sendReadCmd = document.getElementById('send-read-command');
-        if (sendReadCmd) {
-            sendReadCmd.addEventListener('click', async function() {
-                try {
-                    // 獲取用戶輸入的 MAC 地址
-                    const mac = document.getElementById('read-machine-mac').value.trim();
-                    const devid = document.getElementById('read-device-id').value || 1;
-                    
-                    // 驗證 MAC 地址
-                    if (!mac) {
-                        alert('❌ 請輸入機台 MAC 位址');
-                        return;
-                    }
-                    
-                    // 按鈕載入狀態
-                    this.disabled = true;
-                    this.innerHTML = '🔄 發送中...';
-                    
-                    // 記錄到命令日誌
-                    addCommandLog('send', `發送 HTTP GET 請求 - MAC: ${mac}`);
-                    
-                    // 發送 HTTP 請求
-                    const result = await sendHttpRequest(mac);
-                    
-                    if (result) {
-                        addCommandLog('receive', `HTTP 請求成功 - MAC: ${mac}`, result);
-                    }
-                    
-                    // 恢復按鈕狀態
-                    this.disabled = false;
-                    this.innerHTML = '📤 測試查詢';
-                    
-                } catch (error) {
-                    console.error('❌ HTTP 請求執行錯誤:', error);
-                    alert('❌ HTTP 請求執行錯誤: ' + error.message);
-                    addCommandLog('error', '執行錯誤: ' + error.message);
-                    
-                    // 恢復按鈕狀態
-                    this.disabled = false;
-                    this.innerHTML = '📤 測試查詢';
-                }
-            });
-        }
-
-        // 機台選擇器變更事件
-        const machineSelector = document.getElementById('machine-selector');
-        if (machineSelector) {
-            machineSelector.addEventListener('change', (e) => {
-                const selectedDocId = e.target.value;
-                if(!selectedDocId) return;
-
-                const selectedMachine = appData.machines.find(m => m.docId === selectedDocId);
-                if (selectedMachine) {
-                    document.getElementById('cumulative-plays').value = selectedMachine.plays;
-                    document.getElementById('cumulative-payouts').value = selectedMachine.payouts;
-                    document.getElementById('cumulative-plays').focus();
-                }
-            });
-        }
-        
-        // 日常紀錄表單提交
-        const dailyEntryForm = document.getElementById('daily-entry-form');
-        if (dailyEntryForm) {
-            dailyEntryForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                if (!selectedStoreId) {
-                    return showFeedback('錯誤：未選擇任何門市。', true);
+        // 發送讀取命令按鈕（使用 MQTT）
+        document.getElementById('send-read-command').addEventListener('click', async function() {
+            try {
+                // 獲取用戶輸入的 MAC 地址
+                const mac = document.getElementById('read-machine-mac').value.trim();
+                const devid = document.getElementById('read-device-id').value || 1;
+                
+                // 驗證 MAC 地址
+                if (!mac) {
+                    alert('❌ 請輸入機台 MAC 位址');
+                    return;
                 }
                 
-                const date = document.getElementById('entry-date').value;
-                const machineSelector = document.getElementById('machine-selector');
-                const machineDocId = machineSelector.value;
-
-                if (!machineDocId) {
-                     console.error('❌ 機台選擇器未選擇', {
-                        selectorValue: machineSelector.value,
-                        selectedOptions: machineSelector.selectedOptions.length,
-                        options: machineSelector.options.length
-                     });
-                     return showFeedback('錯誤：請選擇一台機台。', true);
+                // 檢查 MQTT 連接
+                const activeClient = mqttClient || window.mqttClient;
+                if (!activeClient) {
+                    alert('❌ 請先連接 MQTT');
+                    return;
                 }
+                
+                // 按鈕載入狀態
+                this.disabled = true;
+                this.innerHTML = '🔄 發送中...';
+                
+                // 生成正確的命令格式用於日誌
+                const taskid = new Date().toISOString().replace(/[-T:\.Z]/g, '').substring(0, 17);
+                const commandData = {
+                    cmd: 'readdata',
+                    mac: mac,
+                    floor: '1',
+                    devid: devid.toString(),
+                    taskid: taskid
+                };
+                
+                // 記錄到命令日誌
+                addCommandLog('send', `發送 MQTT 讀取命令 - MAC: ${mac}`, commandData);
+                
+                // 發送 MQTT 輪詢命令
+                await pollSingleMachine(mac, devid);
+                
+                // 恢復按鈕狀態
+                this.disabled = false;
+                this.innerHTML = '📤 發送讀取命令';
+                
+            } catch (error) {
+                console.error('❌ MQTT 讀取命令執行錯誤:', error);
+                alert('❌ MQTT 讀取命令執行錯誤: ' + error.message);
+                addCommandLog('error', '執行錯誤: ' + error.message);
+                
+                // 恢復按鈕狀態
+                this.disabled = false;
+                this.innerHTML = '📤 發送讀取命令';
+            }
+        });
 
-                const selectedMachine = appData.machines.find(m => m.docId === machineDocId);
+        document.getElementById('machine-selector').addEventListener('change', (e) => {
+            const selectedDocId = e.target.value;
+            if(!selectedDocId) return;
 
-                const cumulativePlaysInput = parseInt(document.getElementById('cumulative-plays').value);
-                const cumulativePayoutsInput = parseInt(document.getElementById('cumulative-payouts').value);
+            const selectedMachine = appData.machines.find(m => m.docId === selectedDocId);
+            if (selectedMachine) {
+                document.getElementById('cumulative-plays').value = selectedMachine.plays;
+                document.getElementById('cumulative-payouts').value = selectedMachine.payouts;
+                document.getElementById('cumulative-plays').focus();
+            }
+        });
+        
+        document.getElementById('daily-entry-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!selectedStoreId) {
+                return showFeedback('錯誤：未選擇任何門市。', true);
+            }
+            
+            const date = document.getElementById('entry-date').value;
+            const selectedOption = document.getElementById('machine-selector').selectedOptions[0];
+            const machineDocId = selectedOption.value;
 
-                if (isNaN(cumulativePlaysInput) || isNaN(cumulativePayoutsInput)) {
-                    return showFeedback('錯誤：請填寫所有欄位。', true);
-                }
+            if (!machineDocId) {
+                 return showFeedback('錯誤：請選擇一台機台。', true);
+            }
 
-                if (!selectedMachine) { return showFeedback('錯誤：無法識別所選機台。', true); }
-                if (cumulativePlaysInput < selectedMachine.plays || cumulativePayoutsInput < selectedMachine.payouts) {
-                    return showFeedback('錯誤：輸入的累積數值小於上次紀錄，請確認抄表數值是否正確。', true);
-                }
-                if (cumulativePlaysInput < (selectedMachine.initialPlays || 0) || cumulativePayoutsInput < (selectedMachine.initialPayouts || 0)) {
-                    return showFeedback(`錯誤：抄表數值不可小於此機台的起始值 (投幣: ${selectedMachine.initialPlays || 0}, 出貨: ${selectedMachine.initialPayouts || 0})。`, true);
-                }
+            const selectedMachine = appData.machines.find(m => m.docId === machineDocId);
+
+            const cumulativePlaysInput = parseInt(document.getElementById('cumulative-plays').value);
+            const cumulativePayoutsInput = parseInt(document.getElementById('cumulative-payouts').value);
+
+            if (isNaN(cumulativePlaysInput) || isNaN(cumulativePayoutsInput)) {
+                return showFeedback('錯誤：請填寫所有欄位。', true);
+            }
+
+            if (!selectedMachine) { return showFeedback('錯誤：無法識別所選機台。', true); }
+            if (cumulativePlaysInput < selectedMachine.plays || cumulativePayoutsInput < selectedMachine.payouts) {
+                return showFeedback('錯誤：輸入的累積數值小於上次紀錄，請確認抄表數值是否正確。', true);
+            }
+             if (cumulativePlaysInput < (selectedMachine.initialPlays || 0) || cumulativePayoutsInput < (selectedMachine.initialPayouts || 0)) {
+                return showFeedback(`錯誤：抄表數值不可小於此機台的起始值 (投幣: ${selectedMachine.initialPlays || 0}, 出貨: ${selectedMachine.initialPayouts || 0})。`, true);
+            }
 
 
             const dailyPlays = cumulativePlaysInput - selectedMachine.plays;
@@ -7467,94 +6396,27 @@
                     payouts: cumulativePayoutsInput
                 });
                 
-                // 檢查是否已存在相同日期和機台的歷史記錄
-                console.log(`🔍 查詢條件: date=${date}, machineId=${selectedMachine.id}, location=${selectedMachine.location}`);
-                
-                const historyQuery = db.collection('groups').doc(selectedGroupId)
-                    .collection('stores').doc(selectedStoreId)
-                    .collection('history');
-                
-                let existingRecords = null;
-                let updateMode = false;
-                
-                try {
-                    // 嘗試複合查詢
-                    existingRecords = await historyQuery
-                        .where('date', '==', date)
-                        .where('machineId', '==', selectedMachine.id)
-                        .where('location', '==', selectedMachine.location)
-                        .get();
-                    
-                    console.log(`📋 複合查詢結果: ${existingRecords.docs.length} 筆記錄`);
-                    
-                } catch (queryError) {
-                    // 如果複合查詢失敗（可能缺少索引），使用單個查詢逐一檢查
-                    console.warn(`⚠️ 複合查詢失敗，使用備用方案: ${queryError.message}`);
-                    const allRecords = await historyQuery.get();
-                    const filtered = allRecords.docs.filter(doc => {
-                        const data = doc.data();
-                        return data.date === date && 
-                               data.machineId === selectedMachine.id && 
-                               data.location === selectedMachine.location;
-                    });
-                    existingRecords = { docs: filtered };
-                    console.log(`📋 備用查詢結果: ${filtered.length} 筆記錄`);
-                }
-                
-                if (existingRecords.docs.length > 0) {
-                    // 更新現有記錄
-                    updateMode = true;
-                    const docId = existingRecords.docs[0].id;
-                    console.log(`🔄 找到現有記錄，準備更新: ${docId}`);
-                    
-                    await db.collection('groups').doc(selectedGroupId)
-                        .collection('stores').doc(selectedStoreId)
-                        .collection('history').doc(docId)
-                        .update({
-                            date: date,
-                            machineId: selectedMachine.id,
-                            location: selectedMachine.location,
-                            newPlays: dailyPlays,
-                            newPayouts: dailyPayouts,
-                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    console.log(`✅ 已更新記錄: ${docId}`);
-                } else {
-                    // 新增新記錄
-                    console.log(`📝 未找到現有記錄，準備新增`);
-                    await db.collection('groups').doc(selectedGroupId)
-                        .collection('stores').doc(selectedStoreId)
-                        .collection('history')
-                        .add({
-                            date: date,
-                            machineId: selectedMachine.id,
-                            location: selectedMachine.location,
-                            newPlays: dailyPlays,
-                            newPayouts: dailyPayouts,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    console.log(`✅ 已新增記錄`);
-                }
+                await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('history').add({
+                    date: date,
+                    machineId: selectedMachine.id,
+                    location: selectedMachine.location,
+                    newPlays: dailyPlays,
+                    newPayouts: dailyPayouts
+                });
                 
                 await loadStoreData(); 
                 e.target.reset();
                 document.getElementById('entry-date').valueAsDate = new Date();
-                const actionType = updateMode ? '更新' : '新增';
-                const successMessage = `紀錄已${actionType}並同步至 [${selectedStoreName}]！本日 ${selectedMachine.id} 新增：<strong class="text-white">${dailyPlays}</strong> 投幣、<strong class="text-white">${dailyPayouts}</strong> 出貨。`;
+                const successMessage = `紀錄已同步至 [${selectedStoreName}]！本日 ${selectedMachine.id} 新增：<strong class="text-white">${dailyPlays}</strong> 投幣、<strong class="text-white">${dailyPayouts}</strong> 出貨。`;
                 showFeedback(successMessage);
 
             } catch (error) {
                 console.error("寫入 Firestore 時發生錯誤: ", error);
                 showFeedback("無法將紀錄同步至雲端，請稍後再試。", true);
             }
-            });
-        }
+        });
         
-        // 搜尋輸入框事件
-        const searchInputElem = document.getElementById('search-input') || searchInput;
-        if (searchInputElem) {
-            searchInputElem.addEventListener('input', async () => await updateUI());
-        }
+        searchInput.addEventListener('input', async () => await updateUI());
         sortableHeaders.forEach(header => {
             header.addEventListener('click', async () => {
                 const sortKey = header.dataset.sort;
@@ -8188,38 +7050,128 @@
             }
         }
 
-        // 單台機台輪詢 (HTTP 版本)
+        // 單台機台輪詢
         async function pollSingleMachine(mac, devid) {
-            console.log('=== 單台 HTTP 輪詢 ===');
+            console.log('=== 單台輪詢診斷 ===');
             
-            if (!mac) {
-                console.error('MAC 地址無效');
+            // 檢查本地和全域變數
+            const localClient = mqttClient;
+            const globalClient = window.mqttClient;
+            const localConnected = mqttConnected;
+            const globalConnected = window.mqttConnected;
+            
+            console.log('本地 mqttClient:', !!localClient);
+            console.log('全域 mqttClient:', !!globalClient);
+            console.log('本地 mqttConnected:', localConnected);
+            console.log('全域 mqttConnected:', globalConnected);
+            
+            // 使用任一可用的客戶端
+            const activeClient = localClient || globalClient;
+            const isConnected = localConnected || globalConnected;
+            
+            console.log('使用的客戶端:', !!activeClient);
+            console.log('連接狀態:', isConnected);
+            
+            if (!activeClient) {
+                const message = '請先點擊「連接 MQTT」建立連線';
+                console.error('無 MQTT 客戶端可用');
+                showStatusMessage(message, 'error');
+                alert(message);
                 return;
             }
             
+            console.log('準備發送輪詢命令到', mac, 'DevID:', devid);
+
+            // 使用正確的 MQTT 協議格式
+            const topic = 'coffeelens/req';
+            
+            // 生成唯一的任務ID (時間戳格式)
+            const taskid = new Date().toISOString().replace(/[-T:\.Z]/g, '').substring(0, 17);
+            
+            const commandObject = {
+                cmd: 'readdata',
+                mac: mac,
+                floor: '1',  // 固定為 1
+                devid: devid.toString(),
+                taskid: taskid
+            };
+            
+            const message = JSON.stringify(commandObject);
+            
+            console.log('🔥 === 發送正確格式的 MQTT 命令 ===');
+            console.log('主題:', topic);
+            console.log('命令物件:', commandObject);
+            console.log('JSON 字串:', message);
+            console.log('=== 以上是新的正確格式 ===');
+            
             try {
-                console.log(`準備發送 HTTP GET 請求到機台 - MAC: ${mac}, DevID: ${devid}`);
-                const result = await sendHttpRequest(mac);
+                // 嘗試發送 MQTT 訊息
+                console.log(`準備輪詢機台 - 主題: ${topic}, 訊息: ${message}`);
                 
-                if (result) {
-                    console.log(`✅ HTTP 請求成功 - MAC: ${mac}, DevID: ${devid}`);
-                    // 傳遞 devid 給 handleHttpResponse
-                    handleHttpResponse(result, mac, devid);
-                    addCommandLog('receive', `HTTP 回應成功 - MAC: ${mac}, DevID: ${devid}`, result);
-                } else {
-                    console.warn(`HTTP 請求失敗 - MAC: ${mac}`);
-                    addCommandLog('error', `HTTP 請求失敗 - MAC: ${mac}`);
-                }
+                activeClient.publish(topic, message, { qos: 0 }, function(err) {
+                    if (err) {
+                        console.error('MQTT 發送失敗:', err);
+                        showStatusMessage(`輪詢失敗: ${err.message}`, 'error');
+                    } else {
+                        console.log(`✅ 輪詢命令已發送 - MAC: ${mac}, 設備ID: ${devid}, 任務ID: ${taskid}`);
+                        showStatusMessage(`✅ 已發送輪詢命令到 ${mac}`, 'success');
+                    }
+                });
                 
             } catch (error) {
-                console.error('HTTP 輪詢失敗:', error);
-                addCommandLog('error', `HTTP 輪詢失敗: ${error.message}`);
+                console.error('輪詢機台失敗:', error);
+                showStatusMessage(`輪詢機台失敗: ${error.message}`, 'error');
             }
         }
 
-        // 輪詢所有機台 (HTTP 版本)
+        // 輪詢所有機台
         async function pollAllMachines() {
-            console.log('=== 開始 HTTP 輪詢所有機台 ===');
+            console.log('=== 輪詢所有機台診斷 ===');
+            
+            // 檢查本地和全域變數
+            const localClient = mqttClient;
+            const globalClient = window.mqttClient;
+            const localConnected = mqttConnected;
+            const globalConnected = window.mqttConnected;
+            
+            console.log('本地 mqttClient:', !!localClient);
+            console.log('全域 mqttClient:', !!globalClient);
+            console.log('本地 mqttConnected:', localConnected);
+            console.log('全域 mqttConnected:', globalConnected);
+            
+            // 使用任一可用的客戶端
+            let activeClient = localClient || globalClient;
+            const isConnected = localConnected || globalConnected;
+            
+            if (!activeClient) {
+                console.warn('第一次檢查未找到客戶端，嘗試同步狀態...');
+                
+                // 嘗試同步 MQTT 狀態
+                if (window.syncMqttStatus) {
+                    const syncResult = window.syncMqttStatus();
+                    activeClient = window.mqttClient || mqttClient;
+                    console.log('同步後結果:', syncResult);
+                }
+                
+                if (!activeClient) {
+                    console.error('=== MQTT 客戶端檢查失敗 ===');
+                    console.error('本地 mqttClient 存在:', !!localClient);
+                    console.error('全域 window.mqttClient 存在:', !!globalClient);
+                    
+                    // 檢查 UI 狀態
+                    const statusText = document.getElementById('mqtt-status-text');
+                    const connectBtn = document.getElementById('mqtt-connect-btn');
+                    console.error('UI 狀態文字:', statusText?.textContent);
+                    console.error('連接按鈕文字:', connectBtn?.textContent);
+                    
+                    const message = '無法找到 MQTT 客戶端，請重新連接 MQTT';
+                    showStatusMessage(message, 'error');
+                    alert(message + '\n\n建議步驟：\n1. 點擊「重新連線」按鈕\n2. 等待連接成功後再試\n3. 或重新整理頁面');
+                    return;
+                }
+            }
+            
+            console.log('MQTT 客戶端可用，準備輪詢所有機台...');
 
             if (!appData.machines || appData.machines.length === 0) {
                 alert('沒有機台可以輪詢');
@@ -8252,19 +7204,29 @@
 
             showStatusMessage(`輪詢完成，已查詢 ${machinesWithMac.length} 台機台`, 'success');
             console.log(`✅ 輪詢所有機台完成 - 共查詢 ${machinesWithMac.length} 台機台`);
+            
+            // 如果沒有收到任何機台回應，顯示提示
+            setTimeout(() => {
+                const panel = document.getElementById('machine-detail-panel');
+                if (panel && panel.classList.contains('hidden')) {
+                    console.log('輪詢完成但未顯示詳細面板，可能是：');
+                    console.log('1. 機台未回應');
+                    console.log('2. MAC 位址不匹配');
+                    console.log('3. 資料解析失敗');
+                    console.log('4. 機台回應時間較長');
+                    showStatusMessage('輪詢完成，但未收到機台回應。請檢查機台狀態和 MAC 位址設定。', 'warning');
+                }
+            }, 8000); // 延長到 8 秒等待機台回應
         }
 
-        // 開始自動輪詢 (HTTP 版本)
+        // 開始自動輪詢
         function startAutoPolling() {
             const intervalSelect = document.getElementById('poll-interval');
             const interval = intervalSelect ? parseInt(intervalSelect.value) : 30000;
             
             stopAutoPolling(); // 確保沒有重複的輪詢
             
-            console.log(`啟動自動 HTTP 輪詢，間隔: ${interval/1000} 秒`);
-            
             pollInterval = setInterval(() => {
-                console.log(`執行自動輪詢 (HTTP)`);
                 pollAllMachines();
             }, interval);
             
@@ -8963,14 +7925,6 @@
             }
         }, 2000); // 增加到 2 秒確保頁面完全載入
         
-        // 初始化自動記帳表格
-        setTimeout(() => {
-            console.log('📊 初始化自動記帳表格...');
-            if (typeof refreshAutoRecordTable === 'function') {
-                refreshAutoRecordTable();
-            }
-        }, 500);
-        
         // 不再直接載入群組頁面，由登入邏輯控制
         // showGroupSelectionPage(); 
         
@@ -8978,6 +7932,8 @@
         window.dispatchEvent(new CustomEvent('appLoaded'));
     });
     </script>
+    <script src="admin-config.js"></script>
+    <script src="login.js"></script>
 </body>
 </html>
 
