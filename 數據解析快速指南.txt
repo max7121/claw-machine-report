@@ -1,0 +1,146 @@
+# 📊 數據解析快速使用指南
+
+## ⚡ 一句話總結
+
+✅ **自動解析伺服器回應，自動提取累積投幣數和出貨次數，在 UI 中實時顯示！**
+
+---
+
+## 🚀 快速開始
+
+### 第 1 步：查看數據
+1. 點擊「🔗 測試 HTTP 連線」或啟用自動輪詢
+2. 等待回應
+3. 🎉 **自動在下方顯示結果！**
+
+### 第 2 步：查看詳情
+在瀏覽器控制台（F12 → Console）查看詳細的解析過程：
+```
+✅ 格式識別: JSON
+✅ 找到投幣欄位: "plays" = 12345
+✅ 找到出貨欄位: "payouts" = 6789
+✅ UI 已更新
+```
+
+### 第 3 步：使用數據
+```javascript
+// 在程序中使用解析的數據
+const data = window.lastParsedMachineData;
+console.log('投幣:', data.plays);
+console.log('出貨:', data.payouts);
+```
+
+---
+
+## 📊 自動顯示效果
+
+### 位置：在「命令記錄」下方
+
+```
+┌─────────────────────────────────────────┐
+│ 📊 機台數據解析結果                     │
+├─────────────────────────────────────────┤
+│ 累積投幣數          │ 累積出貨次數      │
+│   12,345            │      6,789        │
+├─────────────────────────────────────────┤
+│ 格式: json | 時間: 14:30:45            │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## 🎯 支持的數據格式
+
+### ✅ JSON 格式（最常用）
+```json
+{"plays": 12345, "payouts": 6789}
+```
+
+### ✅ 文本格式（自動識別）
+```
+plays:12345,payouts:6789
+12345,6789
+12345 6789
+```
+
+### ✅ 嵌套 JSON
+```json
+{"data": {"plays": 12345, "payouts": 6789}}
+```
+
+### ✅ 中文欄位
+```json
+{"投幣": 12345, "出貨": 6789}
+```
+
+---
+
+## 🧪 測試
+
+### 在控制台測試解析：
+
+```javascript
+// 測試 1：JSON 格式
+handleHttpResponse({plays: 12345, payouts: 6789});
+
+// 測試 2：文本格式
+handleHttpResponse("plays:12345,payouts:6789");
+
+// 測試 3：查看結果
+console.log(window.lastParsedMachineData);
+```
+
+---
+
+## 📋 常用命令
+
+```javascript
+// 查看最後解析的數據
+window.lastParsedMachineData
+
+// 手動觸發解析
+parseHttpData({plays: 100, payouts: 50})
+
+// 更新 UI 顯示
+updateMachineDataDisplay(window.lastParsedMachineData)
+
+// 查看 HTTP 回應
+httpLastResponse
+
+// 查看請求統計
+console.log('請求:', httpRequestCount, '錯誤:', httpErrorCount)
+```
+
+---
+
+## 💡 使用建議
+
+| 場景 | 說明 |
+|------|------|
+| 📡 實時監控 | 啟用輪詢 → 自動解析顯示 |
+| 🧪 測試數據 | 在控制台調用函數 |
+| 💾 保存數據 | 使用 `window.lastParsedMachineData` |
+| 🔄 集成系統 | 修改 `handleHttpResponse` 添加邏輯 |
+
+---
+
+## ⚠️ 故障排除
+
+| 問題 | 解決方案 |
+|------|---------|
+| 沒有顯示結果 | 檢查控制台錯誤，查看 `httpLastResponse` |
+| 數字解析錯誤 | 確認格式是否符合支持的格式 |
+| 格式不支持 | 在 `parseTextData` 或 `extractMachineData` 中添加新的識別規則 |
+
+---
+
+## 🔗 相關文檔
+
+詳細說明：`HTTP數據解析說明.md`  
+輪詢配置：`輪詢間隔配置指南.md`  
+連線診斷：`HTTP連線問題診斷指南.md`
+
+---
+
+**功能狀態**：✅ 完全實現  
+**修改日期**：2025-10-23
