@@ -9727,11 +9727,16 @@
                 return;
             }
             
-            const isHttps = window.location.protocol === 'https:';
-            const isGitHubPages = window.location.hostname.includes('github.io');
+            // 🔒 強制偵測環境 - 確保準確
+            const currentProtocol = window.location.protocol;
+            const currentHostname = window.location.hostname;
+            const isHttps = currentProtocol === 'https:' || currentProtocol === 'https';
+            const isGitHubPages = currentHostname.includes('github.io');
+            
+            console.log(`\n🔍 環境偵測: 協議=${currentProtocol}, 是否HTTPS=${isHttps}, GitHub Pages=${isGitHubPages}`);
             
             if (isHttps) {
-                console.log(`🔒 HTTPS 環境檢測: ${isGitHubPages ? '(GitHub Pages)' : '(其他 HTTPS 服務'}`);
+                console.log(`🔒 HTTPS 環境確認: ${isGitHubPages ? '(GitHub Pages)' : '(其他 HTTPS 服務)'}`);
                 console.log('📋 HTTPS 環境說明: 瀏覽器會自動使用 CORS 代理來提取數據');
             }
             
@@ -9800,13 +9805,23 @@
             console.log('🚀 開始 HTTP 輪詢所有機台 - 新增兩階段模式');
             console.log('='.repeat(70));
             
-            // 偵測環境
-            const isHttps = window.location.protocol === 'https:';
-            const isGitHubPages = window.location.hostname.includes('github.io');
+            // 🔒 強制偵測環境 - 確保準確
+            const currentProtocol = window.location.protocol;
+            const currentHostname = window.location.hostname;
+            const isHttps = currentProtocol === 'https:' || currentProtocol === 'https';
+            const isGitHubPages = currentHostname.includes('github.io');
+            
+            console.log(`\n🔍 環境詳細檢查:`);
+            console.log(`   協議: ${currentProtocol}`);
+            console.log(`   主機: ${currentHostname}`);
+            console.log(`   是否 HTTPS: ${isHttps}`);
+            console.log(`   是否 GitHub Pages: ${isGitHubPages}`);
             
             if (isHttps) {
-                console.log(`🔒 HTTPS 環境檢測: ${isGitHubPages ? '(GitHub Pages)' : '(其他 HTTPS 服務)'}`);
+                console.log(`\n✅ HTTPS 環境確認: ${isGitHubPages ? '(GitHub Pages)' : '(其他 HTTPS 服務)'}`);
                 console.log('📋 HTTPS 環境說明: 將跳過讀取指令，直接使用 CORS 代理讀取數據');
+            } else {
+                console.log(`\n✅ HTTP 環境確認: 使用完整功能（讀取指令 + 數據讀取）`);
             }
 
             if (!appData.machines || appData.machines.length === 0) {
@@ -9847,6 +9862,7 @@
                     try {
                         console.log(`\n  📤 發送讀取指令: MAC=${machine.mac}, DevID=${devid}`);
                         console.log(`     URL: ${readCmdUrl}`);
+                        
                         
                         const readCmdResponse = await fetch(readCmdUrl, {
                             method: 'GET',
