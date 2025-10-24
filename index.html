@@ -1579,6 +1579,27 @@
                 httpsWarning.classList.remove('hidden');
                 console.warn('⚠️ 頁面使用 HTTPS，WebSocket 連線將自動從 ws:// 轉換為 wss://');
             }
+            
+            // 增強的 HTTPS 環境檢測
+            const isGitHubPages = window.location.hostname.includes('github.io');
+            console.log('🔒 HTTPS 環境檢測結果:');
+            console.log(`   部署平台: ${isGitHubPages ? 'GitHub Pages' : '其他 HTTPS 服務'}`);
+            console.log(`   目標伺服器: http://update.feiloli.com.tw:5539`);
+            console.log(`   自動使用 CORS 代理讀取數據`);
+            console.log(`   讀取指令功能受限 (僅限 HTTP 環境)`);
+            
+            // 顯示在 UI 上的提示（可選）
+            setTimeout(() => {
+                const pollAllBtn = document.getElementById('poll-all-btn');
+                if (pollAllBtn) {
+                    const badge = document.createElement('span');
+                    badge.className = 'absolute top-0 right-0 bg-yellow-500 text-xs px-2 py-0.5 rounded-full';
+                    badge.textContent = 'HTTPS 模式';
+                    badge.title = '在 HTTPS 環境下，部分 HTTP 指令功能可能受限';
+                    pollAllBtn.parentElement.style.position = 'relative';
+                    pollAllBtn.parentElement.appendChild(badge);
+                }
+            }, 500);
         }
         
         // 頁面載入完成後顯示 HTTP 配置資訊
@@ -1775,28 +1796,36 @@
                     // 改進的代理配置 - 使用更可靠的格式
                     const proxyConfigs = [
                         { 
-                            name: 'AllOrigins (GET)', 
+                            name: 'AllOrigins (推薦)', 
                             buildUrl: (targetUrl) => `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}&pretty=true`,
                             parseResponse: async (response) => {
                                 const data = await response.json();
+                                if (!data.contents) throw new Error('No contents in response');
                                 return data.contents;
                             }
                         },
                         { 
-                            name: 'CORS-Anywhere', 
-                            buildUrl: (targetUrl) => `https://cors-anywhere.herokuapp.com/${targetUrl}`,
+                            name: 'Proxyjump', 
+                            buildUrl: (targetUrl) => `https://proxy.cross-origin.com/?url=${encodeURIComponent(targetUrl)}`,
+                            parseResponse: async (response) => {
+                                const text = await response.text();
+                                return text;
+                            }
+                        },
+                        { 
+                            name: 'Cloudflare (Workers)', 
+                            buildUrl: (targetUrl) => {
+                                // 使用自建的 Cloudflare Worker 代理（如果有的話）
+                                return `https://cors-proxy.worker-domain.com/?url=${encodeURIComponent(targetUrl)}`;
+                            },
                             parseResponse: async (response) => response.text()
                         },
                         { 
-                            name: 'HTTP-Proxy', 
-                            buildUrl: (targetUrl) => {
-                                // 移除 http:// 前綴，以適應某些代理
-                                const cleanUrl = targetUrl.replace(/^https?:\/\//, '');
-                                return `https://httpbin.org/get?url=${encodeURIComponent(targetUrl)}`;
-                            },
+                            name: 'JsonBox (備用)', 
+                            buildUrl: (targetUrl) => `https://api.jsonbox.io/?url=${encodeURIComponent(targetUrl)}`,
                             parseResponse: async (response) => {
                                 const data = await response.json();
-                                return data.args.url || JSON.stringify(data);
+                                return JSON.stringify(data);
                             }
                         }
                     ];
@@ -2157,6 +2186,112 @@
             }
         }
 
+        // 🌐 檢查部署環境
+        window.checkDeploymentEnvironment = function() {
+            console.log('\n🔍 ===== 部署環境完整檢查 =====');
+            console.log('當前 URL:', window.location.href);
+            console.log('協議:', window.location.protocol);
+            console.log('主機名:', window.location.hostname);
+            console.log('是否 HTTPS:', window.location.protocol === 'https:');
+            console.log('是否 GitHub Pages:', window.location.hostname.includes('github.io'));
+            console.log('');
+            console.log('目標伺服器配置:');
+            console.log('  基礎 URL:', httpConfig.baseUrl);
+            console.log('  API 端點:', httpConfig.endpoint);
+            console.log('  超時時間:', httpConfig.timeout, 'ms');
+            console.log('');
+            
+            const isHttps = window.location.protocol === 'https:';
+            const targetIsHttp = httpConfig.baseUrl.startsWith('http:');
+            
+            if (isHttps && targetIsHttp) {
+                console.warn('⚠️ 檢測到混合內容問題！');
+                console.log('HTTPS 頁面 + HTTP 目標 = 瀏覽器會阻止直接請求');
+                console.log('');
+                console.log('✅ 解決方案已部署:');
+                console.log('   1️⃣ 自動使用 CORS 代理服務');
+                console.log('   2️⃣ 支援多個代理備份');
+                console.log('   3️⃣ 自動故障轉移');
+                console.log('');
+                console.log('🧪 測試代理：輸入 testCorsProxy()');
+            } else if (!isHttps) {
+                console.log('✅ HTTP 環境: 可以完全支援所有功能');
+            }
+            
+            console.log('===============================');
+        }
+
+        // 🧪 測試 CORS 代理功能
+        window.testCorsProxy = function() {
+            console.log('\n🧪 ===== CORS 代理功能測試 =====');
+            
+            const testMac = '083A8DE1ED14';
+            const testUrl = `http://update.feiloli.com.tw:5539/textselectdata/${testMac}`;
+            
+            console.log(`目標 URL: ${testUrl}\n`);
+            
+            // 測試所有代理
+            const proxyConfigs = [
+                { 
+                    name: 'AllOrigins (推薦)', 
+                    buildUrl: (targetUrl) => `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}&pretty=true`,
+                    parseResponse: async (response) => {
+                        const data = await response.json();
+                        if (!data.contents) throw new Error('No contents in response');
+                        return data.contents;
+                    }
+                },
+                { 
+                    name: 'Proxyjump', 
+                    buildUrl: (targetUrl) => `https://proxy.cross-origin.com/?url=${encodeURIComponent(targetUrl)}`,
+                    parseResponse: async (response) => {
+                        const text = await response.text();
+                        return text;
+                    }
+                }
+            ];
+            
+            (async () => {
+                for (const proxyConfig of proxyConfigs) {
+                    try {
+                        const proxyUrl = proxyConfig.buildUrl(testUrl);
+                        console.log(`🔄 測試代理 (${proxyConfig.name})...`);
+                        console.log(`   代理 URL: ${proxyUrl.substring(0, 100)}...`);
+                        
+                        const response = await fetch(proxyUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json, text/plain, */*'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            try {
+                                const data = await proxyConfig.parseResponse(response);
+                                console.log(`✅ ${proxyConfig.name} 可用！`);
+                                console.log(`   回應長度: ${JSON.stringify(data).length} 字元`);
+                                console.log(`   預覽: ${JSON.stringify(data).substring(0, 100)}...`);
+                            } catch (parseErr) {
+                                console.warn(`⚠️ ${proxyConfig.name} 回應解析失敗:`, parseErr.message);
+                            }
+                        } else {
+                            console.warn(`❌ ${proxyConfig.name} HTTP ${response.status}`);
+                        }
+                    } catch (err) {
+                        console.warn(`❌ ${proxyConfig.name} 失敗:`, err.message);
+                    }
+                    
+                    // 間隔 1 秒避免過快
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                console.log('\n=============================');
+                console.log('✅ 代理測試完成');
+                console.log('建議使用第一個可用的代理');
+                console.log('=============================');
+            })();
+        }
+
         // 🔍 機台資料診斷工具
         window.diagnoseMachineData = function() {
             console.log('\n🔍 ===== 機台資料診斷 =====');
@@ -2208,6 +2343,8 @@
             console.log('💡 輸入 showDeveloperModeHelp() 查看開發者模式說明');
             console.log('💡 輸入 diagnoseMachineData() 診斷機台資料同步問題');
             console.log('💡 輸入 testEditButton() 測試修改按鈕功能');
+            console.log('💡 輸入 checkDeploymentEnvironment() 檢查部署環境');
+            console.log('💡 輸入 testCorsProxy() 測試 CORS 代理功能');
         }, 3000);
         
         // 🧪 校正功能測試函數
@@ -9590,42 +9727,55 @@
                 return;
             }
             
+            const isHttps = window.location.protocol === 'https:';
+            const isGitHubPages = window.location.hostname.includes('github.io');
+            
+            if (isHttps) {
+                console.log(`🔒 HTTPS 環境檢測: ${isGitHubPages ? '(GitHub Pages)' : '(其他 HTTPS 服務'}`);
+                console.log('📋 HTTPS 環境說明: 瀏覽器會自動使用 CORS 代理來提取數據');
+            }
+            
             try {
-                // 📌 新增步驟 1：先發送讀取指令
-                console.log(`\n📤 [步驟 1] 發送讀取指令 - MAC: ${mac}, DevID: ${devid}`);
-                const readCmdUrl = `http://update.feiloli.com.tw:5539/webReadCmd/${mac}/${devid}/`;
-                console.log(`📌 讀取指令 URL: ${readCmdUrl}`);
-                
-                try {
-                    const readCmdResponse = await fetch(readCmdUrl, {
-                        method: 'GET',
-                        mode: 'cors',
-                        headers: { 'Accept': 'application/json' }
-                    });
+                // 在 HTTP 環境才發送讀取指令（HTTPS 環境會被瀏覽器阻止）
+                if (!isHttps) {
+                    console.log(`\n📤 [步驟 1] 發送讀取指令 - MAC: ${mac}, DevID: ${devid}`);
+                    const readCmdUrl = `http://update.feiloli.com.tw:5539/webReadCmd/${mac}/${devid}/`;
+                    console.log(`📌 讀取指令 URL: ${readCmdUrl}`);
                     
-                    if (readCmdResponse.ok) {
-                        const readCmdData = await readCmdResponse.json();
-                        console.log(`✅ 讀取指令回應:`, readCmdData);
+                    try {
+                        const readCmdResponse = await fetch(readCmdUrl, {
+                            method: 'GET',
+                            mode: 'cors',
+                            headers: { 'Accept': 'application/json' }
+                        });
                         
-                        // 驗證回應
-                        if (readCmdData.Valid === true && readCmdData.ResultCode === 200) {
-                            console.log(`✅ 讀取指令確認: "${readCmdData.ResultMessage}"`);
+                        if (readCmdResponse.ok) {
+                            const readCmdData = await readCmdResponse.json();
+                            console.log(`✅ 讀取指令回應:`, readCmdData);
+                            
+                            // 驗證回應
+                            if (readCmdData.Valid === true && readCmdData.ResultCode === 200) {
+                                console.log(`✅ 讀取指令確認: "${readCmdData.ResultMessage}"`);
+                            } else {
+                                console.warn(`⚠️ 讀取指令異常: Valid=${readCmdData.Valid}, ResultCode=${readCmdData.ResultCode}`);
+                            }
                         } else {
-                            console.warn(`⚠️ 讀取指令異常: Valid=${readCmdData.Valid}, ResultCode=${readCmdData.ResultCode}`);
+                            console.warn(`⚠️ 讀取指令 HTTP ${readCmdResponse.status}`);
                         }
-                    } else {
-                        console.warn(`⚠️ 讀取指令 HTTP ${readCmdResponse.status}`);
+                    } catch (readCmdError) {
+                        console.warn(`⚠️ 讀取指令失敗 (繼續進行): ${readCmdError.message}`);
                     }
-                } catch (readCmdError) {
-                    console.warn(`⚠️ 讀取指令失敗 (繼續進行): ${readCmdError.message}`);
+                    
+                    // 等待 500ms，讓機台準備數據
+                    console.log(`⏳ 等待 500ms，讓機台準備數據...`);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } else {
+                    console.log(`⏳ HTTPS 環境: 跳過讀取指令，直接進行數據抓取...`);
+                    await new Promise(resolve => setTimeout(resolve, 300));
                 }
                 
-                // 等待 500ms，讓機台準備數據
-                console.log(`⏳ 等待 500ms，讓機台準備數據...`);
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                // 📌 新增步驟 2：進行原本的數據抓取流程
-                console.log(`\n📤 [步驟 2] 發送 HTTP GET 請求抓取數據 - MAC: ${mac}, DevID: ${devid}`);
+                // 📌 步驟 2：進行數據抓取
+                console.log(`\n� [步驟 2] 發送 HTTP GET 請求抓取數據 - MAC: ${mac}, DevID: ${devid}`);
                 const result = await sendHttpRequest(mac);
                 
                 if (result) {
@@ -9649,6 +9799,15 @@
             console.log('\n' + '='.repeat(70));
             console.log('🚀 開始 HTTP 輪詢所有機台 - 新增兩階段模式');
             console.log('='.repeat(70));
+            
+            // 偵測環境
+            const isHttps = window.location.protocol === 'https:';
+            const isGitHubPages = window.location.hostname.includes('github.io');
+            
+            if (isHttps) {
+                console.log(`🔒 HTTPS 環境檢測: ${isGitHubPages ? '(GitHub Pages)' : '(其他 HTTPS 服務)'}`);
+                console.log('📋 HTTPS 環境說明: 將跳過讀取指令，直接使用 CORS 代理讀取數據');
+            }
 
             if (!appData.machines || appData.machines.length === 0) {
                 alert('沒有機台可以輪詢');
@@ -9671,80 +9830,87 @@
             const pollStartTime = new Date();
 
             // ============================================
-            // 📌 第一階段：發送所有機台的讀取指令
+            // 📌 第一階段：發送所有機台的讀取指令（僅限 HTTP 環境）
             // ============================================
-            console.log('\n' + '='.repeat(70));
-            console.log('📤 [第一階段] 發送所有機台的讀取指令');
-            console.log('='.repeat(70));
-            
-            const readCmdResults = [];
-            let readCmdSuccessCount = 0;
-            
-            for (const machine of machinesWithMac) {
-                const devid = machine.devid || 1;
-                const readCmdUrl = `http://update.feiloli.com.tw:5539/webReadCmd/${machine.mac}/${devid}/`;
+            if (!isHttps) {
+                console.log('\n' + '='.repeat(70));
+                console.log('📤 [第一階段] 發送所有機台的讀取指令');
+                console.log('='.repeat(70));
                 
-                try {
-                    console.log(`\n  📤 發送讀取指令: MAC=${machine.mac}, DevID=${devid}`);
-                    console.log(`     URL: ${readCmdUrl}`);
+                const readCmdResults = [];
+                let readCmdSuccessCount = 0;
+                
+                for (const machine of machinesWithMac) {
+                    const devid = machine.devid || 1;
+                    const readCmdUrl = `http://update.feiloli.com.tw:5539/webReadCmd/${machine.mac}/${devid}/`;
                     
-                    const readCmdResponse = await fetch(readCmdUrl, {
-                        method: 'GET',
-                        mode: 'cors',
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    
-                    if (readCmdResponse.ok) {
-                        const readCmdData = await readCmdResponse.json();
-                        console.log(`     ✅ 回應: ${readCmdData.ResultMessage} (Code=${readCmdData.ResultCode})`);
+                    try {
+                        console.log(`\n  📤 發送讀取指令: MAC=${machine.mac}, DevID=${devid}`);
+                        console.log(`     URL: ${readCmdUrl}`);
                         
-                        readCmdResults.push({
-                            mac: machine.mac,
-                            devid: devid,
-                            success: readCmdData.Valid === true && readCmdData.ResultCode === 200,
-                            data: readCmdData
+                        const readCmdResponse = await fetch(readCmdUrl, {
+                            method: 'GET',
+                            mode: 'cors',
+                            headers: { 'Accept': 'application/json' }
                         });
                         
-                        if (readCmdData.Valid === true && readCmdData.ResultCode === 200) {
-                            readCmdSuccessCount++;
+                        if (readCmdResponse.ok) {
+                            const readCmdData = await readCmdResponse.json();
+                            console.log(`     ✅ 回應: ${readCmdData.ResultMessage} (Code=${readCmdData.ResultCode})`);
+                            
+                            readCmdResults.push({
+                                mac: machine.mac,
+                                devid: devid,
+                                success: readCmdData.Valid === true && readCmdData.ResultCode === 200,
+                                data: readCmdData
+                            });
+                            
+                            if (readCmdData.Valid === true && readCmdData.ResultCode === 200) {
+                                readCmdSuccessCount++;
+                            }
+                        } else {
+                            console.warn(`     ⚠️ HTTP ${readCmdResponse.status}`);
+                            readCmdResults.push({
+                                mac: machine.mac,
+                                devid: devid,
+                                success: false,
+                                data: { ResultCode: readCmdResponse.status }
+                            });
                         }
-                    } else {
-                        console.warn(`     ⚠️ HTTP ${readCmdResponse.status}`);
+                    } catch (error) {
+                        console.warn(`     ⚠️ 失敗: ${error.message}`);
                         readCmdResults.push({
                             mac: machine.mac,
                             devid: devid,
                             success: false,
-                            data: { ResultCode: readCmdResponse.status }
+                            error: error.message
                         });
                     }
-                } catch (error) {
-                    console.warn(`     ⚠️ 失敗: ${error.message}`);
-                    readCmdResults.push({
-                        mac: machine.mac,
-                        devid: devid,
-                        success: false,
-                        error: error.message
-                    });
+                    
+                    // 每筆間隔 100ms 避免過快
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
                 
-                // 每筆間隔 100ms 避免過快
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            
-            console.log(`\n✅ 第一階段完成: ${readCmdSuccessCount}/${machinesWithMac.length} 台機台讀取指令成功`);
-            
-            // ============================================
-            // ⏳ 等待 2-3 秒，讓機台準備數據
-            // ============================================
-            console.log('\n⏳ 等待 3 秒，讓所有機台準備數據...');
-            showStatusMessage(`已發送讀取指令，等待 3 秒...`, 'info');
-            
-            for (let i = 3; i > 0; i--) {
-                console.log(`   倒數: ${i} 秒...`);
+                console.log(`\n✅ 第一階段完成: ${readCmdSuccessCount}/${machinesWithMac.length} 台機台讀取指令成功`);
+                
+                // ============================================
+                // ⏳ 等待 2-3 秒，讓機台準備數據
+                // ============================================
+                console.log('\n⏳ 等待 3 秒，讓所有機台準備數據...');
+                showStatusMessage(`已發送讀取指令，等待 3 秒...`, 'info');
+                
+                for (let i = 3; i > 0; i--) {
+                    console.log(`   倒數: ${i} 秒...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                console.log(`✅ 等待完畢，開始讀取所有機台數據\n`);
+            } else {
+                // HTTPS 環境：跳過讀取指令，直接讀取
+                console.log('\n🔒 HTTPS 環境: 跳過讀取指令，準備直接讀取所有機台數據...\n');
+                showStatusMessage(`HTTPS 環境: 直接讀取 ${machinesWithMac.length} 台機台數據...`, 'info');
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
-            
-            console.log(`✅ 等待完畢，開始讀取所有機台數據\n`);
             
             // ============================================
             // 📌 第二階段：讀取所有機台的數據
