@@ -2338,6 +2338,62 @@
             console.log('\n===============================');
         }
 
+        // 🧪 GitHub Pages CORS 代理連接測試工具
+        window.testHttpConnection = function() {
+            console.log('\n🧪 ===== HTTP 連接測試 (CORS 代理模式) =====\n');
+            
+            const isHttps = window.location.protocol === 'https:';
+            const isGitHub = window.location.hostname.includes('github.io');
+            
+            console.log(`📍 當前環境: ${isHttps ? 'HTTPS' : 'HTTP'}`);
+            console.log(`🔗 主機: ${window.location.hostname}`);
+            console.log(`📡 GitHub Pages: ${isGitHub ? '✅ 是' : '❌ 否'}\n`);
+            
+            const testUrl = 'http://update.feiloli.com.tw:5539/textselectdata/083A8DE1ED14';
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(testUrl)}&pretty=true`;
+            
+            console.log(`🎯 測試伺服器: ${testUrl}`);
+            console.log(`🔄 使用代理: AllOrigins\n`);
+            
+            console.log('⏳ 正在連接...\n');
+            
+            fetch(proxyUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log(`📊 HTTP 狀態: ${response.status} ${response.statusText}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                console.log('\n✅ ===== 連接成功！=====');
+                console.log('📝 回應內容:');
+                console.log(data.contents ? data.contents.substring(0, 200) + '...' : data);
+                console.log('\n🎉 代理工作正常！');
+                console.log('======================\n');
+            })
+            .catch(error => {
+                console.log('\n❌ ===== 連接失敗 =====');
+                console.log(`⚠️ 錯誤: ${error.message}`);
+                console.log('\n📋 可能的原因:');
+                console.log('1. 目標伺服器 (update.feiloli.com.tw:5539) 離線');
+                console.log('2. AllOrigins 代理服務暫時不可用');
+                console.log('3. 網路連接異常');
+                console.log('\n🔧 解決方案:');
+                console.log('1. 檢查伺服器是否在線');
+                console.log('2. 嘗試其他代理服務');
+                console.log('3. 檢查網路連接');
+                console.log('======================\n');
+            });
+        };
+
         // 首次載入時顯示說明
         setTimeout(() => {
             console.log('💡 輸入 showDeveloperModeHelp() 查看開發者模式說明');
@@ -2345,6 +2401,7 @@
             console.log('💡 輸入 testEditButton() 測試修改按鈕功能');
             console.log('💡 輸入 checkDeploymentEnvironment() 檢查部署環境');
             console.log('💡 輸入 testCorsProxy() 測試 CORS 代理功能');
+            console.log('💡 輸入 testHttpConnection() 測試 GitHub Pages HTTP 連接');
         }, 3000);
         
         // 🧪 校正功能測試函數
@@ -9847,6 +9904,8 @@
             // ============================================
             // 📌 第一階段：發送所有機台的讀取指令（僅限 HTTP 環境）
             // ============================================
+            let readCmdSuccessCount = 0; // 初始化變數
+            
             if (!isHttps) {
                 console.log('\n' + '='.repeat(70));
                 console.log('📤 [第一階段] 發送所有機台的讀取指令');
