@@ -2578,40 +2578,61 @@
 
         function updateDailyRecord(machineId, location, plays, payouts, date = null) {
             console.log(`📝 更新輪詢臨時記錄 - 機台: ${machineId}/${location}, plays: ${plays}, payouts: ${payouts}`);
-            
+
+            const rawPlays = plays;
+            const rawPayouts = payouts;
+            const calibration = applyMachineCalibration(machineId, location, rawPlays, rawPayouts) || {};
+            const calibratedPlays = calibration.plays ?? rawPlays;
+            const calibratedPayouts = calibration.payouts ?? rawPayouts;
+            const playsCalibration = calibration.playsCalibration ?? 0;
+            const payoutsCalibration = calibration.payoutsCalibration ?? 0;
+
             // 初始化輪詢臨時存儲（與正式的 Firebase 記錄分離）
             if (!window.dailyRecords) {
                 window.dailyRecords = {};
             }
-            
+
             // 使用提供的日期或取得今天的日期
             const recordDate = date || new Date().toISOString().split('T')[0];
             const recordKey = `${machineId}_${location}_${recordDate}`;
-            
+
             // 獲取該機台今天的輪詢記錄
             let todayRecord = window.dailyRecords[recordKey];
-            
+            const now = new Date();
+            const nowString = now.toLocaleString('zh-TW');
+            const nowTimeString = now.toLocaleTimeString('zh-TW');
+
             if (!todayRecord) {
                 // 新建今天的輪詢記錄
                 todayRecord = {
                     machineId: machineId,
                     location: location,
                     date: recordDate,
-                    plays: plays,
-                    payouts: payouts,
-                    createdAt: new Date().toLocaleString('zh-TW'),
-                    updatedAt: new Date().toLocaleString('zh-TW'),
+                    plays: calibratedPlays,
+                    payouts: calibratedPayouts,
+                    rawPlays: rawPlays,
+                    rawPayouts: rawPayouts,
+                    playsCalibration: playsCalibration,
+                    payoutsCalibration: payoutsCalibration,
+                    createdAt: nowString,
+                    updatedAt: nowString,
                     updateCount: 1,
                     // ✅ 輪詢專用：變更檢測的詳細欄位
-                    lastPlays: plays,
-                    lastPayouts: payouts,
+                    lastPlays: calibratedPlays,
+                    lastPayouts: calibratedPayouts,
+                    lastRawPlays: rawPlays,
+                    lastRawPayouts: rawPayouts,
                     playsChanged: false,
                     payoutsChanged: false,
                     isPollingRecord: true, // ✅ 標記為輪詢記錄
                     history: [{
-                        timestamp: new Date().toLocaleTimeString('zh-TW'),
-                        plays: plays,
-                        payouts: payouts,
+                        timestamp: nowTimeString,
+                        plays: calibratedPlays,
+                        payouts: calibratedPayouts,
+                        rawPlays: rawPlays,
+                        rawPayouts: rawPayouts,
+                        playsCalibration: playsCalibration,
+                        payoutsCalibration: payoutsCalibration,
                         playsChanged: false,
                         payoutsChanged: false,
                         playsDelta: 0,
@@ -2619,59 +2640,73 @@
                     }]
                 };
                 window.dailyRecords[recordKey] = todayRecord;
-                console.log(`✅ 新建輪詢臨時記錄 - 機台: ${machineId}/${location}, 日期: ${recordDate}, plays: ${plays}, payouts: ${payouts}`);
-                
+                console.log(`✅ 新建輪詢臨時記錄 - 機台: ${machineId}/${location}, 日期: ${recordDate}, plays: ${calibratedPlays}, payouts: ${calibratedPayouts}`);
+
                 return { status: 'created', record: todayRecord, playsChanged: false, payoutsChanged: false };
             }
-            
-            // ✅ 與輪詢記錄比對 - 詳細的變更檢測
-            const playsChanged = (todayRecord.plays !== plays);
-            const payoutsChanged = (todayRecord.payouts !== payouts);
+
+            // ✅ 與輪詢記錄比對 - 詳細的變更檢測（使用校正後數值）
+            const playsChanged = (todayRecord.plays !== calibratedPlays);
+            const payoutsChanged = (todayRecord.payouts !== calibratedPayouts);
             const isChanged = playsChanged || payoutsChanged;
-            
+
             if (isChanged) {
                 // 計算變化量
-                const playsDelta = plays - todayRecord.plays;
-                const payoutsDelta = payouts - todayRecord.payouts;
-                
+                const playsDelta = calibratedPlays - todayRecord.plays;
+                const payoutsDelta = calibratedPayouts - todayRecord.payouts;
+
                 // 數據有變化，更新輪詢記錄
                 console.log(`🔄 輪詢數據有變化 - 機台: ${machineId}/${location}`);
                 if (playsChanged) {
-                    console.log(`   ⭐ 投幣次數變化: ${todayRecord.plays} → ${plays} (增加: +${playsDelta})`);
+                    console.log(`   ⭐ 投幣次數變化: ${todayRecord.plays} → ${calibratedPlays} (增加: +${playsDelta})`);
                 }
                 if (payoutsChanged) {
-                    console.log(`   ⭐ 出貨數量變化: ${todayRecord.payouts} → ${payouts} (增加: +${payoutsDelta})`);
+                    console.log(`   ⭐ 出貨數量變化: ${todayRecord.payouts} → ${calibratedPayouts} (增加: +${payoutsDelta})`);
                 }
-                
+
                 // 保存到歷史記錄（包含詳細的變更信息）
                 todayRecord.history.push({
-                    timestamp: new Date().toLocaleTimeString('zh-TW'),
-                    plays: plays,
-                    payouts: payouts,
+                    timestamp: nowTimeString,
+                    plays: calibratedPlays,
+                    payouts: calibratedPayouts,
+                    rawPlays: rawPlays,
+                    rawPayouts: rawPayouts,
+                    playsCalibration: playsCalibration,
+                    payoutsCalibration: payoutsCalibration,
                     playsChanged: playsChanged,
                     payoutsChanged: payoutsChanged,
                     playsDelta: playsDelta,
                     payoutsDelta: payoutsDelta
                 });
-                
+
                 // 更新主記錄
                 todayRecord.lastPlays = todayRecord.plays;  // ✅ 保存舊值供後續比對
                 todayRecord.lastPayouts = todayRecord.payouts;  // ✅ 保存舊值供後續比對
-                todayRecord.plays = plays;
-                todayRecord.payouts = payouts;
+                todayRecord.lastRawPlays = todayRecord.rawPlays;
+                todayRecord.lastRawPayouts = todayRecord.rawPayouts;
+                todayRecord.plays = calibratedPlays;
+                todayRecord.payouts = calibratedPayouts;
+                todayRecord.rawPlays = rawPlays;
+                todayRecord.rawPayouts = rawPayouts;
+                todayRecord.playsCalibration = playsCalibration;
+                todayRecord.payoutsCalibration = payoutsCalibration;
                 todayRecord.playsChanged = playsChanged;  // ✅ 標記投幣次數是否變化
                 todayRecord.payoutsChanged = payoutsChanged;  // ✅ 標記出貨數量是否變化
-                todayRecord.updatedAt = new Date().toLocaleString('zh-TW');
+                todayRecord.updatedAt = nowString;
                 todayRecord.updateCount = (todayRecord.updateCount || 0) + 1;
-                
+
                 window.dailyRecords[recordKey] = todayRecord;
-                console.log(`✅ 已更新輪詢臨時記錄 - 機台: ${machineId}/${location}, plays: ${plays}, payouts: ${payouts}, 更新次數: ${todayRecord.updateCount}`);
+                console.log(`✅ 已更新輪詢臨時記錄 - 機台: ${machineId}/${location}, plays: ${calibratedPlays}, payouts: ${calibratedPayouts}, 更新次數: ${todayRecord.updateCount}`);
                 console.log(`   📊 更新統計: plays變化=${playsChanged}, payouts變化=${payoutsChanged}, 歷史記錄數=${todayRecord.history.length}`);
-                
+
                 return { status: 'updated', record: todayRecord, playsChanged, payoutsChanged, playsDelta, payoutsDelta };
             } else {
                 // 數據相同，不更新
-                console.log(`ℹ️ 輪詢數據未變化 - 機台: ${machineId}/${location}, plays: ${plays}, payouts: ${payouts} (維持不變)`);
+                console.log(`ℹ️ 輪詢數據未變化 - 機台: ${machineId}/${location}, plays: ${calibratedPlays}, payouts: ${calibratedPayouts} (維持不變)`);
+                todayRecord.rawPlays = rawPlays;
+                todayRecord.rawPayouts = rawPayouts;
+                todayRecord.playsCalibration = playsCalibration;
+                todayRecord.payoutsCalibration = payoutsCalibration;
                 return { status: 'unchanged', record: todayRecord, playsChanged: false, payoutsChanged: false, playsDelta: 0, payoutsDelta: 0 };
             }
         }
