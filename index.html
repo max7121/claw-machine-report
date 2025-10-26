@@ -6129,9 +6129,16 @@
                         </button>
                     </div>
 
-                    <!-- 簡化的總計顯示 -->
-                    <div class="bg-blue-900/30 p-4 rounded-lg mb-4 font-bold text-white">
-                        <div class="text-lg">📈 所有門市總營業額：<span class="text-blue-300 total-summary">${totalRevenue.toLocaleString()}</span> 元</div>
+                    <!-- 雙摘要顯示 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="bg-green-900/30 p-4 rounded-lg font-bold text-white">
+                            <div class="text-sm text-gray-400 mb-1">� 總營業額</div>
+                            <div class="text-2xl text-green-300"><span class="total-summary-total">${totalRevenue.toLocaleString()}</span> 元</div>
+                        </div>
+                        <div class="bg-yellow-900/30 p-4 rounded-lg font-bold text-white">
+                            <div class="text-sm text-gray-400 mb-1">⏳ 待結帳營業額</div>
+                            <div class="text-2xl text-yellow-300"><span class="total-summary-pending">${totalCheckoutRevenue.toLocaleString()}</span> 元</div>
+                        </div>
                     </div>
 
                     <!-- 詳細表格（可收合） -->
@@ -6259,13 +6266,19 @@
                         }
                     }
                     
-                    // 更新摘要顯示
-                    const summaryCell = document.querySelector('.total-summary');
-                    if (summaryCell) {
-                        const total = document.querySelectorAll('.sales-row').reduce((sum, row) => {
-                            return sum + parseFloat(row.dataset[isTotal ? 'totalRevenue' : 'checkoutRevenue']);
+                    // 更新雙摘要顯示
+                    if (isTotal) {
+                        const totalSum = document.querySelectorAll('.sales-row').reduce((sum, row) => {
+                            return sum + parseFloat(row.dataset.totalRevenue);
                         }, 0);
-                        summaryCell.textContent = total.toLocaleString();
+                        const totalCell = document.querySelector('.total-summary-total');
+                        if (totalCell) totalCell.textContent = totalSum.toLocaleString();
+                    } else {
+                        const pendingSum = document.querySelectorAll('.sales-row').reduce((sum, row) => {
+                            return sum + parseFloat(row.dataset.checkoutRevenue);
+                        }, 0);
+                        const pendingCell = document.querySelector('.total-summary-pending');
+                        if (pendingCell) pendingCell.textContent = pendingSum.toLocaleString();
                     }
                 });
             });
