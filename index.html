@@ -1244,6 +1244,10 @@
                 <input type="hidden" id="edit-history-old-plays">
                 <input type="hidden" id="edit-history-old-payouts">
                 <div class="mb-4">
+                    <label for="edit-history-date" class="block text-sm font-medium text-gray-300 mb-1">紀錄日期</label>
+                    <input type="date" id="edit-history-date" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required>
+                </div>
+                <div class="mb-4">
                     <label for="edit-history-plays" class="block text-sm font-medium text-gray-300 mb-1">當日投幣數</label>
                     <input type="number" id="edit-history-plays" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required min="0">
                 </div>
@@ -5135,6 +5139,11 @@
         let selectedStoreId = null; 
         let selectedStoreName = ''; 
         let confirmCallback = null;
+
+        function normalizeCount(value) {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
         
         // 自動輪詢設定
         let autoPollOnLoadTimer = null;
@@ -5998,7 +6007,270 @@
                 }
             }
 
+            // ✅ 計算並顯示總營業額統計
+            displayStoresSalesStatistics(groupId);
+            
             loadStores();
+        }
+
+        // ✅ 新增函數：計算並顯示所有門市的營業額統計
+        async function displayStoresSalesStatistics(groupId) {
+            try {
+                // 獲取該群組下所有門市
+                const storesSnapshot = await db.collection('groups').doc(groupId).collection('stores').get();
+                const stores = storesSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+
+                if (stores.length === 0) {
+                    console.log('⚠️ 該群組沒有任何門市');
+                    return;
+                }
+
+                // 計算每間門市的營業額
+                const storesSalesData = [];
+                let totalAllStoresRevenue = 0;
+                let totalAllStoresCheckoutRevenue = 0;
+
+                for (const store of stores) {
+                    try {
+                        // 獲取該門市的機台資訊
+                        const machinesSnapshot = await db.collection('groups').doc(groupId)
+                            .collection('stores').doc(store.id).collection('machines').get();
+                        const machines = machinesSnapshot.docs.map(doc => ({docId: doc.id, ...doc.data()}));
+
+                        // 計算當期營業額（未結帳）
+                        let storeRevenue = 0;
+                        let storeCheckoutRevenue = 0;
+
+                        // 獲取最後結帳的累計數據
+                        let lastCheckoutRevenue = 0;
+                        try {
+                            const lastCheckoutSnapshot = await db.collection('groups').doc(groupId)
+                                .collection('stores').doc(store.id).collection('checkouts')
+                                .orderBy('checkoutDate', 'desc').limit(1).get();
+
+                            if (!lastCheckoutSnapshot.empty) {
+                                lastCheckoutRevenue = lastCheckoutSnapshot.docs[0].data().checkoutAmount || 0;
+                            }
+                        } catch (checkoutError) {
+                            console.warn(`無法獲取 ${store.name} 的結帳記錄:`, checkoutError);
+                            lastCheckoutRevenue = 0;
+                        }
+
+                        // 計算當前總營業額
+                        machines.forEach(machine => {
+                            const plays = machine.plays || 0;
+                            const initialPlays = machine.initialPlays || 0;
+                            const effectivePlays = plays - initialPlays;
+                            const revenue = effectivePlays * COIN_VALUE;
+                            storeRevenue += revenue;
+                        });
+
+                        // 當期營業額 = 總營業額 - 最後結帳營業額
+                        storeCheckoutRevenue = Math.max(0, storeRevenue - lastCheckoutRevenue);
+
+                        storesSalesData.push({
+                            storeName: store.name,
+                            totalRevenue: storeRevenue,
+                            checkoutRevenue: storeCheckoutRevenue,
+                            lastCheckoutRevenue: lastCheckoutRevenue
+                        });
+
+                        totalAllStoresRevenue += storeRevenue;
+                        totalAllStoresCheckoutRevenue += storeCheckoutRevenue;
+
+                    } catch (error) {
+                        console.error(`計算門市 ${store.name} 營業額失敗:`, error);
+                    }
+                }
+
+                // 渲染統計表格
+                renderSalesStatisticsTable(storesSalesData, totalAllStoresRevenue, totalAllStoresCheckoutRevenue);
+
+            } catch (error) {
+                console.error('計算門市營業額統計失敗:', error);
+            }
+        }
+
+        // ✅ 新增函數：渲染營業額統計表格
+        function renderSalesStatisticsTable(storesSalesData, totalRevenue, totalCheckoutRevenue) {
+            // 尋找或建立統計容器
+            let statsContainer = document.getElementById('stores-sales-statistics');
+
+            if (!statsContainer) {
+                // 在門市選擇區上方插入統計容器
+                const storeSelectionPage = document.getElementById('store-selection-page');
+                if (!storeSelectionPage) return;
+
+                statsContainer = document.createElement('div');
+                statsContainer.id = 'stores-sales-statistics';
+                statsContainer.className = 'bg-gray-800 rounded-xl shadow-lg p-6 mb-8';
+                storeSelectionPage.insertBefore(statsContainer, storeSelectionPage.firstChild);
+            }
+
+            // 建立統計 HTML - 新增收合功能
+            let html = `
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-white flex items-center">
+                        <span class="text-green-400 mr-2">📊</span> === 總營業額統計 ===
+                    </h2>
+                    <button id="toggle-stats-table" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                        <span id="toggle-stats-icon">📊</span> 收合統計
+                    </button>
+                </div>
+
+                <div id="stats-table-container" class="transition-all duration-300">
+                    <div class="mb-4 flex gap-4 flex-wrap">
+                        <button class="sales-view-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors active" data-view="total">
+                            顯示總營業額
+                        </button>
+                        <button class="sales-view-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors" data-view="pending">
+                            顯示待結帳營業額
+                        </button>
+                    </div>
+
+                    <!-- 簡化的總計顯示 -->
+                    <div class="bg-blue-900/30 p-4 rounded-lg mb-4 font-bold text-white">
+                        <div class="text-lg">📈 所有門市總營業額：<span class="text-blue-300 total-summary">${totalRevenue.toLocaleString()}</span> 元</div>
+                    </div>
+
+                    <!-- 詳細表格（可收合） -->
+                    <div id="detailed-stats-table" class="overflow-x-auto">
+                        <table class="w-full text-sm text-gray-300 bg-gray-900/50 rounded-lg overflow-hidden">
+                            <thead class="bg-gray-700">
+                                <tr>
+                                    <th class="px-4 py-2 text-left font-semibold">項目</th>
+                                    <th class="px-4 py-2 text-right font-semibold sales-total-col">金額（總計）</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-700">
+            `;
+
+            // 按營業額排序（降序）
+            const sortedData = [...storesSalesData].sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+            // 新增每間門市的資料列
+            sortedData.forEach(store => {
+                const displayRevenue = store.totalRevenue.toLocaleString();
+                const displayCheckoutRevenue = store.checkoutRevenue.toLocaleString();
+
+                html += `
+                <tr class="hover:bg-gray-800/50 transition-colors sales-row" data-total-revenue="${store.totalRevenue}" data-checkout-revenue="${store.checkoutRevenue}">
+                    <td class="px-4 py-3 font-medium text-white">${store.storeName}</td>
+                    <td class="px-4 py-3 text-right font-semibold text-green-400 sales-revenue">
+                        ${displayRevenue}
+                    </td>
+                </tr>
+                `;
+            });
+
+            // 新增總計列
+            const totalDisplayRevenue = totalRevenue.toLocaleString();
+            const totalDisplayCheckout = totalCheckoutRevenue.toLocaleString();
+
+            html += `
+                <tr class="bg-blue-900/30 font-bold text-white sales-total-row">
+                    <td class="px-4 py-3">所有門市總營業額</td>
+                    <td class="px-4 py-3 text-right text-blue-300 sales-total-revenue">
+                        ${totalDisplayRevenue}
+                    </td>
+                </tr>
+            `;
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-4 p-4 bg-gray-900/50 rounded-lg">
+                        <p class="text-sm text-gray-400">
+                            <span class="text-green-400 font-semibold">💡 說明：</span>
+                            「總營業額」= 所有機台累積投幣數 × 10元；「待結帳營業額」= 上次結帳後的新增營業額
+                        </p>
+                    </div>
+                </div>
+            </div>
+            `;
+
+            statsContainer.innerHTML = html;
+
+            // 綁定收合按鈕事件
+            const toggleBtn = document.getElementById('toggle-stats-table');
+            const tableContainer = document.getElementById('detailed-stats-table');
+            const icon = document.getElementById('toggle-stats-icon');
+            
+            let isCollapsed = localStorage.getItem('statsTableCollapsed') === 'true';
+            
+            function updateToggleState() {
+                if (isCollapsed) {
+                    tableContainer.style.display = 'none';
+                    toggleBtn.innerHTML = '<span id="toggle-stats-icon">📈</span> 展開統計';
+                    toggleBtn.className = 'bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors';
+                } else {
+                    tableContainer.style.display = 'block';
+                    toggleBtn.innerHTML = '<span id="toggle-stats-icon">📊</span> 收合統計';
+                    toggleBtn.className = 'bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm transition-colors';
+                }
+            }
+            
+            updateToggleState();
+            
+            toggleBtn.addEventListener('click', () => {
+                isCollapsed = !isCollapsed;
+                localStorage.setItem('statsTableCollapsed', isCollapsed);
+                updateToggleState();
+            });
+
+            // 綁定檢視切換按鈕事件
+            document.querySelectorAll('.sales-view-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // 移除其他按鈕的 active 狀態
+                    document.querySelectorAll('.sales-view-btn').forEach(b => b.classList.remove('active', 'bg-blue-700'));
+                    this.classList.add('active', 'bg-blue-700');
+
+                    const viewType = this.dataset.view;
+                    const isTotal = viewType === 'total';
+
+                    // 更新表格標題
+                    const headerCell = document.querySelector('.sales-total-col');
+                    if (headerCell) {
+                        headerCell.textContent = isTotal ? '金額（總計）' : '金額（待結帳）';
+                    }
+
+                    // 更新每行資料
+                    document.querySelectorAll('.sales-row').forEach((row, index) => {
+                        const revenue = row.dataset[isTotal ? 'totalRevenue' : 'checkoutRevenue'];
+                        const displayRevenue = parseFloat(revenue).toLocaleString();
+                        const revenueCell = row.querySelector('.sales-revenue');
+                        if (revenueCell) {
+                            revenueCell.textContent = displayRevenue;
+                        }
+                    });
+
+                    // 更新總計列
+                    const totalRow = document.querySelector('.sales-total-row');
+                    if (totalRow) {
+                        const totalRevenue = document.querySelectorAll('.sales-row').reduce((sum, row) => {
+                            return sum + parseFloat(row.dataset[isTotal ? 'totalRevenue' : 'checkoutRevenue']);
+                        }, 0);
+                        const totalCell = totalRow.querySelector('.sales-total-revenue');
+                        if (totalCell) {
+                            totalCell.textContent = totalRevenue.toLocaleString();
+                        }
+                    }
+                    
+                    // 更新摘要顯示
+                    const summaryCell = document.querySelector('.total-summary');
+                    if (summaryCell) {
+                        const total = document.querySelectorAll('.sales-row').reduce((sum, row) => {
+                            return sum + parseFloat(row.dataset[isTotal ? 'totalRevenue' : 'checkoutRevenue']);
+                        }, 0);
+                        summaryCell.textContent = total.toLocaleString();
+                    }
+                });
+            });
+
+            console.log('✅ 門市營業額統計已渲染（支援收合功能）');
         }
 
         async function showReportPage(storeId, storeName, startDate) {
@@ -6618,10 +6890,16 @@
             const docId = document.getElementById('edit-history-doc-id').value;
             const machineId = document.getElementById('edit-history-machine-id').value;
             const location = document.getElementById('edit-history-location').value;
+            const newDate = document.getElementById('edit-history-date').value;
             const oldPlays = parseInt(document.getElementById('edit-history-old-plays').value, 10);
             const oldPayouts = parseInt(document.getElementById('edit-history-old-payouts').value, 10);
             const newPlays = parseInt(document.getElementById('edit-history-plays').value, 10);
             const newPayouts = parseInt(document.getElementById('edit-history-payouts').value, 10);
+            
+            if (!newDate) {
+                alert('錯誤：請選擇紀錄日期。');
+                return;
+            }
             
             const machineToUpdate = appData.machines.find(m => m.id === machineId && m.location === location);
             if (!machineToUpdate) {
@@ -6646,6 +6924,7 @@
 
                 const historyRef = db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('history').doc(docId);
                 batch.update(historyRef, {
+                    date: newDate,
                     newPlays: newPlays,
                     newPayouts: newPayouts
                 });
@@ -7457,6 +7736,7 @@
                                 data-doc-id="${h.docId}" 
                                 data-machine-id="${h.machineId}"
                                 data-location="${h.location}"
+                                data-date="${h.date}"
                                 data-plays="${h.newPlays}"
                                 data-payouts="${h.newPayouts}">
                                 修改
@@ -8966,6 +9246,7 @@
                 document.getElementById('edit-history-location').value = button.dataset.location;
                 document.getElementById('edit-history-old-plays').value = button.dataset.plays;
                 document.getElementById('edit-history-old-payouts').value = button.dataset.payouts;
+                document.getElementById('edit-history-date').value = button.dataset.date || '';
                 document.getElementById('edit-history-plays').value = button.dataset.plays;
                 document.getElementById('edit-history-payouts').value = button.dataset.payouts;
                 editHistoryModal.classList.remove('hidden');
@@ -9247,16 +9528,21 @@
                 }
 
                 if (!selectedMachine) { return showFeedback('錯誤：無法識別所選機台。', true); }
-                if (cumulativePlaysInput < selectedMachine.plays || cumulativePayoutsInput < selectedMachine.payouts) {
-                    return showFeedback('錯誤：輸入的累積數值小於上次紀錄，請確認抄表數值是否正確。', true);
-                }
-                if (cumulativePlaysInput < (selectedMachine.initialPlays || 0) || cumulativePayoutsInput < (selectedMachine.initialPayouts || 0)) {
-                    return showFeedback(`錯誤：抄表數值不可小於此機台的起始值 (投幣: ${selectedMachine.initialPlays || 0}, 出貨: ${selectedMachine.initialPayouts || 0})。`, true);
+
+                const lastRecordedPlays = normalizeCount(selectedMachine.plays);
+                const lastRecordedPayouts = normalizeCount(selectedMachine.payouts);
+                const initialPlays = normalizeCount(selectedMachine.initialPlays);
+                const initialPayouts = normalizeCount(selectedMachine.initialPayouts);
+                const baselinePlays = Math.max(lastRecordedPlays, initialPlays);
+                const baselinePayouts = Math.max(lastRecordedPayouts, initialPayouts);
+
+                if (cumulativePlaysInput < baselinePlays || cumulativePayoutsInput < baselinePayouts) {
+                    return showFeedback(`錯誤：輸入的累積數值不可小於基準值 (投幣: ${baselinePlays}, 出貨: ${baselinePayouts})。`, true);
                 }
 
 
-            const dailyPlays = cumulativePlaysInput - selectedMachine.plays;
-            const dailyPayouts = cumulativePayoutsInput - selectedMachine.payouts;
+            const dailyPlays = cumulativePlaysInput - baselinePlays;
+            const dailyPayouts = cumulativePayoutsInput - baselinePayouts;
             if (dailyPlays === 0 && dailyPayouts === 0) {
                 return showFeedback('數據未變更，無需新增紀錄。');
             }
