@@ -631,6 +631,78 @@
                                     </div>
                                 </div>
                                 
+                                <!-- ✅ 新增：快速輪詢優化設定 -->
+                                <div class="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                                    <h5 class="text-green-400 font-medium mb-3">⚡ 快速輪詢優化設定</h5>
+                                    <div class="space-y-3">
+                                        <div class="flex items-center space-x-3">
+                                            <input type="checkbox" id="enable-early-termination" checked 
+                                                   class="rounded bg-gray-700 border-gray-600 text-green-600">
+                                            <div>
+                                                <label for="enable-early-termination" class="text-sm text-gray-300">✓ 啟用提前終止</label>
+                                                <p class="text-xs text-gray-400">獲得 80% 資料後停止輪詢，加快輪詢速度</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="flex items-center space-x-3">
+                                            <input type="checkbox" id="enable-priority-filtering" checked 
+                                                   class="rounded bg-gray-700 border-gray-600 text-green-600">
+                                            <div>
+                                                <label for="enable-priority-filtering" class="text-sm text-gray-300">✓ 啟用優先級過濾</label>
+                                                <p class="text-xs text-gray-400">只處理有效的目標資料，跳過無用資料</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                                            <div>
+                                                <label for="fast-poll-max-retries" class="text-sm text-gray-300">最大重試次數:</label>
+                                                <input type="number" id="fast-poll-max-retries" min="1" max="5" value="2" 
+                                                       class="w-full bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-sm mt-1">
+                                                <p class="text-xs text-gray-400 mt-1">優化預設: 2次 (原本: 3次)</p>
+                                            </div>
+                                            <div>
+                                                <label for="fast-poll-retry-delay" class="text-sm text-gray-300">重試間隔(ms):</label>
+                                                <input type="number" id="fast-poll-retry-delay" min="500" max="5000" step="100" value="1000" 
+                                                       class="w-full bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-sm mt-1">
+                                                <p class="text-xs text-gray-400 mt-1">優化預設: 1000ms (原本: 1500ms)</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="early-termination-threshold" class="text-sm text-gray-300">提前終止臨界值:</label>
+                                            <input type="range" id="early-termination-threshold" min="50" max="100" step="5" value="80" 
+                                                   class="w-full mt-1">
+                                            <div class="flex justify-between text-xs text-gray-400 mt-1">
+                                                <span>50%</span>
+                                                <span id="threshold-display">80%</span>
+                                                <span>100%</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="wait-before-read" class="text-sm text-gray-300">讀取等待時間:</label>
+                                            <input type="range" id="wait-before-read" min="500" max="5000" step="100" value="3000" 
+                                                   class="w-full mt-1">
+                                            <div class="flex justify-between text-xs text-gray-400 mt-1">
+                                                <span>0.5s</span>
+                                                <span id="wait-display">3.0s</span>
+                                                <span>5.0s</span>
+                                            </div>
+                                            <p class="text-xs text-gray-400 mt-1">發送讀取指令後的等待時間，讓機台準備數據</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-4 flex gap-2">
+                                        <button id="apply-fast-poll-config" class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-2 rounded">
+                                            ✓ 套用優化配置
+                                        </button>
+                                        <button id="reset-fast-poll-config" class="bg-gray-600 hover:bg-gray-700 text-white text-xs px-3 py-2 rounded">
+                                            ↻ 重置為預設
+                                        </button>
+                                    </div>
+                                </div>
+
+                                
                                 <!-- 機台資料顯示區域 -->
                                 <div class="space-y-3" id="machine-data-displays">
                                     <!-- 動態生成的機台資料顯示會出現在這裡 -->
@@ -2080,7 +2152,43 @@
             }
         }
         
-        // 處理 HTTP 回應資料
+        // ✅ 新增：快速檢查是否包含目標資料（優先級過濾）
+        function quickCheckForTargetData(data, devid) {
+            try {
+                // 如果是陣列，快速檢查是否包含 re_readdata 命令
+                if (Array.isArray(data)) {
+                    return data.some(record => {
+                        if (record.data && typeof record.data === 'string') {
+                            try {
+                                const parsed = JSON.parse(record.data);
+                                return parsed.cmd === 're_readdata' && 
+                                       (devid === null || parseInt(parsed.devid) === parseInt(devid));
+                            } catch (e) {
+                                return false;
+                            }
+                        }
+                        return false;
+                    });
+                }
+                
+                // 其他資料格式的快速檢查
+                if (typeof data === 'object' && data.cmd === 're_readdata') {
+                    return true;
+                }
+                
+                // 如果是文本，檢查是否包含關鍵字
+                if (typeof data === 'string' && data.includes('re_readdata')) {
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                console.warn('⚠️ 優先級過濾檢查出錯:', error);
+                return false;
+            }
+        }
+
+        // 📄 處理 HTTP 回應資料
         // 輪詢記錄管理函數 - 僅用於輪詢臨時記錄，不影響正式的 Firebase 記錄
         // ✅ 注意：此函數僅用於輪詢自動記帳的臨時顯示，不會修改 Firebase 數據庫
         // 🧪 自動輪詢功能測試函數
@@ -3332,13 +3440,11 @@
                         const machineConfig = window.machineConfigMap[mapKey];
                         
                         if (machineConfig) {
-                            // 🔧 應用校正值計算實際填表數值
-                            const calibratedData = applyMachineCalibration(machineConfig.machineId, machineConfig.location, parsedData.plays, parsedData.payouts);
-                            
-                            const recordResult = updateDailyRecord(machineConfig.machineId, machineConfig.location, calibratedData.plays, calibratedData.payouts);
+                            // ✅ 直接使用原始數值，讓 updateDailyRecord 處理校正值計算
+                            const recordResult = updateDailyRecord(machineConfig.machineId, machineConfig.location, parsedData.plays, parsedData.payouts);
                             console.log(`📋 每日記錄更新結果 (${recordResult.status}):`, recordResult.record);
                             console.log(`   🔍 [DEBUG] 原始值: plays=${parsedData.plays}, payouts=${parsedData.payouts}`);
-                            console.log(`   🔧 [校正後] 實際值: plays=${calibratedData.plays}, payouts=${calibratedData.payouts}`);
+                            console.log(`   🔧 [校正後] 顯示值: plays=${recordResult.record.plays}, payouts=${recordResult.record.payouts}`);
                             console.log(`   📊 [變化] 投幣變化: ${recordResult.playsChanged}, 出貨變化: ${recordResult.payoutsChanged}`);
                         } else {
                             console.warn(`⚠️ 找不到機台配置: ${mapKey}，跳過記錄更新`);
@@ -3392,12 +3498,10 @@
                             console.log(`🔑 查找映射 ${mapKey}:`, machineConfig ? `找到 ${machineConfig.machineId}/${machineConfig.location}` : '未找到');
                             
                             if (machineConfig) {
-                                // 🔧 應用校正值計算實際填表數值
-                                const calibratedData = applyMachineCalibration(machineConfig.machineId, machineConfig.location, parsedData.plays, parsedData.payouts);
-                                
-                                const recordResult = updateDailyRecord(machineConfig.machineId, machineConfig.location, calibratedData.plays, calibratedData.payouts);
+                                // ✅ 直接使用原始數值，讓 updateDailyRecord 處理校正值計算
+                                const recordResult = updateDailyRecord(machineConfig.machineId, machineConfig.location, parsedData.plays, parsedData.payouts);
                                 console.log(`📋 每日記錄更新結果 (${recordResult.status}):`, recordResult.record);
-                                console.log(`   🔧 [校正] 原始: ${parsedData.plays}/${parsedData.payouts} → 實際: ${calibratedData.plays}/${calibratedData.payouts}`);
+                                console.log(`   🔧 [校正] 原始: ${parsedData.plays}/${parsedData.payouts} → 顯示: ${recordResult.record.plays}/${recordResult.record.payouts}`);
                                 processedCount++;
                             } else {
                                 console.warn(`⚠️ 找不到機台配置: ${mapKey}，跳過記錄更新`);
@@ -10519,10 +10623,87 @@
             }
         }
 
+        // ✅ 優化配置：快速輪詢模式
+        let fastPollConfig = {
+            enableEarlyTermination: true,      // ✅ 提前終止
+            enablePriorityFiltering: true,     // ✅ 優先級過濾
+            maxRetries: 2,                     // ✅ 最大重試次數改為 2 次
+            retryDelay: 1000,                  // ✅ 重試間隔改為 1000ms
+            earlyTerminationThreshold: 0.8,    // ✅ 獲得 80% 資料後提前終止
+            waitBeforeRead: 3000               // ✅ 發送讀取指令後等待時間（毫秒）0.5s~5s
+        };
+
+        // 🔍 診斷校正值計算問題
+        window.diagnoseCalibrationIssue = function(machineId = 'A-112', location = '3') {
+            console.log(`\n🔍 診斷校正值計算 - 機台: ${machineId}/${location}`);
+            console.log('='.repeat(60));
+            
+            // 查找機台配置
+            const machine = appData?.machines?.find(m => 
+                m.id === machineId && m.location === location
+            );
+            
+            if (!machine) {
+                console.error(`❌ 找不到機台 ${machineId}/${location}`);
+                return;
+            }
+            
+            console.log('📋 機台配置:');
+            console.log(`   ID: ${machine.id}`);
+            console.log(`   位置: ${machine.location}`);
+            console.log(`   投幣校正: ${machine.playsCalibration || 0}`);
+            console.log(`   出貨校正: ${machine.payoutsCalibration || 0}`);
+            console.log(`   MAC: ${machine.mac}`);
+            console.log(`   DevID: ${machine.devid}`);
+            
+            // 檢查輪詢記錄
+            const today = new Date().toISOString().split('T')[0];
+            const recordKey = `${machineId}_${location}_${today}`;
+            const record = window.dailyRecords?.[recordKey];
+            
+            if (record) {
+                console.log('\n📊 輪詢記錄:');
+                console.log(`   原始投幣: ${record.rawPlays}`);
+                console.log(`   原始出貨: ${record.rawPayouts}`);
+                console.log(`   校正值: 投幣+${record.playsCalibration}, 出貨+${record.payoutsCalibration}`);
+                console.log(`   顯示投幣: ${record.plays}`);
+                console.log(`   顯示出貨: ${record.payouts}`);
+                console.log(`   計算驗證: ${record.rawPlays} + ${record.playsCalibration} = ${record.rawPlays + record.playsCalibration} ${record.plays === (record.rawPlays + record.playsCalibration) ? '✅' : '❌'}`);
+                console.log(`   計算驗證: ${record.rawPayouts} + ${record.payoutsCalibration} = ${record.rawPayouts + record.payoutsCalibration} ${record.payouts === (record.rawPayouts + record.payoutsCalibration) ? '✅' : '❌'}`);
+            } else {
+                console.log(`\n⚠️ 找不到今天的輪詢記錄: ${recordKey}`);
+            }
+            
+            console.log('='.repeat(60));
+        };
+        
+        // 🧪 測試修復後的校正計算
+        window.testFixedCalibration = function(machineId = 'A-112', location = '3', rawPlays = 65, rawPayouts = -2) {
+            console.log('\n🧪 測試修復後的校正計算');
+            console.log(`🎯 測試機台: ${machineId}/${location}`);
+            console.log(`📊 模擬原始值: plays=${rawPlays}, payouts=${rawPayouts}`);
+            
+            // 直接調用 updateDailyRecord
+            const result = updateDailyRecord(machineId, location, rawPlays, rawPayouts);
+            
+            console.log(`✅ 更新結果:`, result.status);
+            console.log(`📋 記錄內容:`);
+            console.log(`   原始投幣: ${result.record.rawPlays}`);
+            console.log(`   原始出貨: ${result.record.rawPayouts}`);
+            console.log(`   校正值: 投幣+${result.record.playsCalibration}, 出貨+${result.record.payoutsCalibration}`);
+            console.log(`   顯示投幣: ${result.record.plays}`);
+            console.log(`   顯示出貨: ${result.record.payouts}`);
+            
+            // 刷新表格
+            refreshAutoRecordTable();
+            
+            return result;
+        };
+
         // 輪詢所有機台 (HTTP 版本) - 增強版本，支持批量新增和自動增量更新
         async function pollAllMachines() {
             console.log('\n' + '='.repeat(70));
-            console.log('🚀 開始 HTTP 輪詢所有機台 - 新增兩階段模式');
+            console.log('🚀 開始 HTTP 輪詢所有機台 - 快速回應模式已啟用');
             console.log('='.repeat(70));
             
             // 🔒 強制偵測環境 - 確保準確
@@ -10634,12 +10815,21 @@
                 // ============================================
                 // ⏳ 等待 2-3 秒，讓機台準備數據
                 // ============================================
-                console.log('\n⏳ 等待 3 秒，讓所有機台準備數據...');
-                showStatusMessage(`已發送讀取指令，等待 3 秒...`, 'info');
+                const waitSeconds = fastPollConfig.waitBeforeRead / 1000;
+                console.log(`\n⏳ 等待 ${waitSeconds} 秒，讓所有機台準備數據...`);
+                showStatusMessage(`已發送讀取指令，等待 ${waitSeconds} 秒...`, 'info');
                 
-                for (let i = 3; i > 0; i--) {
-                    console.log(`   倒數: ${i} 秒...`);
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                // 根據設定的等待時間進行倒數
+                if (waitSeconds >= 1) {
+                    // 如果 >= 1 秒，按秒倒數
+                    for (let i = Math.ceil(waitSeconds); i > 0; i--) {
+                        console.log(`   倒數: ${i} 秒...`);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                } else {
+                    // 如果 < 1 秒，直接等待指定時間
+                    console.log(`   等待 ${waitSeconds} 秒...`);
+                    await new Promise(resolve => setTimeout(resolve, fastPollConfig.waitBeforeRead));
                 }
                 
                 console.log(`✅ 等待完畢，開始讀取所有機台數據\n`);
@@ -10654,26 +10844,57 @@
             // 📌 第二階段：讀取所有機台的數據
             // ============================================
             console.log('='.repeat(70));
-            console.log('📥 [第二階段] 讀取所有機台的數據 (使用智能重試機制)');
+            console.log('📥 [第二階段] 讀取所有機台的數據 (⚡ 快速回應模式已啟用)');
             console.log('='.repeat(70));
+            console.log(`🔧 優化配置:`);
+            console.log(`   ✅ 提前終止: ${fastPollConfig.enableEarlyTermination}`);
+            console.log(`   ✅ 優先級過濾: ${fastPollConfig.enablePriorityFiltering}`);
+            console.log(`   ⚙️ 最大重試次數: ${fastPollConfig.maxRetries} 次 (優化: 改為 2 次)`);
+            console.log(`   ⏱️ 重試間隔: ${fastPollConfig.retryDelay}ms (優化: 改為 1000ms)`);
+            console.log(`   ⏳ 讀取等待時間: ${fastPollConfig.waitBeforeRead}ms (${(fastPollConfig.waitBeforeRead/1000).toFixed(1)}秒)`);
+            console.log(`   🎯 提前終止條件: 獲得 ${Math.round(fastPollConfig.earlyTerminationThreshold * 100)}% 資料後終止`);
             
             let pollCount = 0;
             let fetchSuccessCount = 0;
-            let retrySuccessCount = 0; // 追蹤通過重試成功的次數
+            let targetDataReceived = 0;  // ✅ 新增：已接收的目標資料計數
+            let earlyTerminated = false; // ✅ 新增：提前終止標誌
             
             for (const machine of machinesWithMac) {
+                // ✅ 新增：檢查是否應該提前終止
+                if (fastPollConfig.enableEarlyTermination) {
+                    const targetCount = Math.ceil(machinesWithMac.length * fastPollConfig.earlyTerminationThreshold);
+                    if (targetDataReceived >= targetCount) {
+                        console.log(`\n🎯 [提前終止] 已獲得 ${targetDataReceived}/${targetCount} 筆目標資料，不再繼續輪詢`);
+                        earlyTerminated = true;
+                        break; // 跳出迴圈，停止輪詢
+                    }
+                }
+                
                 try {
-                    console.log(`\n  📥 讀取數據: MAC=${machine.mac}, DevID=${machine.devid || 1}`);
-                    console.log(`  💡 嘗試 3 次，每次間隔 1500ms`);
+                    console.log(`\n  📥 [${pollCount + 1}/${machinesWithMac.length}] 讀取數據: MAC=${machine.mac}, DevID=${machine.devid || 1}`);
+                    console.log(`  💡 嘗試 ${fastPollConfig.maxRetries} 次，每次間隔 ${fastPollConfig.retryDelay}ms`);
                     
-                    // ✅ 使用智能重試機制
-                    const result = await fetchWithRetry(machine.mac, 3, 1500);
+                    // ✅ 使用優化的重試參數
+                    const result = await fetchWithRetry(machine.mac, fastPollConfig.maxRetries, fastPollConfig.retryDelay);
                     
                     if (result && validateMachineData(result)) {
                         console.log(`     ✅ 數據讀取成功 (已驗證)`);
+                        
+                        // ✅ 優先級過濾：檢查是否包含目標資料
+                        if (fastPollConfig.enablePriorityFiltering) {
+                            const hasTargetData = quickCheckForTargetData(result, machine.devid);
+                            if (!hasTargetData) {
+                                console.log(`     ⏭️ [優先級過濾] 跳過非目標資料，不進行處理`);
+                                pollCount++;
+                                continue; // 跳過該條記錄，不處理非目標資料
+                            }
+                            console.log(`     ✅ [優先級過濾] 包含目標資料，進行處理`);
+                        }
+                        
                         handleHttpResponse(result, machine.mac, machine.devid || 1);
                         addCommandLog('receive', `HTTP 回應成功 - MAC: ${machine.mac}`, result);
                         fetchSuccessCount++;
+                        targetDataReceived++; // ✅ 增加目標資料計數
                     } else {
                         console.warn(`     ❌ 數據讀取失敗 (數據驗證失敗或無效)`);
                         addCommandLog('error', `數據讀取失敗或無效 - MAC: ${machine.mac}`);
@@ -10690,13 +10911,18 @@
                 await new Promise(resolve => setTimeout(resolve, 500));
             }
             
-            console.log(`\n✅ 第二階段完成: ${fetchSuccessCount}/${pollCount} 台機台數據讀取成功`);
+            console.log(`\n✅ 第二階段完成:`);
+            console.log(`   📊 總輪詢: ${pollCount}/${machinesWithMac.length} 台機台`);
+            console.log(`   ✅ 成功讀取: ${fetchSuccessCount}/${pollCount} 台`);
+            console.log(`   🎯 目標資料: ${targetDataReceived} 筆`);
+            console.log(`   ${earlyTerminated ? '🏁 提前終止: 是' : '✅ 完整輪詢: 是'}`);
+
             
             // ============================================
             // 📊 統計輪詢結果
             // ============================================
             console.log('\n' + '='.repeat(70));
-            console.log('📊 輪詢統計結果');
+            console.log('📊 快速輪詢統計結果');
             console.log('='.repeat(70));
             
             let updateCount = 0;
@@ -10714,15 +10940,32 @@
             
             const pollEndTime = new Date();
             const pollDuration = ((pollEndTime - pollStartTime) / 1000).toFixed(1);
+            const avgTimePerMachine = (pollDuration / pollCount).toFixed(2);
 
             const summaryMsg = `
-✅ 輪詢完成！
-- 機台總數: ${machinesWithMac.length} 台
-- 讀取指令: ${readCmdSuccessCount}/${machinesWithMac.length} 成功
-- 數據讀取: ${fetchSuccessCount}/${pollCount} 成功
-- 新增記錄: ${unchangedCount} 筆
-- 更新記錄: ${updateCount} 筆
-- 總耗時: ${pollDuration} 秒
+✅ 快速輪詢完成！
+═══════════════════════════════════
+📊 輪詢結果:
+  • 機台總數: ${machinesWithMac.length} 台
+  • 實際輪詢: ${pollCount} 台
+  ${earlyTerminated ? `• 提前終止: ✓ 提前結束輪詢` : `• 完整輪詢: ✓ 所有機台完成`}
+  • 成功率: ${fetchSuccessCount}/${pollCount} (${Math.round(fetchSuccessCount/pollCount*100)}%)
+  
+📈 資料統計:
+  • 目標資料: ${targetDataReceived} 筆
+  • 新增記錄: ${unchangedCount} 筆
+  • 更新記錄: ${updateCount} 筆
+
+⏱️ 時間統計:
+  • 總耗時: ${pollDuration} 秒
+  • 平均每台: ${avgTimePerMachine} 秒
+  
+🔧 優化設定:
+  • 重試次數: ${fastPollConfig.maxRetries} 次
+  • 重試間隔: ${fastPollConfig.retryDelay}ms
+  • 讀取等待: ${(fastPollConfig.waitBeforeRead/1000).toFixed(1)}s
+  • 提前終止: ${fastPollConfig.enableEarlyTermination ? '✓ 已啟用' : '✗ 已停用'}
+  • 優先級過濾: ${fastPollConfig.enablePriorityFiltering ? '✓ 已啟用' : '✗ 已停用'}
             `;
             
             console.log(summaryMsg);
@@ -10842,6 +11085,88 @@
                         } else {
                             showStatusMessage(`❌ 請輸入 3-300 之間的數值`, 'error');
                         }
+                    });
+                }
+                
+                // ✅ 新增：初始化快速輪詢優化設定事件監聽器
+                const applyFastPollBtn = document.getElementById('apply-fast-poll-config');
+                const resetFastPollBtn = document.getElementById('reset-fast-poll-config');
+                const thresholdSlider = document.getElementById('early-termination-threshold');
+                const thresholdDisplay = document.getElementById('threshold-display');
+                const waitSlider = document.getElementById('wait-before-read');
+                const waitDisplay = document.getElementById('wait-display');
+                
+                if (thresholdSlider && thresholdDisplay) {
+                    thresholdSlider.addEventListener('input', () => {
+                        thresholdDisplay.textContent = `${thresholdSlider.value}%`;
+                    });
+                }
+                
+                if (waitSlider && waitDisplay) {
+                    waitSlider.addEventListener('input', () => {
+                        const seconds = (waitSlider.value / 1000).toFixed(1);
+                        waitDisplay.textContent = `${seconds}s`;
+                    });
+                }
+                
+                if (applyFastPollBtn) {
+                    applyFastPollBtn.addEventListener('click', () => {
+                        const maxRetries = parseInt(document.getElementById('fast-poll-max-retries')?.value) || 2;
+                        const retryDelay = parseInt(document.getElementById('fast-poll-retry-delay')?.value) || 1000;
+                        const threshold = parseInt(document.getElementById('early-termination-threshold')?.value) || 80;
+                        const waitTime = parseInt(document.getElementById('wait-before-read')?.value) || 3000;
+                        const enableEarlyTermination = document.getElementById('enable-early-termination')?.checked ?? true;
+                        const enablePriorityFiltering = document.getElementById('enable-priority-filtering')?.checked ?? true;
+                        
+                        // 更新全域配置
+                        fastPollConfig.maxRetries = maxRetries;
+                        fastPollConfig.retryDelay = retryDelay;
+                        fastPollConfig.earlyTerminationThreshold = threshold / 100;
+                        fastPollConfig.waitBeforeRead = waitTime;
+                        fastPollConfig.enableEarlyTermination = enableEarlyTermination;
+                        fastPollConfig.enablePriorityFiltering = enablePriorityFiltering;
+                        
+                        console.log('🔧 快速輪詢優化配置已套用:');
+                        console.log(`   ✓ 最大重試次數: ${maxRetries} 次`);
+                        console.log(`   ✓ 重試間隔: ${retryDelay}ms`);
+                        console.log(`   ✓ 提前終止臨界值: ${threshold}%`);
+                        console.log(`   ✓ 讀取等待時間: ${waitTime}ms (${(waitTime/1000).toFixed(1)}秒)`);
+                        console.log(`   ✓ 啟用提前終止: ${enableEarlyTermination ? '是' : '否'}`);
+                        console.log(`   ✓ 啟用優先級過濾: ${enablePriorityFiltering ? '是' : '否'}`);
+                        
+                        showStatusMessage('✅ 快速輪詢優化配置已套用', 'success');
+                    });
+                }
+                
+                if (resetFastPollBtn) {
+                    resetFastPollBtn.addEventListener('click', () => {
+                        // 重置為預設值
+                        document.getElementById('fast-poll-max-retries').value = '2';
+                        document.getElementById('fast-poll-retry-delay').value = '1000';
+                        document.getElementById('early-termination-threshold').value = '80';
+                        document.getElementById('wait-before-read').value = '3000';
+                        document.getElementById('enable-early-termination').checked = true;
+                        document.getElementById('enable-priority-filtering').checked = true;
+                        
+                        if (thresholdDisplay) {
+                            thresholdDisplay.textContent = '80%';
+                        }
+                        if (waitDisplay) {
+                            waitDisplay.textContent = '3.0s';
+                        }
+                        
+                        // 重置全域配置
+                        fastPollConfig = {
+                            enableEarlyTermination: true,
+                            enablePriorityFiltering: true,
+                            maxRetries: 2,
+                            retryDelay: 1000,
+                            earlyTerminationThreshold: 0.8,
+                            waitBeforeRead: 3000
+                        };
+                        
+                        console.log('🔄 快速輪詢配置已重置為預設值');
+                        showStatusMessage('✅ 快速輪詢配置已重置為預設值', 'success');
                     });
                 }
                 
