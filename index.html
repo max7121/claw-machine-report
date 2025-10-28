@@ -467,7 +467,7 @@
                                 </label>
                                 <label class="flex items-center space-x-2">
                                     <input type="checkbox" id="auto-poll-on-load" class="rounded bg-gray-700 border-gray-600 text-green-600 focus:ring-green-500">
-                                    <span class="text-sm text-gray-300">🚀 進入門市3秒後自動輪詢一次</span>
+                                    <span class="text-sm text-gray-300">🚀 進入門市1秒後自動輪詢一次</span>
                                 </label>
                                 <div class="flex items-center space-x-2">
                                     <label class="text-sm text-gray-300">間隔：</label>
@@ -483,6 +483,14 @@
                                         <option value="300000">5分鐘</option>
                                     </select>
                                 </div>
+                            </div>
+                            <div class="w-full lg:w-72">
+                                <label for="http-transport-mode" class="block text-sm font-medium text-gray-300">資料來源模式</label>
+                                <select id="http-transport-mode" class="mt-1 w-full bg-gray-700 text-white border border-gray-600 rounded px-3 py-2 text-sm">
+                                    <option value="direct-http">內網 HTTP（直接連線）</option>
+                                    <option value="https-proxy">HTTPS（測試 / 代理）</option>
+                                </select>
+                                <p id="http-transport-mode-hint" class="mt-2 text-xs text-gray-400">內網 HTTP：適合在同網段或 HTTP 環境使用，直接連線設備。</p>
                             </div>
                             <button id="poll-all-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition shrink-0 w-full sm:w-auto">
                                 📊 立即輪詢所有機台
@@ -757,7 +765,7 @@
                             <p>• <strong>出貨校正</strong>：輪詢得到的出貨數 + 校正值 = 實際填表數值</p>
                             <p>• <strong>使用方式</strong>：在下方表格的校正欄位直接輸入正數（加值）或負數（減值），系統會自動保存並應用於所有輪詢資料</p>
                             <p>• <strong>顯示標記</strong>：輪詢表格中有 📊 圖示表示該數值已應用校正</p>
-                            <p>• <strong>🚀 新功能</strong>：勾選「進入門市3秒後自動輪詢一次」可在每次開啟門市頁面時自動執行輪詢</p>
+                            <p>• <strong>🚀 新功能</strong>：勾選「進入門市1秒後自動輪詢一次」可在每次開啟門市頁面時自動執行輪詢</p>
                         </div>
                     </div>
                     
@@ -1305,6 +1313,43 @@
         </div>
     </div>
 
+    <!-- Clone Store Modal -->
+    <div id="clone-store-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold text-white mb-4">複製門市</h3>
+            <form id="clone-store-form">
+                <input type="hidden" id="clone-source-store-id">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">來源門市</label>
+                    <div class="bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3">
+                        <span id="clone-source-store-name" class="font-semibold"></span>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="clone-store-name" class="block text-sm font-medium text-gray-300 mb-1">新門市名稱</label>
+                    <input type="text" id="clone-store-name" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required placeholder="請輸入新門市名稱">
+                </div>
+                <div class="mb-6">
+                    <label for="clone-store-start-date" class="block text-sm font-medium text-gray-300 mb-1">營業起始日</label>
+                    <input type="date" id="clone-store-start-date" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3" required>
+                </div>
+                <div class="mb-6 p-4 bg-blue-900/30 border border-blue-500/50 rounded-lg">
+                    <h4 class="text-sm font-semibold text-blue-300 mb-2">複製說明</h4>
+                    <ul class="text-sm text-blue-200 space-y-1">
+                        <li>• 複製機台配置和位置設定</li>
+                        <li>• 複製機台的 MAC 地址和設備 ID</li>
+                        <li>• <strong class="text-yellow-300">清除所有帳務記錄和歷史資料</strong></li>
+                        <li>• 機台數據重置為 0（適合新門市）</li>
+                    </ul>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="clone-store-cancel-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">取消</button>
+                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">開始複製</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Edit History Modal -->
     <div id="edit-history-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
         <div class="bg-gray-800 rounded-lg p-8 max-w-sm w-full mx-4">
@@ -1789,6 +1834,73 @@
             headers: {},  // 不需要額外標頭
             timeout: 20000 // ✅ 增加到 20秒 (原本 10秒)
         };
+
+        // ✅ HTTP / HTTPS 傳輸模式設定
+        const TRANSPORT_MODE_STORAGE_KEY = 'httpTransportMode';
+        const TRANSPORT_MODE_CONFIGS = {
+            'direct-http': {
+                label: '內網 HTTP（直接連線）',
+                baseUrl: isTestMode ? 'http://localhost:8080' : 'http://update.feiloli.com.tw:5539',
+                hint: '內網 HTTP：適合在同網段或 HTTP 環境使用，直接連線設備。'
+            },
+            'https-proxy': {
+                label: 'HTTPS（測試 / 代理）',
+                baseUrl: 'https://update.feiloli.com.tw:5539',
+                hint: 'HTTPS：適合在 HTTPS 環境測試，需設備提供 HTTPS 或自行設置反向代理。'
+            }
+        };
+        let httpTransportMode = null;
+
+        function determineDefaultTransportMode() {
+            return window.location.protocol === 'https:' ? 'https-proxy' : 'direct-http';
+        }
+
+        function applyTransportMode(mode, options = {}) {
+            if (!TRANSPORT_MODE_CONFIGS[mode]) {
+                console.warn(`⚠️ 未知的傳輸模式: ${mode}，改用預設值。`);
+                mode = determineDefaultTransportMode();
+            }
+
+            const config = TRANSPORT_MODE_CONFIGS[mode];
+            httpTransportMode = mode;
+            httpConfig.baseUrl = config.baseUrl;
+            localStorage.setItem(TRANSPORT_MODE_STORAGE_KEY, mode);
+
+            const selector = document.getElementById('http-transport-mode');
+            if (selector) {
+                selector.value = mode;
+            }
+
+            const hint = document.getElementById('http-transport-mode-hint');
+            if (hint) {
+                hint.textContent = config.hint;
+            }
+
+            console.log(`🚦 HTTP 傳輸模式已套用：${config.label}`);
+            console.log('📡 目前使用的 baseUrl:', httpConfig.baseUrl);
+
+            if (!(options && options.silent) && typeof showStatusMessage === 'function') {
+                showStatusMessage(`已切換至「${config.label}」`, 'info');
+            }
+        }
+
+        function initTransportModeSelector() {
+            const savedMode = localStorage.getItem(TRANSPORT_MODE_STORAGE_KEY);
+            const defaultMode = savedMode && TRANSPORT_MODE_CONFIGS[savedMode]
+                ? savedMode
+                : determineDefaultTransportMode();
+
+            applyTransportMode(defaultMode, { silent: true });
+
+            const selector = document.getElementById('http-transport-mode');
+            if (!selector) {
+                return;
+            }
+
+            selector.addEventListener('change', (event) => {
+                applyTransportMode(event.target.value);
+            });
+        }
         
         // ✅ 新增：數據驗證函數
         function validateMachineData(data) {
@@ -1825,13 +1937,13 @@
         }
         
         // ✅ 新增：智能重試函數
-        async function fetchWithRetry(mac, maxRetries = 3, delayMs = 1500) {
+        async function fetchWithRetry(mac, maxRetries = 3, delayMs = 1500, devid = null) {
             console.log(`\n🔄 開始智能重試: 最多 ${maxRetries} 次，間隔 ${delayMs}ms`);
             
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
                     console.log(`\n📤 重試 ${attempt}/${maxRetries}...`);
-                    const result = await sendHttpRequest(mac);
+                    const result = await sendHttpRequest(mac, devid);
                     
                     if (result && validateMachineData(result)) {
                         console.log(`✅ 第 ${attempt} 次嘗試成功！`);
@@ -1854,7 +1966,8 @@
             return null;
         }
         
-        // 顯示當前模式
+    // 初始化傳輸模式並顯示當前模式
+    initTransportModeSelector();
         console.log(isTestMode ? '🧪 測試模式：使用本地服務器' : '🌐 正式模式：使用遠端服務器');
         console.log(corsQuietMode ? '🔇 CORS 靜默模式已啟用 - 錯誤只在控制台顯示' : '🔔 CORS 詳細模式已啟用 - 將顯示警告框');
         console.log('📡 目前使用的 baseUrl:', httpConfig.baseUrl);
@@ -1909,6 +2022,41 @@
         // HTTP GET 輪詢功能
         // ========================================
         
+        // 代理成功率追蹤
+        let proxySuccessStats = {
+            // 格式: { 'MAC_代理名稱': { success: 數量, total: 數量, lastUsed: 時間戳 } }
+        };
+        
+        // 記錄代理使用結果
+        function recordProxyResult(macAddress, proxyName, success) {
+            const key = `${macAddress}_${proxyName}`;
+            if (!proxySuccessStats[key]) {
+                proxySuccessStats[key] = { success: 0, total: 0, lastUsed: Date.now() };
+            }
+            
+            proxySuccessStats[key].total++;
+            if (success) {
+                proxySuccessStats[key].success++;
+            }
+            proxySuccessStats[key].lastUsed = Date.now();
+            
+            // 清理過舊的統計資料 (超過 7 天)
+            const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            Object.keys(proxySuccessStats).forEach(k => {
+                if (proxySuccessStats[k].lastUsed < weekAgo) {
+                    delete proxySuccessStats[k];
+                }
+            });
+        }
+        
+        // 獲取代理成功率
+        function getProxySuccessRate(macAddress, proxyName) {
+            const key = `${macAddress}_${proxyName}`;
+            const stats = proxySuccessStats[key];
+            if (!stats || stats.total === 0) return 0.5; // 預設 50%
+            return stats.success / stats.total;
+        }
+        
         // 建構完整的 HTTP GET URL
         function buildHttpUrl(mac = null) {
             if (!httpConfig.baseUrl || !httpConfig.endpoint) {
@@ -1938,7 +2086,7 @@
         }
         
         // 發送 HTTP GET 請求
-        async function sendHttpRequest(mac = null) {
+        async function sendHttpRequest(mac = null, devid = null) {
             const url = buildHttpUrl(mac);
             if (!url) {
                 updateHttpStatus(false, '配置錯誤');
@@ -1976,42 +2124,103 @@
                     // 嘗試使用 CORS 代理服務
                     console.warn('❌ 直接請求失敗，嘗試 CORS 代理服務...');
                     
-                    // 改進的代理配置 - 使用更可靠的格式
-                    const proxyConfigs = [
-                        { 
-                            name: 'AllOrigins (推薦)', 
-                            buildUrl: (targetUrl) => `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}&pretty=true`,
-                            parseResponse: async (response) => {
-                                const data = await response.json();
-                                if (!data.contents) throw new Error('No contents in response');
-                                return data.contents;
-                            }
-                        },
-                        { 
-                            name: 'Proxyjump', 
-                            buildUrl: (targetUrl) => `https://proxy.cross-origin.com/?url=${encodeURIComponent(targetUrl)}`,
-                            parseResponse: async (response) => {
-                                const text = await response.text();
-                                return text;
-                            }
-                        },
-                        { 
-                            name: 'Cloudflare (Workers)', 
-                            buildUrl: (targetUrl) => {
-                                // 使用自建的 Cloudflare Worker 代理（如果有的話）
-                                return `https://cors-proxy.worker-domain.com/?url=${encodeURIComponent(targetUrl)}`;
+                    // 智能代理選擇 - 根據機台 MAC 和歷史成功率
+                    function getOptimizedProxyOrder(macAddress) {
+                        // 根據 MAC 地址模式和過往經驗調整代理順序
+                        const baseProxies = [
+                            { 
+                                name: 'AllOrigins (推薦)', 
+                                buildUrl: (targetUrl) => `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}&pretty=true`,
+                                parseResponse: async (response) => {
+                                    const data = await response.json();
+                                    if (!data.contents) throw new Error('No contents in response');
+                                    return data.contents;
+                                }
                             },
-                            parseResponse: async (response) => response.text()
-                        },
-                        { 
-                            name: 'JsonBox (備用)', 
-                            buildUrl: (targetUrl) => `https://api.jsonbox.io/?url=${encodeURIComponent(targetUrl)}`,
-                            parseResponse: async (response) => {
-                                const data = await response.json();
-                                return JSON.stringify(data);
+                            { 
+                                name: 'AllOrigins (Raw)', 
+                                buildUrl: (targetUrl) => `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+                                parseResponse: async (response) => {
+                                    const text = await response.text();
+                                    return text;
+                                }
+                            },
+                            { 
+                                name: 'CORS Anywhere', 
+                                buildUrl: (targetUrl) => `https://cors-anywhere.herokuapp.com/${targetUrl}`,
+                                parseResponse: async (response) => {
+                                    const text = await response.text();
+                                    return text;
+                                }
+                            },
+                            { 
+                                name: 'ThingProxy', 
+                                buildUrl: (targetUrl) => `https://thingproxy.freeboard.io/fetch/${targetUrl}`,
+                                parseResponse: async (response) => {
+                                    const text = await response.text();
+                                    return text;
+                                }
+                            },
+                            { 
+                                name: 'Proxyjump', 
+                                buildUrl: (targetUrl) => `https://proxy.cross-origin.com/?url=${encodeURIComponent(targetUrl)}`,
+                                parseResponse: async (response) => {
+                                    const text = await response.text();
+                                    return text;
+                                }
+                            },
+                            { 
+                                name: 'YACDN', 
+                                buildUrl: (targetUrl) => `https://yacdn.org/proxy/${targetUrl}`,
+                                parseResponse: async (response) => {
+                                    const text = await response.text();
+                                    return text;
+                                }
+                            },
+                            { 
+                                name: 'JsonBox (備用)', 
+                                buildUrl: (targetUrl) => `https://api.jsonbox.io/?url=${encodeURIComponent(targetUrl)}`,
+                                parseResponse: async (response) => {
+                                    const data = await response.json();
+                                    return JSON.stringify(data);
+                                }
+                            }
+                        ];
+                        
+                        // 根據歷史成功率動態排序代理
+                        const proxiesWithStats = baseProxies.map(proxy => ({
+                            ...proxy,
+                            successRate: getProxySuccessRate(macAddress, proxy.name)
+                        }));
+                        
+                        // 按成功率降序排列，但保留一些隨機性避免過度優化
+                        proxiesWithStats.sort((a, b) => {
+                            const aRate = a.successRate + (Math.random() * 0.1 - 0.05); // ±5% 隨機性
+                            const bRate = b.successRate + (Math.random() * 0.1 - 0.05);
+                            return bRate - aRate;
+                        });
+                        
+                        // 針對特定機台 MAC 模式的額外調整
+                        if (macAddress.startsWith('48E729')) {
+                            // 這類機台如果 AllOrigins Raw 成功率不錯，提升其優先級
+                            const rawProxy = proxiesWithStats.find(p => p.name.includes('Raw'));
+                            if (rawProxy && rawProxy.successRate > 0.6) {
+                                proxiesWithStats.splice(proxiesWithStats.indexOf(rawProxy), 1);
+                                proxiesWithStats.unshift(rawProxy);
+                            }
+                        } else if (macAddress.startsWith('3494')) {
+                            // 已知這類機台連線較穩定，如果某個代理效果好就提升它
+                            const bestProxy = proxiesWithStats[0];
+                            if (bestProxy.successRate > 0.8) {
+                                console.log(`🎯 機台 ${macAddress} 優先使用高成功率代理: ${bestProxy.name} (${Math.round(bestProxy.successRate * 100)}%)`);
                             }
                         }
-                    ];
+                        
+                        return proxiesWithStats;
+                    }
+                    
+                    // 改進的代理配置 - 使用智能選擇
+                    const proxyConfigs = getOptimizedProxyOrder(mac);
                     
                     let proxySuccess = false;
                     
@@ -2051,17 +2260,46 @@
                                 console.log(`✅ 代理請求成功 (${proxyConfig.name}):`, parsedData);
                                 updateHttpStatus(true, `✅ 已透過 ${proxyConfig.name} 代理取得資料 (${new Date().toLocaleTimeString()})`);
                                 
-                                // 代理成功時進行資料處理
-                                handleHttpResponse(parsedData);
+                                // 記錄代理成功
+                                recordProxyResult(mac, proxyConfig.name, true);
+                                
+                                // 代理成功時進行資料處理，傳遞 MAC 和 devid
+                                handleHttpResponse(parsedData, mac, devid);
                                 httpErrorCount = 0;
                                 
                                 proxySuccess = true;
                                 return parsedData;
                             } else {
-                                console.warn(`⚠️ 代理 ${proxyConfig.name} 返回 HTTP ${proxyResponse.status}`);
+                                // 詳細的錯誤狀態碼處理
+                                let errorMsg = `HTTP ${proxyResponse.status}`;
+                                if (proxyResponse.status === 400) {
+                                    errorMsg += ' (Bad Request - 可能 URL 格式問題)';
+                                } else if (proxyResponse.status === 403) {
+                                    errorMsg += ' (Forbidden - 代理服務限制)';
+                                } else if (proxyResponse.status === 404) {
+                                    errorMsg += ' (Not Found - 目標服務不存在)';
+                                } else if (proxyResponse.status === 500) {
+                                    errorMsg += ' (Internal Server Error - 代理服務錯誤)';
+                                } else if (proxyResponse.status === 503) {
+                                    errorMsg += ' (Service Unavailable - 代理服務過載)';
+                                }
+                                
+                                console.warn(`⚠️ 代理 ${proxyConfig.name} 返回 ${errorMsg}`);
+                                
+                                // 記錄代理失敗
+                                recordProxyResult(mac, proxyConfig.name, false);
+                                
+                                // 特殊處理 HTTP 400 - 可能是 URL 編碼問題，嘗試不同的編碼方式
+                                if (proxyResponse.status === 400 && proxyConfig.name.includes('AllOrigins')) {
+                                    console.log(`🔄 ${proxyConfig.name} HTTP 400，可能 URL 編碼問題，將嘗試下個代理...`);
+                                }
                             }
                         } catch (proxyError) {
                             console.warn(`❌ 代理 ${proxyConfig.name} 失敗:`, proxyError.message);
+                            
+                            // 記錄代理失敗
+                            recordProxyResult(mac, proxyConfig.name, false);
+                            
                             continue;
                         }
                     }
@@ -2123,8 +2361,8 @@
                 
                 updateHttpStatus(true, '請求成功');
                 
-                // 處理回應資料
-                handleHttpResponse(data);
+                // 處理回應資料，傳遞 MAC 和 devid
+                handleHttpResponse(data, mac, devid);
                 
                 return data;
                 
@@ -2155,31 +2393,54 @@
         // ✅ 新增：快速檢查是否包含目標資料（優先級過濾）
         function quickCheckForTargetData(data, devid) {
             try {
+                console.log(`🔍 [優先級過濾] 檢查資料，DevID: ${devid}`);
+                
                 // 如果是陣列，快速檢查是否包含 re_readdata 命令
                 if (Array.isArray(data)) {
-                    return data.some(record => {
+                    console.log(`📊 [優先級過濾] 陣列數據，共 ${data.length} 筆記錄`);
+                    
+                    let reReaddataCount = 0;
+                    let targetDevidCount = 0;
+                    
+                    const hasTargetData = data.some(record => {
                         if (record.data && typeof record.data === 'string') {
                             try {
                                 const parsed = JSON.parse(record.data);
-                                return parsed.cmd === 're_readdata' && 
-                                       (devid === null || parseInt(parsed.devid) === parseInt(devid));
+                                if (parsed.cmd === 're_readdata') {
+                                    reReaddataCount++;
+                                    if (devid === null || parseInt(parsed.devid) === parseInt(devid)) {
+                                        targetDevidCount++;
+                                        return true;
+                                    }
+                                }
                             } catch (e) {
-                                return false;
+                                // JSON 解析失敗，忽略
                             }
                         }
                         return false;
                     });
+                    
+                    console.log(`📋 [優先級過濾] 找到 ${reReaddataCount} 筆 re_readdata 記錄`);
+                    console.log(`🎯 [優先級過濾] 其中 ${targetDevidCount} 筆符合 DevID ${devid}`);
+                    console.log(`✅ [優先級過濾] 結果: ${hasTargetData ? '通過' : '不通過'}`);
+                    
+                    return hasTargetData;
                 }
                 
                 // 其他資料格式的快速檢查
                 if (typeof data === 'object' && data.cmd === 're_readdata') {
+                    console.log(`✅ [優先級過濾] 物件格式，cmd=re_readdata，通過`);
                     return true;
                 }
                 
                 // 如果是文本，檢查是否包含關鍵字
                 if (typeof data === 'string' && data.includes('re_readdata')) {
+                    console.log(`✅ [優先級過濾] 字串格式，包含 re_readdata，通過`);
                     return true;
                 }
+                
+                console.log(`❌ [優先級過濾] 資料格式不符或無目標數據，不通過`);
+                console.log(`📊 [優先級過濾] 資料類型: ${typeof data}, 是否陣列: ${Array.isArray(data)}`);
                 
                 return false;
             } catch (error) {
@@ -2830,6 +3091,10 @@
             }
             
             window.machineConfigMap = {};
+            // 建立 MAC-only 映射作為備用查找
+            window.machineConfigMapByMac = {};
+            // 建立 devid-only 映射作為備用查找
+            window.machineConfigMapByDevid = {};
             
             if (!appData || !appData.machines) {
                 console.warn('⚠️ appData.machines 未初始化');
@@ -2860,13 +3125,26 @@
                             console.warn(`⚠️ 映射衝突: ${mapKey} 已存在，將覆蓋為 ${machine.id}/${machine.location}`);
                         }
                         
-                        window.machineConfigMap[mapKey] = {
+                        const machineInfo = {
                             machineId: machine.id,
                             location: machine.location,
                             mac: machine.mac,
                             devid: parseInt(devid)
                         };
+                        
+                        window.machineConfigMap[mapKey] = machineInfo;
                         console.log(`📌 映射: ${mapKey} -> ${machine.id}/${machine.location}`);
+                        
+                        // 建立備用映射
+                        if (!window.machineConfigMapByMac[machine.mac]) {
+                            window.machineConfigMapByMac[machine.mac] = [];
+                        }
+                        window.machineConfigMapByMac[machine.mac].push(machineInfo);
+                        
+                        if (!window.machineConfigMapByDevid[devid]) {
+                            window.machineConfigMapByDevid[devid] = [];
+                        }
+                        window.machineConfigMapByDevid[devid].push(machineInfo);
                     });
                 } else if (machine.mac && machine.devid) {
                     // 簡單情況：單個 devid
@@ -2877,22 +3155,339 @@
                         console.warn(`⚠️ 映射衝突: ${mapKey} 已存在，將覆蓋為 ${machine.id}/${machine.location}`);
                     }
                     
-                    window.machineConfigMap[mapKey] = {
+                    const machineInfo = {
                         machineId: machine.id,
                         location: machine.location,
                         mac: machine.mac,
                         devid: parseInt(machine.devid)
                     };
+                    
+                    window.machineConfigMap[mapKey] = machineInfo;
                     console.log(`📌 映射: ${mapKey} -> ${machine.id}/${machine.location}`);
+                    
+                    // 建立備用映射
+                    if (!window.machineConfigMapByMac[machine.mac]) {
+                        window.machineConfigMapByMac[machine.mac] = [];
+                    }
+                    window.machineConfigMapByMac[machine.mac].push(machineInfo);
+                    
+                    if (!window.machineConfigMapByDevid[machine.devid]) {
+                        window.machineConfigMapByDevid[machine.devid] = [];
+                    }
+                    window.machineConfigMapByDevid[machine.devid].push(machineInfo);
                 } else {
                     console.warn(`⚠️ 機台 ${machine.id}/${machine.location} 缺少必要的 MAC 或 devid 資訊`);
                 }
             });
             
             console.log(`✅ 已構建機台配置映射表，共 ${Object.keys(window.machineConfigMap).length} 條映射`);
-            console.log('📊 完整映射表:', window.machineConfigMap);
+            console.log(`📊 MAC-only 映射: ${Object.keys(window.machineConfigMapByMac).length} 個 MAC`);
+            console.log(`📊 DevID-only 映射: ${Object.keys(window.machineConfigMapByDevid).length} 個 DevID`);
+            console.log('� 完整映射表:', window.machineConfigMap);
+            console.log('🔍 MAC 映射表:', window.machineConfigMapByMac);
+            console.log('🔍 DevID 映射表:', window.machineConfigMapByDevid);
             return window.machineConfigMap;
         }
+
+        // 智能機台配置查找函數 - 支援多種查找策略
+        function findMachineConfig(mac, devid) {
+            console.log(`🔍 智能查找機台配置: MAC=${mac}, DevID=${devid}`);
+            
+            // 確保映射表已構建
+            buildMachineConfigMap();
+            
+            // 策略1: 直接使用 MAC_devid 查找
+            const primaryKey = `${mac}_${devid}`;
+            if (window.machineConfigMap[primaryKey]) {
+                console.log(`✅ [策略1] 直接查找成功: ${primaryKey} -> ${window.machineConfigMap[primaryKey].machineId}`);
+                return window.machineConfigMap[primaryKey];
+            }
+            
+            // 策略2: 如果 MAC 為 null 或 undefined，使用 DevID-only 查找
+            if (!mac || mac === 'null' || mac === 'undefined') {
+                console.log(`🔄 [策略2] MAC 無效，嘗試 DevID-only 查找: ${devid}`);
+                if (window.machineConfigMapByDevid[devid] && window.machineConfigMapByDevid[devid].length > 0) {
+                    const config = window.machineConfigMapByDevid[devid][0]; // 取第一個匹配
+                    console.log(`✅ [策略2] DevID 查找成功: ${devid} -> ${config.machineId}`);
+                    if (window.machineConfigMapByDevid[devid].length > 1) {
+                        console.warn(`⚠️ 多個機台使用相同 DevID ${devid}，已選擇第一個: ${config.machineId}`);
+                    }
+                    return config;
+                }
+            }
+            
+            // 策略3: 如果 DevID 無效，使用 MAC-only 查找
+            if (!devid || devid === 'null' || devid === 'undefined') {
+                console.log(`🔄 [策略3] DevID 無效，嘗試 MAC-only 查找: ${mac}`);
+                if (window.machineConfigMapByMac[mac] && window.machineConfigMapByMac[mac].length > 0) {
+                    const config = window.machineConfigMapByMac[mac][0]; // 取第一個匹配
+                    console.log(`✅ [策略3] MAC 查找成功: ${mac} -> ${config.machineId}`);
+                    if (window.machineConfigMapByMac[mac].length > 1) {
+                        console.warn(`⚠️ 機台 ${mac} 有多個 DevID，已選擇第一個: ${config.devid}`);
+                    }
+                    return config;
+                }
+            }
+            
+            // 策略4: 嘗試模糊匹配（忽略大小寫、去除空格）
+            if (mac && devid) {
+                const normalizedMac = mac.toString().trim().toLowerCase();
+                const normalizedDevid = devid.toString().trim();
+                
+                console.log(`🔄 [策略4] 嘗試模糊匹配: ${normalizedMac}_${normalizedDevid}`);
+                
+                for (const [key, config] of Object.entries(window.machineConfigMap)) {
+                    const [keyMac, keyDevid] = key.split('_');
+                    if (keyMac && keyDevid && 
+                        keyMac.toLowerCase().trim() === normalizedMac && 
+                        keyDevid.trim() === normalizedDevid) {
+                        console.log(`✅ [策略4] 模糊匹配成功: ${key} -> ${config.machineId}`);
+                        return config;
+                    }
+                }
+            }
+            
+            // 策略5: 最後嘗試 - 列出所有可能的匹配供調試
+            console.warn(`❌ 所有策略都失敗，無法找到機台配置`);
+            console.log(`🔍 可用的映射鍵:`, Object.keys(window.machineConfigMap));
+            console.log(`🔍 可用的 MAC:`, Object.keys(window.machineConfigMapByMac));
+            console.log(`🔍 可用的 DevID:`, Object.keys(window.machineConfigMapByDevid));
+            console.log(`💡 查找參數: MAC="${mac}" (type: ${typeof mac}), DevID="${devid}" (type: ${typeof devid})`);
+            
+            return null;
+        }
+
+        // 測試智能查找功能
+        function testSmartMachineMapping() {
+            console.log('\n' + '='.repeat(70));
+            console.log('🧪 測試智能機台映射查找功能');
+            console.log('='.repeat(70));
+            
+            // 測試案例
+            const testCases = [
+                { mac: 'AA:BB:CC:DD:EE:FF', devid: 1, description: '正常查找' },
+                { mac: null, devid: 1, description: 'MAC 為 null' },
+                { mac: 'null', devid: 1, description: "MAC 為字串 'null'" },
+                { mac: 'AA:BB:CC:DD:EE:FF', devid: null, description: 'DevID 為 null' },
+                { mac: 'AA:BB:CC:DD:EE:FF', devid: 'null', description: "DevID 為字串 'null'" },
+                { mac: null, devid: 2, description: '僅使用 DevID=2 查找' },
+                { mac: 'invalid', devid: 999, description: '無效的 MAC 和 DevID' }
+            ];
+            
+            testCases.forEach((testCase, index) => {
+                console.log(`\n📋 測試案例 ${index + 1}: ${testCase.description}`);
+                console.log(`   輸入: MAC="${testCase.mac}", DevID="${testCase.devid}"`);
+                
+                const result = findMachineConfig(testCase.mac, testCase.devid);
+                if (result) {
+                    console.log(`   ✅ 結果: 找到機台 ${result.machineId} (${result.location})`);
+                } else {
+                    console.log(`   ❌ 結果: 未找到匹配的機台`);
+                }
+            });
+            
+            console.log('\n' + '='.repeat(70));
+            console.log('🧪 智能映射測試完成');
+            console.log('='.repeat(70));
+        }
+        
+        // 將測試函數添加到全域範圍
+        window.testSmartMachineMapping = testSmartMachineMapping;
+        
+        // 新增：調試機台輪詢狀態函數
+        // 機台連線診斷函數
+        function debugMachineConnectivity() {
+            console.log('\n🔍 機台連線狀態診斷');
+            console.log('══════════════════════════════════════════════════════════════');
+            
+            const machinesWithMac = availableMachines.filter(m => m.mac && m.mac.trim() !== '');
+            const failedMachines = [];
+            const successfulMachines = [];
+            
+            machinesWithMac.forEach(machine => {
+                // 檢查最近輪詢結果
+                const hasRecentData = tempPollingData.some(record => 
+                    record.machineId === machine.id && 
+                    new Date(record.date).toDateString() === new Date().toDateString()
+                );
+                
+                if (hasRecentData) {
+                    successfulMachines.push(machine);
+                } else {
+                    failedMachines.push(machine);
+                }
+                
+                console.log(`📱 機台 ${machine.id} (MAC: ${machine.mac})`);
+                console.log(`   📊 最近輪詢: ${hasRecentData ? '✅ 成功' : '❌ 失敗'}`);
+                console.log(`   🔗 測試 URL: http://update.feiloli.com.tw:5539/textselectdata/${machine.mac}`);
+                console.log(`   🛠️ 建議動作: ${hasRecentData ? '無需動作' : '檢查機台網路連線與伺服器狀態'}`);
+                console.log('');
+            });
+            
+            console.log('📊 連線統計摘要:');
+            console.log(`   ✅ 成功機台: ${successfulMachines.length} 台`);
+            successfulMachines.forEach(m => console.log(`      - ${m.id} (${m.mac})`));
+            console.log(`   ❌ 失敗機台: ${failedMachines.length} 台`);
+            failedMachines.forEach(m => console.log(`      - ${m.id} (${m.mac})`));
+            console.log(`   📈 成功率: ${Math.round((successfulMachines.length / machinesWithMac.length) * 100)}%`);
+            
+            if (failedMachines.length > 0) {
+                console.log('\n🔧 故障排除建議:');
+                console.log('1. 檢查失敗機台的網路連線');
+                console.log('2. 確認機台是否正常開機運行');
+                console.log('3. 檢查 update.feiloli.com.tw:5539 伺服器狀態');
+                console.log('4. 手動測試機台 URL 是否可訪問');
+                console.log('5. 檢查防火牆設置是否阻擋連線');
+            }
+            
+            console.log('══════════════════════════════════════════════════════════════\n');
+        }
+
+        function debugMachinePollingStatus() {
+            console.log('\n' + '='.repeat(70));
+            console.log('🔍 調試機台輪詢狀態');
+            console.log('='.repeat(70));
+            
+            if (!appData || !appData.machines) {
+                console.warn('⚠️ appData.machines 未初始化');
+                return;
+            }
+            
+            const allMachines = appData.machines;
+            const machinesWithMac = allMachines.filter(m => m.mac && m.mac.trim());
+            
+            console.log(`📊 總機台數: ${allMachines.length}`);
+            console.log(`📊 有 MAC 的機台數: ${machinesWithMac.length}`);
+            console.log(`📊 無 MAC 的機台數: ${allMachines.length - machinesWithMac.length}`);
+            
+            console.log('\n📋 所有機台詳細狀態:');
+            allMachines.forEach((machine, index) => {
+                const hasMac = machine.mac && machine.mac.trim();
+                const devid = machine.devid || 1;
+                const mapKey = hasMac ? `${machine.mac}_${devid}` : 'N/A';
+                const hasMapping = hasMac ? !!window.machineConfigMap[mapKey] : false;
+                
+                console.log(`   ${index + 1}. ${machine.id}/${machine.location}:`);
+                console.log(`      MAC: ${machine.mac || 'N/A'} ${hasMac ? '✅' : '❌'}`);
+                console.log(`      DevID: ${devid}`);
+                console.log(`      映射鍵: ${mapKey}`);
+                console.log(`      映射存在: ${hasMapping ? '✅' : '❌'}`);
+                console.log(`      可輪詢: ${hasMac ? '✅' : '❌'}`);
+            });
+            
+            console.log('\n🎯 無法輪詢的機台:');
+            const unpollableMachines = allMachines.filter(m => !m.mac || !m.mac.trim());
+            if (unpollableMachines.length === 0) {
+                console.log('   ✅ 所有機台都可以輪詢');
+            } else {
+                unpollableMachines.forEach((machine, index) => {
+                    console.log(`   ${index + 1}. ${machine.id}/${machine.location} - 原因: 缺少 MAC 地址`);
+                });
+            }
+            
+            console.log('\n' + '='.repeat(70));
+            console.log('🔍 調試完成');
+            console.log('='.repeat(70));
+        }
+        
+        // 將調試函數添加到全域範圍
+        window.debugMachinePollingStatus = debugMachinePollingStatus;
+        window.debugMachineConnectivity = debugMachineConnectivity;
+        
+        // 查看代理成功率統計
+        window.showProxyStats = function() {
+            console.log('\n📊 代理服務成功率統計');
+            console.log('═══════════════════════════════════════════════════════════════');
+            
+            if (Object.keys(proxySuccessStats).length === 0) {
+                console.log('📝 尚無統計資料');
+                return;
+            }
+            
+            // 按機台分組統計
+            const machineStats = {};
+            Object.entries(proxySuccessStats).forEach(([key, stats]) => {
+                const [mac, proxyName] = key.split('_');
+                if (!machineStats[mac]) machineStats[mac] = {};
+                machineStats[mac][proxyName] = {
+                    rate: Math.round((stats.success / stats.total) * 100),
+                    attempts: stats.total,
+                    lastUsed: new Date(stats.lastUsed).toLocaleString()
+                };
+            });
+            
+            Object.entries(machineStats).forEach(([mac, proxies]) => {
+                console.log(`\n🖥️ 機台 ${mac}:`);
+                const sortedProxies = Object.entries(proxies)
+                    .sort(([,a], [,b]) => b.rate - a.rate);
+                
+                sortedProxies.forEach(([proxyName, stats]) => {
+                    const emoji = stats.rate >= 80 ? '🟢' : stats.rate >= 50 ? '🟡' : '🔴';
+                    console.log(`   ${emoji} ${proxyName}: ${stats.rate}% (${stats.attempts} 次嘗試)`);
+                });
+            });
+            
+            console.log('\n📈 總體代理排名:');
+            const globalStats = {};
+            Object.entries(proxySuccessStats).forEach(([key, stats]) => {
+                const proxyName = key.split('_')[1];
+                if (!globalStats[proxyName]) {
+                    globalStats[proxyName] = { success: 0, total: 0 };
+                }
+                globalStats[proxyName].success += stats.success;
+                globalStats[proxyName].total += stats.total;
+            });
+            
+            Object.entries(globalStats)
+                .map(([name, stats]) => ({
+                    name,
+                    rate: (stats.success / stats.total) * 100,
+                    total: stats.total
+                }))
+                .sort((a, b) => b.rate - a.rate)
+                .forEach((proxy, index) => {
+                    const emoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📊';
+                    console.log(`   ${emoji} ${proxy.name}: ${Math.round(proxy.rate)}% (${proxy.total} 次)`);
+                });
+            
+            console.log('═══════════════════════════════════════════════════════════════\n');
+        };
+        
+        // 手動測試單一機台連線
+        window.testMachineConnection = async function(macAddress) {
+            if (!macAddress) {
+                console.log('使用方法: testMachineConnection("MAC地址")');
+                console.log('例如: testMachineConnection("48E729540E3D")');
+                return;
+            }
+            
+            console.log(`\n🔍 測試機台連線: ${macAddress}`);
+            console.log('────────────────────────────────────────');
+            
+            const testUrl = `http://update.feiloli.com.tw:5539/textselectdata/${macAddress}`;
+            console.log(`📡 目標 URL: ${testUrl}`);
+            
+            try {
+                console.log('⏳ 開始測試...');
+                const result = await sendHttpRequest(testUrl, 10000, macAddress, 1);
+                
+                if (result && Array.isArray(result) && result.length > 0) {
+                    console.log('✅ 連線測試成功!');
+                    console.log(`📊 回應數據: ${result.length} 筆記錄`);
+                    console.log('📋 最新記錄預覽:', result.slice(0, 3));
+                } else {
+                    console.log('⚠️ 連線成功但無有效數據');
+                }
+            } catch (error) {
+                console.log('❌ 連線測試失敗:', error.message);
+                console.log('🔧 建議檢查:');
+                console.log('   1. 機台是否在線');
+                console.log('   2. MAC 地址是否正確');
+                console.log('   3. 網路連線是否正常');
+            }
+            
+            console.log('────────────────────────────────────────\n');
+        };
 
         // 調試機台映射表函數
         function debugMachineMapping() {
@@ -3206,7 +3801,18 @@
                 for (let [recordKey, record] of batch) {
                     try {
                         processedCount++;
-                        console.log(`🔄 [${processedCount}/${totalRecords}] 處理輪詢記錄: ${recordKey}`, record);
+                        console.log(`🔄 [${processedCount}/${totalRecords}] 處理輪詢記錄: ${recordKey}`);
+                        console.log(`📊 輪詢記錄詳情:`, {
+                            machineId: record.machineId,
+                            location: record.location,
+                            plays: record.plays,
+                            payouts: record.payouts,
+                            rawPlays: record.rawPlays,
+                            rawPayouts: record.rawPayouts,
+                            updateCount: record.updateCount,
+                            lastPlays: record.lastPlays,
+                            lastPayouts: record.lastPayouts
+                        });
                         
                         // 找到對應的機台
                         const machine = appData.machines.find(m => 
@@ -3272,6 +3878,51 @@
                             recordDate: record.date // 顯示使用的是記錄的日期
                         });
                         
+                        // 🔧 釐清數值含義，確保數據類型正確
+                        const currentMachinePlays = parseInt(machine.plays) || 0;     // 資料庫中目前的累積值
+                        const currentMachinePayouts = parseInt(machine.payouts) || 0; // 資料庫中目前的累積值
+                        
+                        // 🔧 重新從最新的輪詢記錄中獲取數值
+                        const latestRecord = window.dailyRecords[recordKey];
+                        const polledRawPlays = parseInt(latestRecord?.plays || record.plays);      // 輪詢得到的累積值
+                        const polledRawPayouts = parseInt(latestRecord?.payouts || record.payouts); // 輪詢得到的累積值
+                        
+                        // 🔧 重要：應用機台校正值，確保比較基準一致
+                        const machineCalibration = applyMachineCalibration(machine.id, machine.location, polledRawPlays, polledRawPayouts);
+                        const polledPlays = machineCalibration.plays;
+                        const polledPayouts = machineCalibration.payouts;
+                        
+                        console.log(`🔧 校正值應用:`, {
+                            machineId: `${machine.id}/${machine.location}`,
+                            原始輪詢值: { plays: polledRawPlays, payouts: polledRawPayouts },
+                            校正後輪詢值: { plays: polledPlays, payouts: polledPayouts },
+                            校正量: { plays: machineCalibration.playsCalibration, payouts: machineCalibration.payoutsCalibration }
+                        });
+                        
+                        console.log(`🔄 數值確認:`, {
+                            machineId: `${machine.id}/${machine.location}`,
+                            currentMachinePlays: currentMachinePlays,
+                            currentMachinePayouts: currentMachinePayouts,
+                            polledPlays: polledPlays,
+                            polledPayouts: polledPayouts,
+                            shouldUpdate: polledPlays > currentMachinePlays || polledPayouts > currentMachinePayouts
+                        });
+                        
+                        // 🔧 決定正確的更新方向：輪詢值應該 >= 資料庫值
+                        const beforePlays = currentMachinePlays;
+                        const afterPlays = Math.max(currentMachinePlays, polledPlays); // 取較大值
+                        const beforePayouts = currentMachinePayouts;
+                        const afterPayouts = Math.max(currentMachinePayouts, polledPayouts); // 取較大值
+                        
+                        console.log(`🔧 更新計算詳情:`, {
+                            machineId: `${machine.id}/${machine.location}`,
+                            '資料庫值': { plays: currentMachinePlays, payouts: currentMachinePayouts },
+                            '輪詢值': { plays: polledPlays, payouts: polledPayouts },
+                            '計算前': { plays: `max(${currentMachinePlays}, ${polledPlays})`, payouts: `max(${currentMachinePayouts}, ${polledPayouts})` },
+                            '計算後': { plays: afterPlays, payouts: afterPayouts },
+                            '有變化': { plays: afterPlays !== beforePlays, payouts: afterPayouts !== beforePayouts }
+                        });
+                        
                         // ✅ 根據是否有變化來決定操作類型
                         if (record.updateCount > 1) {
                             console.log(`🔄 檢測到變化 - 投幣數變化: ${record.playsChanged}, 出貨數量變化: ${record.payoutsChanged}`);
@@ -3280,10 +3931,14 @@
                                 id: machine.id,
                                 location: machine.location,
                                 date: record.date,
-                                plays: record.plays,
-                                payouts: record.payouts,
+                                beforePlays: beforePlays,
+                                afterPlays: afterPlays,
+                                beforePayouts: beforePayouts,
+                                afterPayouts: afterPayouts,
                                 playsChanged: record.playsChanged,
-                                payoutsChanged: record.payoutsChanged
+                                payoutsChanged: record.payoutsChanged,
+                                playsChange: afterPlays - beforePlays,
+                                payoutsChange: afterPayouts - beforePayouts
                             });
                         } else {
                             console.log(`✨ 新增記錄 - 機台: ${machine.id}/${machine.location}, 日期: ${record.date}`);
@@ -3292,16 +3947,191 @@
                                 id: machine.id,
                                 location: machine.location,
                                 date: record.date,
-                                plays: record.plays,
-                                payouts: record.payouts
+                                beforePlays: beforePlays,
+                                afterPlays: afterPlays,
+                                beforePayouts: beforePayouts,
+                                afterPayouts: afterPayouts,
+                                playsChange: afterPlays - beforePlays,
+                                payoutsChange: afterPayouts - beforePayouts
                             });
                         }
                         
-                        // 觸發表單提交（使用記錄的實際日期）
-                        const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-                        dailyEntryForm.dispatchEvent(submitEvent);
+                        // 直接執行資料庫操作（不使用表單提交）
+                        try {
+                            console.log(`🔍 檢查環境變數:`, {
+                                selectedGroupId,
+                                selectedStoreId,
+                                machineDocId: machine.docId,
+                                recordKey,
+                                recordDate: record.date
+                            });
+                            
+                            if (!selectedStoreId) {
+                                throw new Error('未選擇門市');
+                            }
+                            
+                            if (!selectedGroupId) {
+                                throw new Error('未選擇群組');
+                            }
+                            
+                            // 計算基準值和日增量
+                            console.log(`🔢 機台原始數據:`, {
+                                machineId: `${machine.id}/${machine.location}`,
+                                machinePlays: machine.plays,
+                                machinePayouts: machine.payouts,
+                                machineInitialPlays: machine.initialPlays,
+                                machineInitialPayouts: machine.initialPayouts
+                            });
+                            
+                            const lastRecordedPlays = normalizeCount(machine.plays);
+                            const lastRecordedPayouts = normalizeCount(machine.payouts);
+                            const initialPlays = normalizeCount(machine.initialPlays);
+                            const initialPayouts = normalizeCount(machine.initialPayouts);
+                            const baselinePlays = Math.max(lastRecordedPlays, initialPlays);
+                            const baselinePayouts = Math.max(lastRecordedPayouts, initialPayouts);
+                            
+                            // 使用更新後的數值進行資料庫操作
+                            const cumulativePlaysInput = afterPlays;
+                            const cumulativePayoutsInput = afterPayouts;
+                            
+                            if (isNaN(cumulativePlaysInput) || isNaN(cumulativePayoutsInput)) {
+                                throw new Error(`輪詢數據格式錯誤: plays=${record.plays}, payouts=${record.payouts}`);
+                            }
+                            
+                            if (cumulativePlaysInput < baselinePlays || cumulativePayoutsInput < baselinePayouts) {
+                                const errorMsg = `累積數值不可小於基準值 - 機台:${machine.id}/${machine.location}, 輪詢值:(${cumulativePlaysInput}, ${cumulativePayoutsInput}), 基準值:(${baselinePlays}, ${baselinePayouts})`;
+                                console.error('❌ 數據驗證失敗:', errorMsg);
+                                throw new Error(errorMsg);
+                            }
+                            
+                            const dailyPlays = cumulativePlaysInput - baselinePlays;
+                            const dailyPayouts = cumulativePayoutsInput - baselinePayouts;
+                            
+                            console.log(`📊 數據計算結果:`, {
+                                machineId: `${machine.id}/${machine.location}`,
+                                lastRecordedPlays,
+                                lastRecordedPayouts,
+                                initialPlays,
+                                initialPayouts,
+                                baselinePlays,
+                                baselinePayouts,
+                                cumulativePlaysInput,
+                                cumulativePayoutsInput,
+                                dailyPlays,
+                                dailyPayouts
+                            });
+                            
+                            // 如果沒有變化，跳過處理
+                            if (dailyPlays === 0 && dailyPayouts === 0) {
+                                console.log(`⏭️ 數據未變更，跳過: ${machine.id}/${machine.location}`);
+                                unchangedCount++;
+                                summaryInfo.unchanged.push({
+                                    id: machine.id,
+                                    location: machine.location,
+                                    date: record.date,
+                                    beforePlays: beforePlays,
+                                    afterPlays: afterPlays,
+                                    beforePayouts: beforePayouts,
+                                    afterPayouts: afterPayouts,
+                                    playsChange: 0,
+                                    payoutsChange: 0
+                                });
+                            } else {
+                                // 更新機台累積數據
+                                const machineRef = db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('machines').doc(machine.docId);
+                                console.log(`🔗 準備更新機台數據:`, {
+                                    selectedGroupId,
+                                    selectedStoreId,
+                                    machineDocId: machine.docId,
+                                    plays: cumulativePlaysInput,
+                                    payouts: cumulativePayoutsInput
+                                });
+                                
+                                const updateResult = await machineRef.update({
+                                    plays: cumulativePlaysInput,
+                                    payouts: cumulativePayoutsInput
+                                });
+                                console.log(`💾 已更新機台累積數據: plays=${cumulativePlaysInput}, payouts=${cumulativePayoutsInput}`, updateResult);
+                                
+                                // 檢查是否已存在相同日期和機台的歷史記錄
+                                const historyQuery = db.collection('groups').doc(selectedGroupId)
+                                    .collection('stores').doc(selectedStoreId)
+                                    .collection('history');
+                                
+                                let existingRecords = null;
+                                try {
+                                    // 嘗試複合查詢
+                                    existingRecords = await historyQuery
+                                        .where('date', '==', record.date)
+                                        .where('machineId', '==', machine.id)
+                                        .where('location', '==', machine.location)
+                                        .get();
+                                } catch (queryError) {
+                                    // 如果複合查詢失敗，使用備用方案
+                                    console.warn(`⚠️ 複合查詢失敗，使用備用方案: ${queryError.message}`);
+                                    const allRecords = await historyQuery.get();
+                                    const filtered = allRecords.docs.filter(doc => {
+                                        const data = doc.data();
+                                        return data.date === record.date && 
+                                               data.machineId === machine.id && 
+                                               data.location === machine.location;
+                                    });
+                                    existingRecords = { docs: filtered };
+                                }
+                                
+                                if (existingRecords.docs.length > 0) {
+                                    // 更新現有記錄
+                                    const docId = existingRecords.docs[0].id;
+                                    await db.collection('groups').doc(selectedGroupId)
+                                        .collection('stores').doc(selectedStoreId)
+                                        .collection('history').doc(docId)
+                                        .update({
+                                            date: record.date,
+                                            machineId: machine.id,
+                                            location: machine.location,
+                                            newPlays: dailyPlays,
+                                            newPayouts: dailyPayouts,
+                                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                        });
+                                    console.log(`✅ 已更新歷史記錄: ${docId}, 日增量 plays=${dailyPlays}, payouts=${dailyPayouts}`);
+                                } else {
+                                    // 新增新記錄
+                                    console.log(`📝 準備新增歷史記錄:`, {
+                                        selectedGroupId,
+                                        selectedStoreId,
+                                        date: record.date,
+                                        machineId: machine.id,
+                                        location: machine.location,
+                                        newPlays: dailyPlays,
+                                        newPayouts: dailyPayouts
+                                    });
+                                    
+                                    const addResult = await db.collection('groups').doc(selectedGroupId)
+                                        .collection('stores').doc(selectedStoreId)
+                                        .collection('history')
+                                        .add({
+                                            date: record.date,
+                                            machineId: machine.id,
+                                            location: machine.location,
+                                            newPlays: dailyPlays,
+                                            newPayouts: dailyPayouts,
+                                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                                        });
+                                    console.log(`✅ 已新增歷史記錄: ${addResult.id}, 日增量 plays=${dailyPlays}, payouts=${dailyPayouts}`);
+                                }
+                            }
+                            
+                        } catch (dbError) {
+                            console.error(`❌ 資料庫操作失敗: ${machine.id}/${machine.location}`, {
+                                error: dbError,
+                                message: dbError.message,
+                                code: dbError.code,
+                                stack: dbError.stack
+                            });
+                            throw dbError;
+                        }
                         
-                        // 等待提交完成（避免過快提交造成問題）
+                        // 稍作停頓，避免過快操作
                         await new Promise(resolve => setTimeout(resolve, 100));
                         
                         console.log(`✅ [${processedCount}/${totalRecords}] 已處理 ${machine.id}/${machine.location} 的記錄 (日期: ${record.date})`);
@@ -3319,36 +4149,75 @@
                 }
             }
             
-            if (newCount === 0 && updateCount === 0) {
-                alert(`❌ 找不到輪詢數據 (失敗: ${failedCount})`);
+            const processedTotal = newCount + updateCount;
+            const skippedTotal = unchangedCount;
+            
+            if (processedTotal === 0 && skippedTotal === 0) {
+                alert(`❌ 沒有成功處理任何記錄 (失敗: ${failedCount})`);
             } else {
-                const newMsg = newCount > 0 ? `新增: ${newCount} 筆` : '';
-                const updateMsg = updateCount > 0 ? `更新: ${updateCount} 筆` : '';
-                const bothMsg = newMsg && updateMsg ? `${newMsg}、${updateMsg}` : newMsg || updateMsg;
-                const failMsg = failedCount > 0 ? `、失敗: ${failedCount}` : '';
+                // 建立詳細的摘要訊息
+                let detailMessages = [];
                 
-                const message = `✅ 已成功處理 ${newCount + updateCount} 筆機台記錄 (${bothMsg}${failMsg})`;
+                if (newCount > 0) {
+                    detailMessages.push(`✨ 新增 ${newCount} 筆:`);
+                    summaryInfo.new.forEach(m => {
+                        detailMessages.push(`   ${m.id}/${m.location}: 投幣 ${m.beforePlays}→${m.afterPlays}, 出貨 ${m.beforePayouts}→${m.afterPayouts}`);
+                    });
+                }
+                
+                if (updateCount > 0) {
+                    detailMessages.push(`🔄 更新 ${updateCount} 筆:`);
+                    summaryInfo.updated.forEach(m => {
+                        detailMessages.push(`   ${m.id}/${m.location}: 投幣 ${m.beforePlays}→${m.afterPlays}, 出貨 ${m.beforePayouts}→${m.afterPayouts}`);
+                    });
+                }
+                
+                if (skippedTotal > 0) {
+                    detailMessages.push(`⏭️ 跳過 ${skippedTotal} 筆 (無變化)`);
+                }
+                
+                if (failedCount > 0) {
+                    detailMessages.push(`❌ 失敗 ${failedCount} 筆`);
+                }
+                
+                const message = `✅ 批量處理完成\n\n${detailMessages.join('\n')}`;
                 alert(message);
                 
                 // ✅ 新增：詳細的操作總結
                 console.log(`🎉 批量操作完成統計:`);
                 console.log(`   ✨ 新增記錄: ${newCount} 筆`);
                 if (summaryInfo.new.length > 0) {
-                    console.log(`      ${summaryInfo.new.map(m => `${m.id}/${m.location} (${m.date})`).join(', ')}`);
+                    summaryInfo.new.forEach(m => {
+                        console.log(`      ${m.id}/${m.location} 投幣: ${m.beforePlays} → ${m.afterPlays} (+${m.playsChange})  出貨: ${m.beforePayouts} → ${m.afterPayouts} (+${m.payoutsChange})`);
+                    });
                 }
                 console.log(`   🔄 更新記錄: ${updateCount} 筆`);
                 if (summaryInfo.updated.length > 0) {
-                    console.log(`      ${summaryInfo.updated.map(m => {
-                        const changes = [];
-                        if (m.playsChanged) changes.push(`💰投幣`);
-                        if (m.payoutsChanged) changes.push(`📦出貨`);
-                        return `${m.id}/${m.location} (${m.date}) [${changes.join('、')}]`;
-                    }).join(', ')}`);
+                    summaryInfo.updated.forEach(m => {
+                        const playsIndicator = m.playsChange > 0 ? `+${m.playsChange}` : m.playsChange < 0 ? `${m.playsChange}` : '±0';
+                        const payoutsIndicator = m.payoutsChange > 0 ? `+${m.payoutsChange}` : m.payoutsChange < 0 ? `${m.payoutsChange}` : '±0';
+                        console.log(`      ${m.id}/${m.location} 投幣: ${m.beforePlays} → ${m.afterPlays} (${playsIndicator})  出貨: ${m.beforePayouts} → ${m.afterPayouts} (${payoutsIndicator})`);
+                    });
+                }
+                console.log(`   ⏭️ 跳過記錄: ${unchangedCount} 筆`);
+                if (summaryInfo.unchanged.length > 0) {
+                    summaryInfo.unchanged.forEach(m => {
+                        console.log(`      ${m.id}/${m.location} 投幣: ${m.beforePlays} → ${m.afterPlays} (±0)  出貨: ${m.beforePayouts} → ${m.afterPayouts} (±0) [無變化]`);
+                    });
                 }
                 console.log(`   ❌ 失敗: ${failedCount} 筆`);
                 
-                // ✅ 重要：批量操作完成後，清除輪詢臨時記錄
-                // 注意：這不會影響 Firebase 中的正式記錄
+                // ✅ 重要：批量操作完成後，重新載入門市數據和清除輪詢臨時記錄
+                console.log('🔄 重新載入門市數據...');
+                try {
+                    suppressNextAutoPoll = true;
+                    await loadStoreData();
+                    console.log('✅ 門市數據已重新載入');
+                } catch (reloadError) {
+                    console.error('❌ 重新載入門市數據失敗:', reloadError);
+                }
+                
+                // 清除輪詢臨時記錄（注意：這不會影響 Firebase 中的正式記錄）
                 console.log('🗑️ 清除輪詢臨時記錄...');
                 window.dailyRecords = {};
                 if (typeof refreshAutoRecordTable === 'function') {
@@ -3433,11 +4302,8 @@
                         console.log(`✅ devid ${devid} 數據已儲存:`, parsedData);
                         console.log(`   🔍 [DEBUG] 解析結果 - plays: ${parsedData.plays}, payouts: ${parsedData.payouts}, hasData: ${parsedData.hasData}`);
                         
-                        // 📝 使用新的 updateDailyRecord 簽名
-                        // 从 MAC + devid 获取 machineId 和 location
-                        buildMachineConfigMap(); // 确保映射已构建
-                        const mapKey = `${mac}_${devid}`;
-                        const machineConfig = window.machineConfigMap[mapKey];
+                        // 📝 使用智能查找函數獲取機台配置
+                        const machineConfig = findMachineConfig(mac, devid);
                         
                         if (machineConfig) {
                             // ✅ 直接使用原始數值，讓 updateDailyRecord 處理校正值計算
@@ -3447,7 +4313,7 @@
                             console.log(`   🔧 [校正後] 顯示值: plays=${recordResult.record.plays}, payouts=${recordResult.record.payouts}`);
                             console.log(`   📊 [變化] 投幣變化: ${recordResult.playsChanged}, 出貨變化: ${recordResult.payoutsChanged}`);
                         } else {
-                            console.warn(`⚠️ 找不到機台配置: ${mapKey}，跳過記錄更新`);
+                            console.warn(`⚠️ 找不到機台配置: MAC=${mac}, DevID=${devid}，跳過記錄更新`);
                         }
                         
                         // 🔄 刷新自動記帳表格
@@ -3489,13 +4355,10 @@
                             window.machineDataByDevid[targetDevid] = parsedData;
                             console.log(`✅ devid ${targetDevid} 數據已儲存:`, parsedData);
                             
-                            // 📝 使用新的 updateDailyRecord 簽名
-                            // 从 MAC + devid 获取 machineId 和 location
-                            buildMachineConfigMap(); // 确保映射已构建
-                            const mapKey = `${mac}_${targetDevid}`;
-                            const machineConfig = window.machineConfigMap[mapKey];
+                            // 📝 使用智能查找函數獲取機台配置
+                            const machineConfig = findMachineConfig(mac, targetDevid);
                             
-                            console.log(`🔑 查找映射 ${mapKey}:`, machineConfig ? `找到 ${machineConfig.machineId}/${machineConfig.location}` : '未找到');
+                            console.log(`🔑 智能查找映射 MAC=${mac}, DevID=${targetDevid}:`, machineConfig ? `找到 ${machineConfig.machineId}/${machineConfig.location}` : '未找到');
                             
                             if (machineConfig) {
                                 // ✅ 直接使用原始數值，讓 updateDailyRecord 處理校正值計算
@@ -3504,7 +4367,7 @@
                                 console.log(`   🔧 [校正] 原始: ${parsedData.plays}/${parsedData.payouts} → 顯示: ${recordResult.record.plays}/${recordResult.record.payouts}`);
                                 processedCount++;
                             } else {
-                                console.warn(`⚠️ 找不到機台配置: ${mapKey}，跳過記錄更新`);
+                                console.warn(`⚠️ 找不到機台配置: MAC=${mac}, DevID=${targetDevid}，跳過記錄更新`);
                                 console.log(`💡 可用的映射表:`, Object.keys(window.machineConfigMap));
                             }
                             
@@ -5250,8 +6113,9 @@
         }
         
         // 自動輪詢設定
-        let autoPollOnLoadTimer = null;
-        const AUTO_POLL_DELAY = 3000; // 3秒延遲
+    let autoPollOnLoadTimer = null;
+    const AUTO_POLL_DELAY = 1000; // 1秒延遲
+    let suppressNextAutoPoll = false;
         
         // 🚀 自動輪詢設定管理函數
         function getAutoPollOnLoadSetting() {
@@ -5266,7 +6130,7 @@
             console.log(`💾 自動輪詢設定已保存: ${key} = ${enabled}`);
         }
         
-        // 🚀 執行自動輪詢（門市進入後3秒觸發）
+    // 🚀 執行自動輪詢（門市進入後1秒觸發）
         function triggerAutoPollOnLoad() {
             console.log('🔍 triggerAutoPollOnLoad 被呼叫');
             console.log(`   selectedGroupId: ${selectedGroupId}`);
@@ -5299,6 +6163,7 @@
             // 設置新的計時器
             autoPollOnLoadTimer = setTimeout(async () => {
                 console.log('🎯 開始執行自動輪詢（門市進入觸發）');
+                autoPollOnLoadTimer = null;
                 
                 try {
                     // 檢查是否有可用的機台
@@ -5401,6 +6266,10 @@
         const editStoreModal = document.getElementById('edit-store-modal');
         const editStoreForm = document.getElementById('edit-store-form');
         const editStoreCancelBtn = document.getElementById('edit-store-cancel-btn');
+        
+        const cloneStoreModal = document.getElementById('clone-store-modal');
+        const cloneStoreForm = document.getElementById('clone-store-form');
+        const cloneStoreCancelBtn = document.getElementById('clone-store-cancel-btn');
         
         const editHistoryModal = document.getElementById('edit-history-modal');
         const editHistoryForm = document.getElementById('edit-history-form');
@@ -6099,6 +6968,7 @@
             storeSelectionPage.classList.remove('hidden');
             reportPage.classList.add('hidden');
             document.getElementById('new-store-start-date').valueAsDate = new Date();
+            document.getElementById('clone-store-start-date').valueAsDate = new Date();
 
             // 根據用戶類型隱藏/顯示新增門市表單
             const userType = localStorage.getItem('userType');
@@ -6498,7 +7368,7 @@
                     style.textContent = `
                         .edit-machine-btn, .delete-machine-btn, 
                         .edit-history-btn, .delete-history-btn,
-                        .edit-store-btn, .delete-store-btn,
+                        .edit-store-btn, .clone-store-btn, .delete-store-btn,
                         .rename-group-btn, .delete-group-btn {
                             display: none !important;
                         }
@@ -6735,7 +7605,13 @@
                 // 🚀 門市載入完成後，檢查並觸發自動輪詢
                 console.log('📍 loadStoreData 完成，準備觸發自動輪詢檢查...');
                 console.log(`   機台數量: ${appData?.machines?.length || 0}`);
-                triggerAutoPollOnLoad();
+
+                if (suppressNextAutoPoll) {
+                    console.log('⏸️ 略過本次自動輪詢（suppressNextAutoPoll 已啟用）');
+                    suppressNextAutoPoll = false;
+                } else {
+                    triggerAutoPollOnLoad();
+                }
 
             } catch (error) {
                 console.error(`讀取資料時發生錯誤:`, error);
@@ -6766,6 +7642,97 @@
             } catch (error) {
                 console.error("建立門市失敗:", error);
                 alert('建立門市失敗，請稍後再試。');
+            }
+        }
+        
+        async function handleCloneStore(e) {
+            e.preventDefault();
+            if(!selectedGroupId) return alert('未選擇單位群組');
+
+            const sourceStoreId = document.getElementById('clone-source-store-id').value;
+            const sourceStoreName = document.getElementById('clone-source-store-name').textContent;
+            const newStoreName = document.getElementById('clone-store-name').value.trim();
+            const newStartDate = document.getElementById('clone-store-start-date').value;
+
+            if (!newStoreName || !newStartDate) return alert('門市名稱與起始日不可空白！');
+            
+            if (!sourceStoreId) return alert('未指定來源門市！');
+
+            // 確認對話框
+            const confirmMessage = `確定要複製門市嗎？\n\n來源門市：${sourceStoreName}\n新門市名稱：${newStoreName}\n起始日期：${newStartDate}\n\n注意：\n• 將複製機台配置和設定\n• 所有帳務記錄將被清除\n• 機台數據將重置為 0`;
+            
+            if (!confirm(confirmMessage)) return;
+
+            // 顯示處理中狀態
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '複製中...';
+
+            try {
+                console.log('🔄 開始複製門市...');
+                
+                // 步驟 1：創建新門市
+                const newStoreRef = await db.collection('groups').doc(selectedGroupId).collection('stores').add({
+                    name: newStoreName,
+                    startDate: newStartDate,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    clonedFrom: sourceStoreId,
+                    clonedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                console.log('✅ 新門市已創建:', newStoreRef.id);
+                
+                // 步驟 2：複製機台配置（但不複製帳務數據）
+                const sourceStoreRef = db.collection('groups').doc(selectedGroupId).collection('stores').doc(sourceStoreId);
+                const machinesSnapshot = await sourceStoreRef.collection('machines').get();
+                
+                if (!machinesSnapshot.empty) {
+                    console.log(`📦 找到 ${machinesSnapshot.size} 台機台，開始複製配置...`);
+                    
+                    const batch = db.batch();
+                    machinesSnapshot.docs.forEach(machineDoc => {
+                        const originalMachine = machineDoc.data();
+                        
+                        // 複製機台配置，但重置數據為 0
+                        const newMachineData = {
+                            id: originalMachine.id,
+                            location: originalMachine.location,
+                            mac: originalMachine.mac || '',
+                            devid: originalMachine.devid || null,
+                            initialPlays: 0, // 重置為 0
+                            initialPayouts: 0, // 重置為 0
+                            playsCalibration: 0, // 重置校正值
+                            payoutsCalibration: 0, // 重置校正值
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            clonedFrom: machineDoc.id,
+                            clonedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        };
+                        
+                        const newMachineRef = newStoreRef.collection('machines').doc();
+                        batch.set(newMachineRef, newMachineData);
+                    });
+                    
+                    await batch.commit();
+                    console.log('✅ 機台配置複製完成');
+                } else {
+                    console.log('ℹ️ 來源門市沒有機台配置');
+                }
+                
+                // 步驟 3：關閉 Modal 並刷新列表
+                cloneStoreModal.classList.add('hidden');
+                cloneStoreForm.reset();
+                loadStores();
+                
+                alert(`門市複製成功！\n\n新門市「${newStoreName}」已創建，機台配置已複製但帳務數據已清除。`);
+                
+            } catch (error) {
+                console.error("複製門市失敗:", error);
+                alert('複製門市失敗，請稍後再試。');
+            } finally {
+                // 恢復按鈕狀態
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
         }
         
@@ -7565,6 +8532,13 @@
                 const adminButtons = isAdmin ? `
                     <div class="flex justify-end gap-2 border-t border-gray-600 px-4 py-3">
                         <button class="edit-store-btn text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}">編輯</button>
+                        <button class="clone-store-btn text-sm bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded flex items-center gap-1" data-store-id="${store.id}" data-store-name="${store.name}" data-start-date="${store.startDate}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+                                <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+                            </svg>
+                            複製
+                        </button>
                         <button class="delete-store-btn text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" data-store-id="${store.id}" data-store-name="${store.name}">刪除</button>
                     </div>
                 ` : '';
@@ -9237,6 +10211,7 @@
         storeListContainer.addEventListener('click', async (e) => {
             const mainCard = e.target.closest('.store-card-main');
             const editBtn = e.target.closest('.edit-store-btn');
+            const cloneBtn = e.target.closest('.clone-store-btn');
             const deleteBtn = e.target.closest('.delete-store-btn');
 
             if (mainCard) {
@@ -9249,6 +10224,12 @@
                 document.getElementById('edit-store-name').value = editBtn.dataset.storeName;
                 document.getElementById('edit-store-start-date').value = editBtn.dataset.startDate;
                 editStoreModal.classList.remove('hidden');
+            } else if (cloneBtn) {
+                document.getElementById('clone-source-store-id').value = cloneBtn.dataset.storeId;
+                document.getElementById('clone-source-store-name').textContent = cloneBtn.dataset.storeName;
+                document.getElementById('clone-store-name').value = cloneBtn.dataset.storeName + ' (複製)';
+                document.getElementById('clone-store-start-date').valueAsDate = new Date();
+                cloneStoreModal.classList.remove('hidden');
             } else if (deleteBtn) {
                 const storeId = deleteBtn.dataset.storeId;
                 const storeName = deleteBtn.dataset.storeName;
@@ -9268,6 +10249,9 @@
         createStoreForm.addEventListener('submit', handleCreateStore);
         editStoreForm.addEventListener('submit', handleUpdateStore);
         editStoreCancelBtn.addEventListener('click', () => editStoreModal.classList.add('hidden'));
+        
+        cloneStoreForm.addEventListener('submit', handleCloneStore);
+        cloneStoreCancelBtn.addEventListener('click', () => cloneStoreModal.classList.add('hidden'));
 
         addMachineForm.addEventListener('submit', handleAddMachine);
         downloadAllStoresBtn.addEventListener('click', () => {
@@ -10595,9 +11579,10 @@
                         console.warn(`⚠️ 讀取指令失敗 (繼續進行): ${readCmdError.message}`);
                     }
                     
-                    // 等待 500ms，讓機台準備數據
-                    console.log(`⏳ 等待 500ms，讓機台準備數據...`);
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // 等待 1 秒，讓機台準備數據
+                    console.log(`⏳ [步驟2] 等待 1 秒，讓機台準備數據...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    console.log(`✅ 等待完成`);
                 } else {
                     console.log(`⏳ HTTPS 環境: 跳過讀取指令，直接進行數據抓取...`);
                     await new Promise(resolve => setTimeout(resolve, 300));
@@ -10700,13 +11685,13 @@
             return result;
         };
 
-        // 輪詢所有機台 (HTTP 版本) - 增強版本，支持批量新增和自動增量更新
+        // 輪詢所有機台 (HTTP 版本) - 循序處理版本
         async function pollAllMachines() {
             console.log('\n' + '='.repeat(70));
-            console.log('🚀 開始 HTTP 輪詢所有機台 - 快速回應模式已啟用');
+            console.log('🚀 開始 HTTP 循序輪詢 - 每台機台獨立處理');
             console.log('='.repeat(70));
             
-            // 🔒 強制偵測環境 - 確保準確
+            // 環境偵測
             const currentProtocol = window.location.protocol;
             const currentHostname = window.location.hostname;
             const isHttps = currentProtocol === 'https:' || currentProtocol === 'https';
@@ -10740,189 +11725,167 @@
             machinesWithMac.forEach((machine, index) => {
                 console.log(`   ${index + 1}. 機台ID: ${machine.id}, MAC: ${machine.mac}, DevID: ${machine.devid || 1}`);
             });
+            
+            // 檢查機台配置映射
+            console.log('\n🔍 檢查機台配置映射:');
+            buildMachineConfigMap();
+            console.log('📊 可用的映射鍵:', Object.keys(window.machineConfigMap));
+            
+            // 預測每台機台的映射鍵
+            console.log('\n🎯 預測機台映射:');
+            machinesWithMac.forEach((machine, index) => {
+                const devid = machine.devid || 1;
+                const expectedKey = `${machine.mac}_${devid}`;
+                const hasMapping = !!window.machineConfigMap[expectedKey];
+                console.log(`   ${index + 1}. ${machine.id}: ${expectedKey} ${hasMapping ? '✅' : '❌'} ${hasMapping ? '(有映射)' : '(無映射)'}`);
+            });
 
-            showStatusMessage(`開始輪詢 ${machinesWithMac.length} 台機台...`, 'info');
+            showStatusMessage(`開始循序輪詢 ${machinesWithMac.length} 台機台...`, 'info');
             
             const pollStartTime = new Date();
-
-            // ============================================
-            // 📌 第一階段：發送所有機台的讀取指令（僅限 HTTP 環境）
-            // ============================================
-            let readCmdSuccessCount = 0; // 初始化變數
-            
-            if (!isHttps) {
-                console.log('\n' + '='.repeat(70));
-                console.log('📤 [第一階段] 發送所有機台的讀取指令');
-                console.log('='.repeat(70));
-                
-                const readCmdResults = [];
-                let readCmdSuccessCount = 0;
-                
-                for (const machine of machinesWithMac) {
-                    const devid = machine.devid || 1;
-                    const readCmdUrl = `http://update.feiloli.com.tw:5539/webReadCmd/${machine.mac}/${devid}/`;
-                    
-                    try {
-                        console.log(`\n  📤 發送讀取指令: MAC=${machine.mac}, DevID=${devid}`);
-                        console.log(`     URL: ${readCmdUrl}`);
-                        
-                        
-                        const readCmdResponse = await fetch(readCmdUrl, {
-                            method: 'GET',
-                            mode: 'cors',
-                            headers: { 'Accept': 'application/json' }
-                        });
-                        
-                        if (readCmdResponse.ok) {
-                            const readCmdData = await readCmdResponse.json();
-                            console.log(`     ✅ 回應: ${readCmdData.ResultMessage} (Code=${readCmdData.ResultCode})`);
-                            
-                            readCmdResults.push({
-                                mac: machine.mac,
-                                devid: devid,
-                                success: readCmdData.Valid === true && readCmdData.ResultCode === 200,
-                                data: readCmdData
-                            });
-                            
-                            if (readCmdData.Valid === true && readCmdData.ResultCode === 200) {
-                                readCmdSuccessCount++;
-                            }
-                        } else {
-                            console.warn(`     ⚠️ HTTP ${readCmdResponse.status}`);
-                            readCmdResults.push({
-                                mac: machine.mac,
-                                devid: devid,
-                                success: false,
-                                data: { ResultCode: readCmdResponse.status }
-                            });
-                        }
-                    } catch (error) {
-                        console.warn(`     ⚠️ 失敗: ${error.message}`);
-                        readCmdResults.push({
-                            mac: machine.mac,
-                            devid: devid,
-                            success: false,
-                            error: error.message
-                        });
-                    }
-                    
-                    // 使用可配置的間隔延遲
-                    await new Promise(resolve => setTimeout(resolve, pollSettings.cmdInterval));
-                }
-                
-                console.log(`\n✅ 第一階段完成: ${readCmdSuccessCount}/${machinesWithMac.length} 台機台讀取指令成功`);
-                
-                // ============================================
-                // ⏳ 等待 2-3 秒，讓機台準備數據
-                // ============================================
-                const waitSeconds = fastPollConfig.waitBeforeRead / 1000;
-                console.log(`\n⏳ 等待 ${waitSeconds} 秒，讓所有機台準備數據...`);
-                showStatusMessage(`已發送讀取指令，等待 ${waitSeconds} 秒...`, 'info');
-                
-                // 根據設定的等待時間進行倒數
-                if (waitSeconds >= 1) {
-                    // 如果 >= 1 秒，按秒倒數
-                    for (let i = Math.ceil(waitSeconds); i > 0; i--) {
-                        console.log(`   倒數: ${i} 秒...`);
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                    }
-                } else {
-                    // 如果 < 1 秒，直接等待指定時間
-                    console.log(`   等待 ${waitSeconds} 秒...`);
-                    await new Promise(resolve => setTimeout(resolve, fastPollConfig.waitBeforeRead));
-                }
-                
-                console.log(`✅ 等待完畢，開始讀取所有機台數據\n`);
-            } else {
-                // HTTPS 環境：跳過讀取指令，直接讀取
-                console.log('\n🔒 HTTPS 環境: 跳過讀取指令，準備直接讀取所有機台數據...\n');
-                showStatusMessage(`HTTPS 環境: 直接讀取 ${machinesWithMac.length} 台機台數據...`, 'info');
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-            
-            // ============================================
-            // 📌 第二階段：讀取所有機台的數據
-            // ============================================
-            console.log('='.repeat(70));
-            console.log('📥 [第二階段] 讀取所有機台的數據 (⚡ 快速回應模式已啟用)');
-            console.log('='.repeat(70));
-            console.log(`🔧 優化配置:`);
-            console.log(`   ✅ 提前終止: ${fastPollConfig.enableEarlyTermination}`);
-            console.log(`   ✅ 優先級過濾: ${fastPollConfig.enablePriorityFiltering}`);
-            console.log(`   ⚙️ 最大重試次數: ${fastPollConfig.maxRetries} 次 (優化: 改為 2 次)`);
-            console.log(`   ⏱️ 重試間隔: ${fastPollConfig.retryDelay}ms (優化: 改為 1000ms)`);
-            console.log(`   ⏳ 讀取等待時間: ${fastPollConfig.waitBeforeRead}ms (${(fastPollConfig.waitBeforeRead/1000).toFixed(1)}秒)`);
-            console.log(`   🎯 提前終止條件: 獲得 ${Math.round(fastPollConfig.earlyTerminationThreshold * 100)}% 資料後終止`);
-            
             let pollCount = 0;
             let fetchSuccessCount = 0;
-            let targetDataReceived = 0;  // ✅ 新增：已接收的目標資料計數
-            let earlyTerminated = false; // ✅ 新增：提前終止標誌
+            let targetDataReceived = 0;
+
+            // ============================================
+            // 📌 循序處理：每台機台獨立執行「發送指令 → 等待1秒 → 讀取資料 → 等待0.5秒」
+            // ============================================
+            console.log('\n' + '='.repeat(70));
+            console.log('� 開始循序處理每台機台');
+            console.log('   流程: 發送指令 → 等待1秒 → 讀取資料 → 等待0.5秒 → 下一台');
+            console.log('='.repeat(70));
             
-            for (const machine of machinesWithMac) {
-                // ✅ 新增：檢查是否應該提前終止
-                if (fastPollConfig.enableEarlyTermination) {
-                    const targetCount = Math.ceil(machinesWithMac.length * fastPollConfig.earlyTerminationThreshold);
-                    if (targetDataReceived >= targetCount) {
-                        console.log(`\n🎯 [提前終止] 已獲得 ${targetDataReceived}/${targetCount} 筆目標資料，不再繼續輪詢`);
-                        earlyTerminated = true;
-                        break; // 跳出迴圈，停止輪詢
-                    }
-                }
+            for (let i = 0; i < machinesWithMac.length; i++) {
+                const machine = machinesWithMac[i];
+                const devid = machine.devid || 1;
+                
+                console.log(`\n${'─'.repeat(60)}`);
+                console.log(`� [${i + 1}/${machinesWithMac.length}] 處理機台: ${machine.id} (MAC: ${machine.mac})`);
+                console.log(`${'─'.repeat(60)}`);
                 
                 try {
-                    console.log(`\n  📥 [${pollCount + 1}/${machinesWithMac.length}] 讀取數據: MAC=${machine.mac}, DevID=${machine.devid || 1}`);
-                    console.log(`  💡 嘗試 ${fastPollConfig.maxRetries} 次，每次間隔 ${fastPollConfig.retryDelay}ms`);
-                    
-                    // ✅ 使用優化的重試參數
-                    const result = await fetchWithRetry(machine.mac, fastPollConfig.maxRetries, fastPollConfig.retryDelay);
-                    
-                    if (result && validateMachineData(result)) {
-                        console.log(`     ✅ 數據讀取成功 (已驗證)`);
+                    // ============================================
+                    // 步驟 1: 發送讀取指令（僅限 HTTP 環境）
+                    // ============================================
+                    if (!isHttps) {
+                        const readCmdUrl = `http://update.feiloli.com.tw:5539/webReadCmd/${machine.mac}/${devid}/`;
                         
-                        // ✅ 優先級過濾：檢查是否包含目標資料
-                        if (fastPollConfig.enablePriorityFiltering) {
-                            const hasTargetData = quickCheckForTargetData(result, machine.devid);
-                            if (!hasTargetData) {
-                                console.log(`     ⏭️ [優先級過濾] 跳過非目標資料，不進行處理`);
-                                pollCount++;
-                                continue; // 跳過該條記錄，不處理非目標資料
+                        try {
+                            console.log(`📤 [步驟1] 發送讀取指令...`);
+                            console.log(`   URL: ${readCmdUrl}`);
+                            
+                            const readCmdResponse = await fetch(readCmdUrl, {
+                                method: 'GET',
+                                mode: 'cors',
+                                headers: { 'Accept': 'application/json' }
+                            });
+                            
+                            if (readCmdResponse.ok) {
+                                const readCmdData = await readCmdResponse.json();
+                                console.log(`   ✅ 指令發送成功: ${readCmdData.ResultMessage || 'OK'}`);
+                            } else {
+                                console.warn(`   ⚠️ 指令發送失敗: HTTP ${readCmdResponse.status}`);
                             }
-                            console.log(`     ✅ [優先級過濾] 包含目標資料，進行處理`);
+                        } catch (readCmdError) {
+                            // CORS 錯誤是預期的，但指令可能已經到達伺服器
+                            if (readCmdError.message.includes('CORS') || readCmdError.message.includes('Failed to fetch')) {
+                                console.log(`   ⚠️ CORS 限制阻擋回應，但指令可能已發送 (${readCmdError.message})`);
+                                console.log(`   💡 這是正常現象，會繼續讀取數據...`);
+                            } else {
+                                console.warn(`   ⚠️ 指令發送異常: ${readCmdError.message}`);
+                            }
                         }
                         
-                        handleHttpResponse(result, machine.mac, machine.devid || 1);
-                        addCommandLog('receive', `HTTP 回應成功 - MAC: ${machine.mac}`, result);
-                        fetchSuccessCount++;
-                        targetDataReceived++; // ✅ 增加目標資料計數
+                        // ============================================
+                        // 步驟 2: 等待 1 秒讓機台準備數據
+                        // ============================================
+                        console.log(`⏳ [步驟2] 等待 1 秒，讓機台準備數據...`);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        console.log(`   ✅ 等待完成`);
+                        
                     } else {
-                        console.warn(`     ❌ 數據讀取失敗 (數據驗證失敗或無效)`);
+                        // HTTPS 環境：跳過指令發送，但仍等待一下
+                        console.log(`🔒 HTTPS 環境: 跳過讀取指令`);
+                        console.log(`⏳ 等待 0.3 秒後讀取...`);
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    }
+                    
+                    // ============================================
+                    // 步驟 3: 讀取資料並解析
+                    // ============================================
+                    console.log(`📥 [步驟3] 開始讀取資料...`);
+                    
+                    const result = await fetchWithRetry(machine.mac, fastPollConfig.maxRetries, fastPollConfig.retryDelay, devid);
+                    
+                    if (result && validateMachineData(result)) {
+                        console.log(`   ✅ 資料讀取成功 (已驗證)`);
+                        
+                        // 優先級過濾
+                        if (fastPollConfig.enablePriorityFiltering) {
+                            const hasTargetData = quickCheckForTargetData(result, devid);
+                            if (!hasTargetData) {
+                                console.log(`   ⚠️ [優先級過濾] 不包含目標資料，跳過處理`);
+                                console.log(`   🔍 [調試] 機台 ${machine.id} (MAC: ${machine.mac}, DevID: ${devid}) 數據不符合優先級過濾條件`);
+                                console.log(`   📊 [調試] 回應數據類型: ${typeof result}, 長度: ${Array.isArray(result) ? result.length : 'N/A'}`);
+                                if (Array.isArray(result) && result.length > 0) {
+                                    console.log(`   📋 [調試] 前3筆記錄預覽:`, result.slice(0, 3).map(r => ({date: r.date, type: r.type, hasData: !!r.data})));
+                                }
+                            } else {
+                                console.log(`   ✅ [優先級過濾] 包含目標資料，進行處理`);
+                                handleHttpResponse(result, machine.mac, devid);
+                                addCommandLog('receive', `HTTP 回應成功 - MAC: ${machine.mac}`, result);
+                                fetchSuccessCount++;
+                                targetDataReceived++;
+                            }
+                        } else {
+                            handleHttpResponse(result, machine.mac, devid);
+                            addCommandLog('receive', `HTTP 回應成功 - MAC: ${machine.mac}`, result);
+                            fetchSuccessCount++;
+                            targetDataReceived++;
+                        }
+                    } else {
+                        console.warn(`   ❌ 資料讀取失敗 (數據驗證失敗或無效)`);
+                        console.log(`   🔍 [調試] 機台 ${machine.id} (MAC: ${machine.mac}, DevID: ${devid}) 讀取失敗詳情:`);
+                        console.log(`   📊 [調試] result 是否存在: ${!!result}`);
+                        console.log(`   📊 [調試] result 類型: ${typeof result}`);
+                        console.log(`   📊 [調試] validateMachineData 結果: ${result ? validateMachineData(result) : 'N/A'}`);
+                        if (result) {
+                            console.log(`   📋 [調試] result 內容預覽:`, JSON.stringify(result).substring(0, 200) + '...');
+                        }
                         addCommandLog('error', `數據讀取失敗或無效 - MAC: ${machine.mac}`);
                     }
+                    
                     pollCount++;
                     
+                    // ============================================
+                    // 步驟 4: 等待 0.5 秒再處理下一台
+                    // ============================================
+                    if (i < machinesWithMac.length - 1) { // 如果不是最後一台
+                        console.log(`⏳ [步驟4] 等待 0.5 秒後處理下一台...`);
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        console.log(`   ✅ 準備處理下一台機台`);
+                    } else {
+                        console.log(`🏁 已是最後一台，不需等待`);
+                    }
+                    
                 } catch (error) {
-                    console.error(`     ❌ 異常: ${error.message}`);
-                    addCommandLog('error', `HTTP 讀取異常: ${error.message}`);
+                    console.error(`❌ 處理機台時發生異常: ${error.message}`);
+                    addCommandLog('error', `HTTP 處理異常: ${error.message}`);
                     pollCount++;
+                    
+                    // 發生錯誤時也等待 0.5 秒再繼續
+                    if (i < machinesWithMac.length - 1) {
+                        console.log(`⏳ 錯誤後等待 0.5 秒再繼續...`);
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
                 }
-                
-                // 每台機台間隔 500ms 避免同時發送過多請求
-                await new Promise(resolve => setTimeout(resolve, 500));
             }
-            
-            console.log(`\n✅ 第二階段完成:`);
-            console.log(`   📊 總輪詢: ${pollCount}/${machinesWithMac.length} 台機台`);
-            console.log(`   ✅ 成功讀取: ${fetchSuccessCount}/${pollCount} 台`);
-            console.log(`   🎯 目標資料: ${targetDataReceived} 筆`);
-            console.log(`   ${earlyTerminated ? '🏁 提前終止: 是' : '✅ 完整輪詢: 是'}`);
 
-            
             // ============================================
             // 📊 統計輪詢結果
             // ============================================
             console.log('\n' + '='.repeat(70));
-            console.log('📊 快速輪詢統計結果');
+            console.log('📊 循序輪詢統計結果');
             console.log('='.repeat(70));
             
             let updateCount = 0;
@@ -10943,12 +11906,12 @@
             const avgTimePerMachine = (pollDuration / pollCount).toFixed(2);
 
             const summaryMsg = `
-✅ 快速輪詢完成！
+✅ 循序輪詢完成！
 ═══════════════════════════════════
 📊 輪詢結果:
   • 機台總數: ${machinesWithMac.length} 台
-  • 實際輪詢: ${pollCount} 台
-  ${earlyTerminated ? `• 提前終止: ✓ 提前結束輪詢` : `• 完整輪詢: ✓ 所有機台完成`}
+  • 實際處理: ${pollCount} 台
+  • 完整輪詢: ✓ 所有機台完成
   • 成功率: ${fetchSuccessCount}/${pollCount} (${Math.round(fetchSuccessCount/pollCount*100)}%)
   
 📈 資料統計:
@@ -10960,17 +11923,22 @@
   • 總耗時: ${pollDuration} 秒
   • 平均每台: ${avgTimePerMachine} 秒
   
-🔧 優化設定:
+🔧 處理流程:
+  • 發送指令後等待: 1 秒
+  • 每台機台間隔: 0.5 秒
   • 重試次數: ${fastPollConfig.maxRetries} 次
   • 重試間隔: ${fastPollConfig.retryDelay}ms
-  • 讀取等待: ${(fastPollConfig.waitBeforeRead/1000).toFixed(1)}s
-  • 提前終止: ${fastPollConfig.enableEarlyTermination ? '✓ 已啟用' : '✗ 已停用'}
-  • 優先級過濾: ${fastPollConfig.enablePriorityFiltering ? '✓ 已啟用' : '✗ 已停用'}
             `;
             
             console.log(summaryMsg);
             showStatusMessage(summaryMsg, 'success');
             console.log('='.repeat(70) + '\n');
+            
+            // 運行輪詢後診斷
+            setTimeout(() => {
+                console.log('\n🔍 執行輪詢後連線診斷...');
+                debugMachineConnectivity();
+            }, 1000);
         }
 
         // 開始自動輪詢 (HTTP 版本)
