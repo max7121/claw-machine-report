@@ -492,6 +492,14 @@
                                 </select>
                                 <p id="http-transport-mode-hint" class="mt-2 text-xs text-gray-400">內網 HTTP：適合在同網段或 HTTP 環境使用，直接連線設備。</p>
                             </div>
+                            <div class="flex-1">
+                                <label for="http-poll-mode" class="block text-sm font-medium text-gray-300 mb-1">輪詢模式</label>
+                                <select id="http-poll-mode" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3">
+                                    <option value="sequential">循序模式（逐台處理）</option>
+                                    <option value="batch">批次模式（統一發送/讀取）</option>
+                                </select>
+                                <p id="http-poll-mode-hint" class="mt-2 text-xs text-gray-400">循序模式：每台獨立處理。批次模式：先發送所有查詢，等2秒後統一讀取。</p>
+                            </div>
                             <button id="poll-all-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition shrink-0 w-full sm:w-auto">
                                 📊 立即輪詢所有機台
                             </button>
@@ -3294,6 +3302,237 @@
         // 將測試函數添加到全域範圍
         window.testSmartMachineMapping = testSmartMachineMapping;
         
+        // ✅ 診斷 MAC + DevID 映射關係
+        function diagnoseMacDevidMapping() {
+            console.log('\n' + '='.repeat(80));
+            console.log('🔍 MAC + DevID 映射關係診斷');
+            console.log('='.repeat(80));
+            
+            // 重建映射表
+            buildMachineConfigMap();
+            
+            if (!appData || !appData.machines) {
+                console.error('❌ appData.machines 未初始化');
+                return;
+            }
+            
+            console.log(`\n📊 機台總數: ${appData.machines.length}`);
+            console.log(`📊 映射表記錄數: ${Object.keys(window.machineConfigMap || {}).length}\n`);
+            
+            // 建立分組統計
+            const stats = {
+                withMacAndDevid: [],
+                withMacOnly: [],
+                withDevidOnly: [],
+                noMacNoDevid: [],
+                duplicateMac: {}
+            };
+            
+            // 分析每台機台
+            appData.machines.forEach((machine, index) => {
+                const hasMac = machine.mac && machine.mac.trim();
+                const hasDevid = machine.devid || (machine.devidData && Object.keys(machine.devidData).length > 0);
+                const hasDevidData = machine.devidData && Object.keys(machine.devidData).length > 0;
+                
+                console.log(`\n📱 機台 [${index + 1}/${appData.machines.length}]`);
+                console.log(`   編號: ${machine.id}`);
+                console.log(`   位置: ${machine.location}`);
+                console.log(`   MAC: ${machine.mac || '❌ 未設定'}`);
+                console.log(`   DevID (舊欄位): ${machine.devid || '❌ 未設定'}`);
+                console.log(`   devidData (新結構): ${hasDevidData ? JSON.stringify(machine.devidData) : '❌ 未設定'}`);
+                
+                // 檢查映射表中的記錄
+                if (hasMac) {
+                    // 檢查 DevID 1 和 2
+                    for (let devid = 1; devid <= 2; devid++) {
+                        const mapKey = `${machine.mac}_${devid}`;
+                        const inMap = window.machineConfigMap[mapKey];
+                        
+                        if (inMap) {
+                            console.log(`   ✅ 映射表存在: ${mapKey} -> ${inMap.machineId}/${inMap.location}`);
+                            
+                            // 驗證映射是否正確
+                            if (inMap.machineId !== machine.id || inMap.location !== machine.location) {
+                                console.error(`   ❌❌❌ 映射錯誤！期望 ${machine.id}/${machine.location}，但映射到 ${inMap.machineId}/${inMap.location}`);
+                            }
+                        } else {
+                            console.log(`   ⚠️ 映射表缺失: ${mapKey}`);
+                        }
+                    }
+                    
+                    // 檢查重複 MAC
+                    if (!stats.duplicateMac[machine.mac]) {
+                        stats.duplicateMac[machine.mac] = [];
+                    }
+                    stats.duplicateMac[machine.mac].push({
+                        id: machine.id,
+                        location: machine.location,
+                        devid: machine.devid,
+                        devidData: machine.devidData
+                    });
+                }
+                
+                // 分類統計
+                if (hasMac && hasDevid) {
+                    stats.withMacAndDevid.push(machine);
+                } else if (hasMac && !hasDevid) {
+                    stats.withMacOnly.push(machine);
+                } else if (!hasMac && hasDevid) {
+                    stats.withDevidOnly.push(machine);
+                } else {
+                    stats.noMacNoDevid.push(machine);
+                }
+            });
+            
+            // 顯示統計摘要
+            console.log('\n' + '='.repeat(80));
+            console.log('📊 統計摘要');
+            console.log('='.repeat(80));
+            console.log(`✅ MAC + DevID 完整: ${stats.withMacAndDevid.length} 台`);
+            stats.withMacAndDevid.forEach(m => {
+                console.log(`   - ${m.id}/${m.location} (MAC: ${m.mac}, DevID: ${m.devid || 'devidData:' + Object.keys(m.devidData || {}).join(',')})`);
+            });
+            
+            if (stats.withMacOnly.length > 0) {
+                console.log(`\n⚠️ 只有 MAC，缺少 DevID: ${stats.withMacOnly.length} 台`);
+                stats.withMacOnly.forEach(m => {
+                    console.log(`   - ${m.id}/${m.location} (MAC: ${m.mac})`);
+                });
+            }
+            
+            if (stats.withDevidOnly.length > 0) {
+                console.log(`\n⚠️ 只有 DevID，缺少 MAC: ${stats.withDevidOnly.length} 台`);
+                stats.withDevidOnly.forEach(m => {
+                    console.log(`   - ${m.id}/${m.location} (DevID: ${m.devid})`);
+                });
+            }
+            
+            if (stats.noMacNoDevid.length > 0) {
+                console.log(`\n❌ 缺少 MAC 和 DevID: ${stats.noMacNoDevid.length} 台`);
+                stats.noMacNoDevid.forEach(m => {
+                    console.log(`   - ${m.id}/${m.location}`);
+                });
+            }
+            
+            // 檢查重複 MAC
+            console.log('\n' + '='.repeat(80));
+            console.log('🔍 重複 MAC 檢查');
+            console.log('='.repeat(80));
+            Object.entries(stats.duplicateMac).forEach(([mac, machines]) => {
+                if (machines.length > 1) {
+                    console.log(`\n⚠️ MAC ${mac} 被 ${machines.length} 台機台使用:`);
+                    machines.forEach(m => {
+                        console.log(`   - ${m.id}/${m.location} (DevID: ${m.devid || 'devidData:' + Object.keys(m.devidData || {}).join(',')})`);
+                    });
+                    console.log(`   💡 這是正常的！一個 MAC 可以有多個 DevID (左右天車)`);
+                }
+            });
+            
+            // 驗證映射表完整性
+            console.log('\n' + '='.repeat(80));
+            console.log('🔍 映射表完整性驗證');
+            console.log('='.repeat(80));
+            console.log(`📊 映射表總記錄: ${Object.keys(window.machineConfigMap || {}).length}`);
+            console.log(`📊 期望記錄數: ${stats.withMacAndDevid.length} (有 MAC + DevID 的機台)`);
+            
+            // 列出所有映射
+            console.log('\n🗺️ 完整映射表:');
+            Object.entries(window.machineConfigMap || {}).forEach(([key, config]) => {
+                console.log(`   ${key} -> ${config.machineId}/${config.location}`);
+            });
+            
+            console.log('\n' + '='.repeat(80));
+            console.log('✅ 診斷完成！');
+            console.log('='.repeat(80));
+            
+            return stats;
+        }
+        
+        // 將診斷函數添加到全域範圍
+        window.diagnoseMacDevidMapping = diagnoseMacDevidMapping;
+        
+        // ✅ 診斷校正值計算問題
+        function diagnoseCalibrationIssue(machineId, location) {
+            console.log('\n' + '='.repeat(80));
+            console.log('🔧 診斷校正值計算問題');
+            console.log('='.repeat(80));
+            
+            if (!appData || !appData.machines) {
+                console.error('❌ appData.machines 未初始化');
+                return;
+            }
+            
+            // 查找機台配置
+            const machine = appData.machines.find(m => 
+                m.id === machineId && m.location === location
+            );
+            
+            if (!machine) {
+                console.error(`❌ 找不到機台: ${machineId}/${location}`);
+                console.log('📋 可用機台:');
+                appData.machines.forEach(m => {
+                    console.log(`   - ${m.id}/${m.location}`);
+                });
+                return;
+            }
+            
+            console.log(`\n📱 機台資訊: ${machine.id}/${machine.location}`);
+            console.log(`   MAC: ${machine.mac || '❌ 未設定'}`);
+            console.log(`   DevID: ${machine.devid || '❌ 未設定'}`);
+            console.log(`   devidData: ${JSON.stringify(machine.devidData || {})}`);
+            
+            console.log(`\n🔧 校正值設定:`);
+            console.log(`   投幣校正值: ${machine.playsCalibration || 0}`);
+            console.log(`   出貨校正值: ${machine.payoutsCalibration || 0}`);
+            
+            // 檢查輪詢臨時記錄
+            console.log(`\n📊 輪詢臨時記錄:`);
+            if (window.dailyRecords) {
+                const recordKey = `${machineId}_${location}_${new Date().toISOString().split('T')[0]}`;
+                const record = window.dailyRecords[recordKey];
+                
+                if (record) {
+                    console.log(`   ✅ 找到記錄: ${recordKey}`);
+                    console.log(`   原始值: plays=${record.rawPlays}, payouts=${record.rawPayouts}`);
+                    console.log(`   校正後: plays=${record.plays}, payouts=${record.payouts}`);
+                    console.log(`   校正值: playsCalibration=${record.playsCalibration}, payoutsCalibration=${record.payoutsCalibration}`);
+                } else {
+                    console.log(`   ⚠️ 沒有找到記錄: ${recordKey}`);
+                    console.log(`   📋 可用記錄:`, Object.keys(window.dailyRecords));
+                }
+            } else {
+                console.log(`   ❌ window.dailyRecords 未初始化`);
+            }
+            
+            // 檢查 DevID 數據
+            console.log(`\n🔍 DevID 數據檢查:`);
+            if (window.machineDataByDevid) {
+                Object.keys(window.machineDataByDevid).forEach(devid => {
+                    const data = window.machineDataByDevid[devid];
+                    console.log(`   DevID ${devid}: plays=${data.plays}, payouts=${data.payouts}`);
+                });
+            } else {
+                console.log(`   ❌ window.machineDataByDevid 未初始化`);
+            }
+            
+            // 測試校正值計算
+            console.log(`\n🧪 測試校正值計算:`);
+            const testRawPlays = 118;
+            const testRawPayouts = 4;
+            const testResult = applyMachineCalibration(machineId, location, testRawPlays, testRawPayouts);
+            
+            console.log(`   輸入: plays=${testRawPlays}, payouts=${testRawPayouts}`);
+            console.log(`   結果: plays=${testResult.plays}, payouts=${testResult.payouts}`);
+            console.log(`   校正值: playsCalibration=${testResult.playsCalibration}, payoutsCalibration=${testResult.payoutsCalibration}`);
+            
+            console.log('\n' + '='.repeat(80));
+            console.log('✅ 診斷完成！');
+            console.log('='.repeat(80));
+        }
+        
+        // 將診斷函數添加到全域範圍
+        window.diagnoseCalibrationIssue = diagnoseCalibrationIssue;
+        
         // 新增：調試機台輪詢狀態函數
         // 機台連線診斷函數
         function debugMachineConnectivity() {
@@ -3884,20 +4123,21 @@
                         
                         // 🔧 重新從最新的輪詢記錄中獲取數值
                         const latestRecord = window.dailyRecords[recordKey];
-                        const polledRawPlays = parseInt(latestRecord?.plays || record.plays);      // 輪詢得到的累積值
-                        const polledRawPayouts = parseInt(latestRecord?.payouts || record.payouts); // 輪詢得到的累積值
                         
-                        // 🔧 重要：應用機台校正值，確保比較基準一致
-                        const machineCalibration = applyMachineCalibration(machine.id, machine.location, polledRawPlays, polledRawPayouts);
-                        const polledPlays = machineCalibration.plays;
-                        const polledPayouts = machineCalibration.payouts;
+                        // ✅ 關鍵修復：record.plays 和 record.payouts 已經是校正後的值
+                        // 不需要再次應用校正，避免雙重校正問題
+                        const polledPlays = parseInt(latestRecord?.plays || record.plays);      // 已校正的累積值
+                        const polledPayouts = parseInt(latestRecord?.payouts || record.payouts); // 已校正的累積值
                         
-                        console.log(`🔧 校正值應用:`, {
+                        console.log(`✅ 使用已校正的輪詢值 (避免雙重校正):`, {
                             machineId: `${machine.id}/${machine.location}`,
-                            原始輪詢值: { plays: polledRawPlays, payouts: polledRawPayouts },
-                            校正後輪詢值: { plays: polledPlays, payouts: polledPayouts },
-                            校正量: { plays: machineCalibration.playsCalibration, payouts: machineCalibration.payoutsCalibration }
+                            已校正投幣: polledPlays,
+                            已校正出貨: polledPayouts,
+                            原始值: { rawPlays: record.rawPlays, rawPayouts: record.rawPayouts },
+                            校正量: { playsCalibration: record.playsCalibration, payoutsCalibration: record.payoutsCalibration }
                         });
+                        
+
                         
                         console.log(`🔄 數值確認:`, {
                             machineId: `${machine.id}/${machine.location}`,
@@ -4327,15 +4567,28 @@
                         console.log('   💡 請檢查: window.parmByDevid 中的 parm 十六進位數據');
                     }
                 } else {
-                    // 如果沒指定 devid，則提取所有唯一的 devid
-                    const devidSet = new Set();
+                    // ✅ 如果沒指定 devid，則找出每個 devid 的最新記錄
+                    console.log('📊 未指定 DevID，自動解析所有 DevID 的最新記錄');
+                    
+                    // 建立 DevID 到最新記錄的映射
+                    const latestByDevid = {};
+                    
                     data.forEach((record, index) => {
                         if (record.data && typeof record.data === 'string') {
                             try {
                                 const parsed = JSON.parse(record.data);
-                                if (parsed.devid) {
-                                    devidSet.add(parseInt(parsed.devid));
-                                    console.log(`📋 [${index}] 找到 devid=${parsed.devid}, cmd=${parsed.cmd}, 時間=${record.date}`);
+                                if (parsed.devid && parsed.cmd === 're_readdata') {
+                                    const devid = parseInt(parsed.devid);
+                                    
+                                    // 如果還沒有這個 devid 的記錄，或者當前記錄更新，則更新
+                                    if (!latestByDevid[devid] || record.date > latestByDevid[devid].date) {
+                                        latestByDevid[devid] = {
+                                            record: record,
+                                            parsed: parsed,
+                                            date: record.date
+                                        };
+                                        console.log(`   🔄 更新 DevID=${devid} 最新記錄: ${record.date}`);
+                                    }
                                 }
                             } catch (e) {
                                 console.warn(`⚠️ [${index}] 無法解析記錄:`, record);
@@ -4343,42 +4596,49 @@
                         }
                     });
                     
-                    console.log(`🔍 共找到 ${devidSet.size} 個唯一的 devid:`, Array.from(devidSet));
+                    const devidCount = Object.keys(latestByDevid).length;
+                    console.log(`✅ 找到 ${devidCount} 個 DevID 的最新記錄:`, Object.keys(latestByDevid).map(d => `DevID=${d} (${latestByDevid[d].date})`));
                     
                     // 為每個 devid 解析最新數據
                     let processedCount = 0;
-                    devidSet.forEach(targetDevid => {
-                        console.log(`📊 [${processedCount + 1}/${devidSet.size}] 開始處理 devid=${targetDevid}`);
-                        const parsedData = parseHttpData(data, targetDevid);
+                    Object.keys(latestByDevid).forEach(targetDevid => {
+                        const devid = parseInt(targetDevid);
+                        const latestRecord = latestByDevid[devid];
+                        
+                        console.log(`\n📊 [${processedCount + 1}/${devidCount}] 處理 DevID=${devid}`);
+                        console.log(`   時間: ${latestRecord.date}`);
+                        console.log(`   parm: ${latestRecord.parsed.parm?.substring(0, 40)}...`);
+                        
+                        const parsedData = parseHttpData(data, devid);
                         
                         if (parsedData && parsedData.plays !== null) {
-                            window.machineDataByDevid[targetDevid] = parsedData;
-                            console.log(`✅ devid ${targetDevid} 數據已儲存:`, parsedData);
+                            window.machineDataByDevid[devid] = parsedData;
+                            console.log(`   ✅ DevID ${devid} 數據已儲存: plays=${parsedData.plays}, payouts=${parsedData.payouts}`);
                             
                             // 📝 使用智能查找函數獲取機台配置
-                            const machineConfig = findMachineConfig(mac, targetDevid);
+                            const machineConfig = findMachineConfig(mac, devid);
                             
-                            console.log(`🔑 智能查找映射 MAC=${mac}, DevID=${targetDevid}:`, machineConfig ? `找到 ${machineConfig.machineId}/${machineConfig.location}` : '未找到');
+                            console.log(`   🔑 智能查找映射 MAC=${mac}, DevID=${devid}:`, machineConfig ? `找到 ${machineConfig.machineId}/${machineConfig.location}` : '❌ 未找到');
                             
                             if (machineConfig) {
                                 // ✅ 直接使用原始數值，讓 updateDailyRecord 處理校正值計算
                                 const recordResult = updateDailyRecord(machineConfig.machineId, machineConfig.location, parsedData.plays, parsedData.payouts);
-                                console.log(`📋 每日記錄更新結果 (${recordResult.status}):`, recordResult.record);
+                                console.log(`   📋 每日記錄更新結果 (${recordResult.status}):`, recordResult.record);
                                 console.log(`   🔧 [校正] 原始: ${parsedData.plays}/${parsedData.payouts} → 顯示: ${recordResult.record.plays}/${recordResult.record.payouts}`);
                                 processedCount++;
                             } else {
-                                console.warn(`⚠️ 找不到機台配置: MAC=${mac}, DevID=${targetDevid}，跳過記錄更新`);
-                                console.log(`💡 可用的映射表:`, Object.keys(window.machineConfigMap));
+                                console.warn(`   ⚠️ 找不到機台配置: MAC=${mac}, DevID=${devid}，跳過記錄更新`);
+                                console.log(`   💡 可用的映射鍵:`, Object.keys(window.machineConfigMap || {}).slice(0, 10));
                             }
                             
                             // 顯示該 devid 的數據
-                            updateMachineDataDisplay(parsedData, targetDevid);
+                            updateMachineDataDisplay(parsedData, devid);
                         } else {
-                            console.warn(`❌ devid ${targetDevid} 解析失敗:`, parsedData);
+                            console.warn(`   ❌ DevID ${devid} 解析失敗:`, parsedData);
                         }
                     });
                     
-                    console.log(`🎯 處理完成：共處理 ${processedCount}/${devidSet.size} 個 devid`);
+                    console.log(`\n🎯 處理完成：共處理 ${processedCount}/${devidCount} 個 DevID`);
                     
                     // 🔄 刷新自動記帳表格
                     refreshAutoRecordTable();
@@ -6173,7 +6433,7 @@
                     }
                     
                     // 執行輪詢
-                    await pollAllMachines();
+                    await executePollAllMachines();
                     console.log('✅ 自動輪詢執行完成');
                     
                     // 顯示通知
@@ -7573,6 +7833,10 @@
                     return {
                         ...data,
                         docId: doc.id,
+                        // ✅ 確保 devid 和 devidData 正確讀取
+                        devid: data.devid || 1,
+                        devidData: data.devidData || {},
+                        mac: data.mac || '',
                         // 🔧 強制所有投幣/出貨數值為整數（四捨五入）
                         plays: Math.round(Number(data.plays) || 0),
                         payouts: Math.round(Number(data.payouts) || 0),
@@ -7815,7 +8079,8 @@
             if (!machineId || !machineLocation) return alert('機台編號和位置不能為空！');
             
             try {
-                await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('machines').add({
+                // ✅ 構建機台資料，包含 devidData 結構
+                const machineData = {
                     id: machineId,
                     location: machineLocation,
                     plays: initialPlays, // 總表數從起始值開始
@@ -7824,10 +8089,21 @@
                     initialPayouts: initialPayouts,
                     // MQTT 相關欄位
                     mac: macAddress,
-                    devid: deviceId,
+                    devid: deviceId || 1,
                     mqttLastCoinCount: 0,
                     mqttLastPayoutCount: 0,
-                });
+                };
+                
+                // ✅ 如果有 MAC 和設備ID，建立 devidData 結構
+                if (macAddress && deviceId) {
+                    machineData.devidData = {
+                        [deviceId.toString()]: macAddress
+                    };
+                }
+                
+                await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('machines').add(machineData);
+                
+                console.log('✅ 新增機台:', machineData);
                 addMachineForm.reset();
                 
                 // 📊 重新載入資料並強制重建映射表
@@ -7897,25 +8173,50 @@
                 submitBtn.textContent = '更新中...';
                 submitBtn.disabled = true;
 
-                // 更新機台資料 - 包含校正值和輪詢設定
-                await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('machines').doc(docId).update({
+                // ✅ 構建 devidData 結構，支援多設備ID
+                const devidData = {};
+                if (newMac) {
+                    devidData[newDevid.toString()] = newMac;
+                    // 保留舊的 devidData，只更新當前 devid
+                    if (originalMachine.devidData) {
+                        Object.keys(originalMachine.devidData).forEach(key => {
+                            if (key !== newDevid.toString()) {
+                                devidData[key] = originalMachine.devidData[key];
+                            }
+                        });
+                    }
+                }
+
+                // 更新機台資料 - 包含校正值、輪詢設定和 devidData
+                const updateData = {
                     id: newId,
                     location: newLocation,
                     mac: newMac,
-                    devid: newDevid,
+                    devid: newDevid,  // 保留舊欄位向下相容
                     initialPlays: newInitialPlays,
                     initialPayouts: newInitialPayouts,
                     playsCalibration: newPlaysCalibration,
                     payoutsCalibration: newPayoutsCalibration
                     // plays 和 payouts 保持原值，不更新
-                });
+                };
+                
+                // ✅ 只在有 MAC 時才加入 devidData
+                if (newMac && Object.keys(devidData).length > 0) {
+                    updateData.devidData = devidData;
+                }
+
+                await db.collection('groups').doc(selectedGroupId).collection('stores').doc(selectedStoreId).collection('machines').doc(docId).update(updateData);
                 
                 console.log(`🔧 機台 ${newId}/${newLocation} 更新完成:`);
-                console.log(`   MAC: ${newMac}, 設備ID: ${newDevid}`);
+                console.log(`   MAC: ${newMac}, 設備ID: ${newDevid}`, updateData.devidData ? ', devidData: ' + JSON.stringify(updateData.devidData) : '');
                 console.log(`   校正值 - 投幣: ${newPlaysCalibration}, 出貨: ${newPayoutsCalibration}`);
 
                 // 關閉編輯視窗
                 editMachineModal.classList.add('hidden');
+                
+                // ✅ 重建機台配置映射
+                window.machineConfigMap = null;
+                window.machineConfigMapByDevid = null;
                 
                 // 重新載入並重新計算所有資料
                 await loadStoreData();
@@ -8413,6 +8714,21 @@
             }
 
             try {
+                // ✅ 檢查是否還有歷史記錄
+                const historyCollection = db.collection('groups')
+                    .doc(selectedGroupId)
+                    .collection('stores')
+                    .doc(selectedStoreId)
+                    .collection('history');
+
+                const historySnapshot = await historyCollection.limit(1).get();
+
+                // ✅ 如果沒有歷史記錄，直接返回 0（忽略結帳記錄）
+                if (historySnapshot.empty) {
+                    console.log('📊 沒有歷史記錄，返回 0 值（忽略結帳記錄）');
+                    return { revenue: 0, payouts: 0, plays: 0 };
+                }
+
                 const checkoutCollection = db.collection('groups')
                     .doc(selectedGroupId)
                     .collection('stores')
@@ -8424,6 +8740,7 @@
 
                 if (checkoutSnapshot.empty) {
                     // 沒有結帳記錄，返回 0
+                    console.log('📊 沒有結帳記錄，返回 0 值');
                     return { revenue: 0, payouts: 0, plays: 0 };
                 }
 
@@ -10447,7 +10764,7 @@
         if (pollAllBtn) {
             pollAllBtn.addEventListener('click', async function() {
                 console.log('立即輪詢按鈕被點擊');
-                await pollAllMachines();
+                await executePollAllMachines();
             });
         }
 
@@ -11375,16 +11692,31 @@
                             } else if (e.target.classList.contains('device-id-input')) {
                                 const newDevid = parseInt(e.target.value, 10) || 1;
                                 updateData.devid = newDevid;
-                                console.log(`🔧 機台 ${docId} 設備ID更新為: ${newDevid}`);
                                 
-                                // 同步更新同行的輪詢按鈕 data-devid 屬性
+                                // ✅ 同時更新 devidData 結構
                                 const row = e.target.closest('tr');
                                 if (row) {
+                                    const macInput = row.querySelector('.mac-address-input');
+                                    const currentMac = macInput ? macInput.value.trim() : '';
+                                    
+                                    if (currentMac) {
+                                        // 獲取當前機台的 devidData
+                                        const machine = appData.machines.find(m => m.docId === docId);
+                                        const devidData = machine && machine.devidData ? { ...machine.devidData } : {};
+                                        
+                                        // 更新當前 devid 的 MAC
+                                        devidData[newDevid.toString()] = currentMac;
+                                        updateData.devidData = devidData;
+                                    }
+                                    
+                                    // 同步更新同行的輪詢按鈕 data-devid 屬性
                                     const pollBtn = row.querySelector('.poll-machine-btn');
                                     const editBtn = row.querySelector('.edit-machine-btn');
                                     if (pollBtn) pollBtn.setAttribute('data-devid', newDevid);
                                     if (editBtn) editBtn.setAttribute('data-devid', newDevid);
                                 }
+                                
+                                console.log(`🔧 機台 ${docId} 設備ID更新為: ${newDevid}`, updateData.devidData ? ', devidData: ' + JSON.stringify(updateData.devidData) : '');
                             } else if (e.target.classList.contains('initial-plays-input')) {
                                 updateData.initialPlays = parseInt(e.target.value, 10) || 0;
                                 console.log(`🎮 機台 ${docId} 起始投幣更新為: ${updateData.initialPlays}`);
@@ -11411,6 +11743,14 @@
                                         Object.assign(machine, updateData);
                                         console.log('本地機台資料已更新:', machine);
                                     }
+                                }
+                                
+                                // ✅ 如果更新了設備ID或MAC，重建機台配置映射
+                                if (e.target.classList.contains('device-id-input') || 
+                                    e.target.classList.contains('mac-address-input')) {
+                                    window.machineConfigMap = null;
+                                    window.machineConfigMapByDevid = null;
+                                    buildMachineConfigMap();
                                 }
                                 
                                 // 顯示成功提示
@@ -11618,48 +11958,50 @@
             waitBeforeRead: 3000               // ✅ 發送讀取指令後等待時間（毫秒）0.5s~5s
         };
 
-        // 🔍 診斷校正值計算問題
-        window.diagnoseCalibrationIssue = function(machineId = 'A-112', location = '3') {
-            console.log(`\n🔍 診斷校正值計算 - 機台: ${machineId}/${location}`);
-            console.log('='.repeat(60));
+        // 🔍 診斷輪巡數據顯示問題
+        window.diagnosePollingDisplay = function() {
+            console.log('\n🔍 診斷輪巡數據顯示問題');
+            console.log('='.repeat(80));
             
-            // 查找機台配置
-            const machine = appData?.machines?.find(m => 
-                m.id === machineId && m.location === location
-            );
-            
-            if (!machine) {
-                console.error(`❌ 找不到機台 ${machineId}/${location}`);
+            // 檢查輪巡數據
+            if (!window.dailyRecords) {
+                console.error('❌ 沒有輪巡數據');
                 return;
             }
             
-            console.log('📋 機台配置:');
-            console.log(`   ID: ${machine.id}`);
-            console.log(`   位置: ${machine.location}`);
-            console.log(`   投幣校正: ${machine.playsCalibration || 0}`);
-            console.log(`   出貨校正: ${machine.payoutsCalibration || 0}`);
-            console.log(`   MAC: ${machine.mac}`);
-            console.log(`   DevID: ${machine.devid}`);
+            const records = Object.entries(window.dailyRecords);
+            console.log(`📊 輪巡記錄總數: ${records.length}`);
             
-            // 檢查輪詢記錄
-            const today = new Date().toISOString().split('T')[0];
-            const recordKey = `${machineId}_${location}_${today}`;
-            const record = window.dailyRecords?.[recordKey];
+            records.forEach(([key, record]) => {
+                console.log(`\n📋 記錄: ${key}`);
+                console.log(`   機台: ${record.machineId}/${record.location}`);
+                console.log(`   投幣: ${record.plays} (原始: ${record.rawPlays}, 校正: +${record.playsCalibration})`);
+                console.log(`   出貨: ${record.payouts} (原始: ${record.rawPayouts}, 校正: +${record.payoutsCalibration})`);
+                console.log(`   更新次數: ${record.updateCount}`);
+                console.log(`   是否輪巡記錄: ${record.isPollingRecord}`);
+            });
             
-            if (record) {
-                console.log('\n📊 輪詢記錄:');
-                console.log(`   原始投幣: ${record.rawPlays}`);
-                console.log(`   原始出貨: ${record.rawPayouts}`);
-                console.log(`   校正值: 投幣+${record.playsCalibration}, 出貨+${record.payoutsCalibration}`);
-                console.log(`   顯示投幣: ${record.plays}`);
-                console.log(`   顯示出貨: ${record.payouts}`);
-                console.log(`   計算驗證: ${record.rawPlays} + ${record.playsCalibration} = ${record.rawPlays + record.playsCalibration} ${record.plays === (record.rawPlays + record.playsCalibration) ? '✅' : '❌'}`);
-                console.log(`   計算驗證: ${record.rawPayouts} + ${record.payoutsCalibration} = ${record.rawPayouts + record.payoutsCalibration} ${record.payouts === (record.rawPayouts + record.payoutsCalibration) ? '✅' : '❌'}`);
+            // 檢查機台配置映射
+            console.log('\n🔍 檢查機台配置映射:');
+            buildMachineConfigMap();
+            console.log(`📊 映射表總數: ${Object.keys(window.machineConfigMap || {}).length}`);
+            
+            // 列出所有映射
+            Object.entries(window.machineConfigMap || {}).forEach(([key, config]) => {
+                console.log(`   ${key} → ${config.machineId}/${config.location}`);
+            });
+            
+            // 檢查最新的機台數據
+            console.log('\n🔍 檢查按DevID儲存的數據:');
+            if (window.machineDataByDevid) {
+                Object.entries(window.machineDataByDevid).forEach(([devid, data]) => {
+                    console.log(`   DevID ${devid}: 投幣=${data.plays}, 出貨=${data.payouts}, 格式=${data.format}`);
+                });
             } else {
-                console.log(`\n⚠️ 找不到今天的輪詢記錄: ${recordKey}`);
+                console.log('   ❌ 沒有按DevID儲存的數據');
             }
             
-            console.log('='.repeat(60));
+            console.log('='.repeat(80));
         };
         
         // 🧪 測試修復後的校正計算
@@ -11941,6 +12283,249 @@
             }, 1000);
         }
 
+        // ============================================
+        // 🚀 批次輪詢模式：先發送所有查詢，等2秒後統一讀取
+        // ============================================
+        async function pollAllMachinesBatch() {
+            console.log('\n' + '='.repeat(70));
+            console.log('🚀 開始 HTTP 批次輪詢 - 先發送所有查詢，等待2秒後統一讀取');
+            console.log('='.repeat(70));
+            
+            // 環境偵測
+            const currentProtocol = window.location.protocol;
+            const currentHostname = window.location.hostname;
+            const isHttps = currentProtocol === 'https:' || currentProtocol === 'https';
+            const isGitHubPages = currentHostname.includes('github.io');
+            
+            console.log(`\n🔍 環境詳細檢查:`);
+            console.log(`   協議: ${currentProtocol}`);
+            console.log(`   主機: ${currentHostname}`);
+            console.log(`   是否 HTTPS: ${isHttps}`);
+            console.log(`   是否 GitHub Pages: ${isGitHubPages}`);
+            
+            if (isHttps) {
+                console.log(`\n✅ HTTPS 環境確認: 將跳過發送階段，直接讀取`);
+            } else {
+                console.log(`\n✅ HTTP 環境確認: 將發送查詢指令後統一讀取`);
+            }
+
+            if (!appData.machines || appData.machines.length === 0) {
+                alert('沒有機台可以輪詢');
+                return;
+            }
+
+            // 取得唯一的 MAC 位址列表（每個 MAC 只處理一次）
+            const uniqueMacs = [...new Set(appData.machines
+                .filter(m => m.mac && m.mac.trim())
+                .map(m => m.mac.trim()))];
+            
+            if (uniqueMacs.length === 0) {
+                alert('沒有設定 MAC 位址的機台');
+                return;
+            }
+            
+            console.log('\n📋 批次輪詢 MAC 清單（每個 MAC 只讀取一次）:');
+            uniqueMacs.forEach((mac, index) => {
+                const machinesWithThisMac = appData.machines.filter(m => m.mac === mac);
+                console.log(`   ${index + 1}. MAC: ${mac}`);
+                machinesWithThisMac.forEach(m => {
+                    console.log(`      - 機台: ${m.id} / ${m.location}, DevID: ${m.devid || 1}`);
+                });
+            });
+            
+            // 檢查機台配置映射
+            console.log('\n🔍 檢查機台配置映射:');
+            buildMachineConfigMap();
+            console.log('📊 可用的映射鍵:', Object.keys(window.machineConfigMap));
+
+            showStatusMessage(`開始批次輪詢 ${uniqueMacs.length} 個 MAC 位址...`, 'info');
+            
+            const pollStartTime = new Date();
+            let sendSuccessCount = 0;
+            let fetchSuccessCount = 0;
+            let targetDataReceived = 0;
+
+            // ============================================
+            // 階段 1: 發送所有查詢指令（僅 HTTP 環境）
+            // ============================================
+            if (!isHttps) {
+                console.log('\n' + '='.repeat(70));
+                console.log('📤 階段 1: 發送所有查詢指令');
+                console.log('='.repeat(70));
+                
+                for (let i = 0; i < uniqueMacs.length; i++) {
+                    const mac = uniqueMacs[i];
+                    
+                    // 為每個 MAC 發送 devid=1 和 devid=2 的查詢
+                    for (let devid = 1; devid <= 2; devid++) {
+                        const readCmdUrl = `http://update.feiloli.com.tw:5539/webReadCmd/${mac}/${devid}/`;
+                        
+                        try {
+                            console.log(`📤 [${i + 1}/${uniqueMacs.length}] 發送查詢: MAC=${mac}, DevID=${devid}`);
+                            
+                            const readCmdResponse = await fetch(readCmdUrl, {
+                                method: 'GET',
+                                mode: 'cors',
+                                headers: { 'Accept': 'application/json' }
+                            });
+                            
+                            if (readCmdResponse.ok) {
+                                const readCmdData = await readCmdResponse.json();
+                                console.log(`   ✅ 查詢發送成功: ${readCmdData.ResultMessage || 'OK'}`);
+                                sendSuccessCount++;
+                            } else {
+                                console.warn(`   ⚠️ 查詢發送失敗: HTTP ${readCmdResponse.status}`);
+                            }
+                        } catch (readCmdError) {
+                            // CORS 錯誤是預期的
+                            if (readCmdError.message.includes('CORS') || readCmdError.message.includes('Failed to fetch')) {
+                                console.log(`   ⚠️ CORS 限制（預期），查詢可能已發送`);
+                                sendSuccessCount++;
+                            } else {
+                                console.warn(`   ⚠️ 查詢發送異常: ${readCmdError.message}`);
+                            }
+                        }
+                        
+                        // 避免發送過快，每次間隔 50ms
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+                }
+                
+                console.log(`\n✅ 所有查詢指令已發送 (成功: ${sendSuccessCount}/${uniqueMacs.length * 2})`);
+            }
+            
+            // ============================================
+            // 階段 2: 等待 2 秒讓所有機台準備數據
+            // ============================================
+            console.log('\n' + '='.repeat(70));
+            console.log('⏳ 階段 2: 等待 2 秒，讓所有機台準備數據...');
+            console.log('='.repeat(70));
+            
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            console.log('✅ 等待完成，開始讀取數據\n');
+            
+            // ============================================
+            // 階段 3: 統一讀取所有 MAC 的數據
+            // ============================================
+            console.log('='.repeat(70));
+            console.log('📥 階段 3: 統一讀取所有 MAC 的數據');
+            console.log('='.repeat(70));
+            
+            for (let i = 0; i < uniqueMacs.length; i++) {
+                const mac = uniqueMacs[i];
+                
+                console.log(`\n${'─'.repeat(60)}`);
+                console.log(`📥 [${i + 1}/${uniqueMacs.length}] 讀取 MAC: ${mac}`);
+                console.log(`${'─'.repeat(60)}`);
+                
+                try {
+                    // 讀取數據（不指定 devid，讓系統自動解析所有 devid）
+                    console.log(`📥 開始讀取資料...`);
+                    
+                    const result = await fetchWithRetry(mac, fastPollConfig.maxRetries, fastPollConfig.retryDelay, null);
+                    
+                    if (result && validateMachineData(result)) {
+                        console.log(`   ✅ 資料讀取成功 (已驗證)`);
+                        console.log(`   📊 數據類型: ${Array.isArray(result) ? `陣列 (${result.length} 筆)` : typeof result}`);
+                        
+                        // 處理回應數據（內部會自動解析 devid=1 和 devid=2）
+                        handleHttpResponse(result, mac, null);
+                        addCommandLog('receive', `批次讀取成功 - MAC: ${mac}`, result);
+                        fetchSuccessCount++;
+                        targetDataReceived++;
+                        
+                    } else {
+                        console.warn(`   ❌ 資料讀取失敗或無效`);
+                        console.log(`   🔍 result 存在: ${!!result}, 類型: ${typeof result}`);
+                        addCommandLog('error', `批次讀取失敗 - MAC: ${mac}`);
+                    }
+                    
+                } catch (error) {
+                    console.error(`❌ 讀取 MAC ${mac} 時發生異常: ${error.message}`);
+                    addCommandLog('error', `批次讀取異常: ${error.message}`);
+                }
+                
+                // 每個 MAC 間隔 300ms
+                if (i < uniqueMacs.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+            }
+
+            // ============================================
+            // 📊 統計輪詢結果
+            // ============================================
+            console.log('\n' + '='.repeat(70));
+            console.log('📊 批次輪詢統計結果');
+            console.log('='.repeat(70));
+            
+            let updateCount = 0;
+            let unchangedCount = 0;
+            
+            if (window.dailyRecords) {
+                Object.values(window.dailyRecords).forEach(record => {
+                    if (record.updateCount > 1) {
+                        updateCount++;
+                    } else {
+                        unchangedCount++;
+                    }
+                });
+            }
+            
+            const pollEndTime = new Date();
+            const pollDuration = ((pollEndTime - pollStartTime) / 1000).toFixed(1);
+            const avgTimePerMac = (pollDuration / uniqueMacs.length).toFixed(2);
+
+            const summaryMsg = `
+✅ 批次輪詢完成！
+═══════════════════════════════════
+📊 輪詢結果:
+  • MAC 總數: ${uniqueMacs.length} 個
+  • 查詢發送: ${sendSuccessCount}/${uniqueMacs.length * 2} (DevID 1+2)
+  • 數據讀取: ${fetchSuccessCount}/${uniqueMacs.length}
+  • 成功率: ${Math.round(fetchSuccessCount/uniqueMacs.length*100)}%
+  
+📈 資料統計:
+  • 目標資料: ${targetDataReceived} 個 MAC
+  • 新增記錄: ${unchangedCount} 筆
+  • 更新記錄: ${updateCount} 筆
+
+⏱️ 時間統計:
+  • 總耗時: ${pollDuration} 秒
+  • 平均每 MAC: ${avgTimePerMac} 秒
+  • 等待時間: 2 秒
+  
+🔧 處理流程:
+  • 階段1: 發送所有查詢 (${sendSuccessCount} 個)
+  • 階段2: 等待 2 秒
+  • 階段3: 統一讀取 (${fetchSuccessCount} 個)
+            `;
+            
+            console.log(summaryMsg);
+            showStatusMessage(summaryMsg, 'success');
+            console.log('='.repeat(70) + '\n');
+            
+            // 運行輪詢後診斷
+            setTimeout(() => {
+                console.log('\n🔍 執行輪詢後連線診斷...');
+                debugMachineConnectivity();
+            }, 1000);
+        }
+
+        // ============================================
+        // 輪詢模式選擇器
+        // ============================================
+        async function executePollAllMachines() {
+            const pollMode = document.getElementById('http-poll-mode')?.value || 'sequential';
+            
+            console.log(`\n🎯 選擇的輪詢模式: ${pollMode === 'batch' ? '批次模式' : '循序模式'}`);
+            
+            if (pollMode === 'batch') {
+                await pollAllMachinesBatch();
+            } else {
+                await pollAllMachines();
+            }
+        }
+
         // 開始自動輪詢 (HTTP 版本)
         function startAutoPolling() {
             stopAutoPolling(); // 確保沒有重複的輪詢
@@ -11951,7 +12536,7 @@
             
             pollInterval = setInterval(() => {
                 console.log(`執行自動輪詢 (HTTP)`);
-                pollAllMachines();
+                executePollAllMachines();
             }, interval);
             
             showStatusMessage(`已啟動自動輪詢，間隔 ${interval/1000} 秒`, 'success');
