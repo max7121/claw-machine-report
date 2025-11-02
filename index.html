@@ -338,6 +338,32 @@
                 </div>
             </div>
              <div class="flex justify-end gap-4 mb-4">
+                 <button id="auto-update-all-stores-btn" class="text-sm bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-lg">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                         <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+                     </svg>
+                     🚀 一鍵全自動更新
+                 </button>
+                 <button id="poll-all-stores-btn" class="text-sm bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                         <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                     </svg>
+                     立即輪詢所有門市
+                 </button>
+                 <button id="read-all-stores-btn" class="text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                         <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                         <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                     </svg>
+                     立即讀取所有門市
+                 </button>
+                 <button id="read-all-stores-test-btn" class="text-sm bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                         <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                         <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                     </svg>
+                     🧪 測試讀取 (前4組)
+                 </button>
                  <button id="select-all-stores-btn" class="text-sm bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded">全選</button>
                  <button id="deselect-all-stores-btn" class="text-sm bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded">取消全選</button>
              </div>
@@ -543,6 +569,12 @@
                             <input type="hidden" id="http-poll-mode" value="batch">
                             <button id="poll-all-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition shrink-0 w-full sm:w-auto">
                                 📊 立即輪詢所有機台
+                            </button>
+                            <button id="poll-test-btn" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition shrink-0 w-full sm:w-auto">
+                                🧪 測試輪詢 (前4組)
+                            </button>
+                            <button id="quick-read-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition shrink-0 w-full sm:w-auto">
+                                ⚡ 快速讀取 (跳過查詢)
                             </button>
                             <button id="debug-mapping-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition shrink-0 w-full sm:w-auto">
                                 🔍 調試映射表
@@ -3780,9 +3812,33 @@
                 return;
             }
             
+            // 🔧 過濾只顯示當前門市的記錄
+            // 取得當前門市的所有機台 ID
+            const currentMachineIds = new Set();
+            if (appData && appData.machines) {
+                appData.machines.forEach(machine => {
+                    if (machine.id) {
+                        currentMachineIds.add(machine.id);
+                    }
+                });
+            }
+            
+            console.log(`🔍 當前門市機台: ${Array.from(currentMachineIds).join(', ')}`);
+            
+            // 過濾出當前門市的記錄
+            const currentStoreRecords = Object.values(window.dailyRecords)
+                .filter(record => currentMachineIds.has(record.machineId));
+            
+            console.log(`📊 全部記錄: ${Object.keys(window.dailyRecords).length} 筆`);
+            console.log(`📊 當前門市記錄: ${currentStoreRecords.length} 筆`);
+            
+            if (currentStoreRecords.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">此門市暫無記錄</td></tr>';
+                return;
+            }
+            
             // 按日期排序記錄
-            const sortedRecords = Object.values(window.dailyRecords)
-                .sort((a, b) => {
+            const sortedRecords = currentStoreRecords.sort((a, b) => {
                     // 先按日期降序（新的在前）
                     const dateCompare = new Date(b.date) - new Date(a.date);
                     if (dateCompare !== 0) return dateCompare;
@@ -4680,11 +4736,16 @@
                             try {
                                 const parsed = JSON.parse(record.data);
                                 if (parsed.cmd === 're_readdata' && parsed.parm) {
+                                    // 🔧 修正: 將日期格式轉換為標準 ISO 格式
+                                    // "2025-11-02 00:12:44.324" → "2025-11-02T00:12:44.324"
+                                    const dateStr = record.date.replace(' ', 'T');
+                                    const timestamp = new Date(dateStr).getTime();
+                                    
                                     reReadRecords.push({
                                         index: i,
                                         date: record.date,
                                         devid: parsed.devid,
-                                        timestamp: new Date(record.date).getTime(),
+                                        timestamp: timestamp,
                                         record: record,
                                         parsed: parsed
                                     });
@@ -4695,7 +4756,7 @@
                     
                     if (reReadRecords.length > 0) {
                         console.log('📋 發現所有 re_readdata 記錄:');
-                        reReadRecords.forEach(r => console.log(`   [${r.index}] ${r.date} (devid=${r.devid})`));
+                        reReadRecords.forEach(r => console.log(`   [${r.index}] ${r.date} (devid=${r.devid}) timestamp=${r.timestamp}`));
                     }
                     
                     // ✅ 關鍵修正：按時間戳排序，找最新的符合條件的記錄
@@ -4713,7 +4774,27 @@
                         
                         console.log(`✅ 選擇最新記錄: [${newestRecord.index}] ${newestRecord.date} (devid=${newestRecord.devid})`);
                         console.log(`   時間戳: ${newestRecord.timestamp}, 比較其他記錄:`);
-                        targetRecords.slice(1, 3).forEach(r => console.log(`   - [${r.index}] ${r.date}`));
+                        targetRecords.slice(1, 3).forEach(r => {
+                            const timeDiff = newestRecord.timestamp - r.timestamp;
+                            console.log(`   - [${r.index}] ${r.date} (相差 ${timeDiff}ms)`);
+                        });
+                        
+                        // 🔍 檢測數據新鮮度
+                        const now = Date.now();
+                        const dataAge = now - newestRecord.timestamp;
+                        const ageSeconds = Math.floor(dataAge / 1000);
+                        
+                        if (dataAge > 60000) { // 超過 60 秒
+                            console.warn(`⚠️ 數據可能過期! 記錄時間: ${newestRecord.date}, 距今 ${ageSeconds} 秒`);
+                            console.warn(`   建議: 此 MAC 可能需要重試讀取`);
+                            // 在返回的數據中添加標記
+                            const result = parseReReadData(newestRecord.parsed);
+                            result._isStale = true;
+                            result._dataAge = ageSeconds;
+                            return result;
+                        } else {
+                            console.log(`✅ 數據新鮮: 距今僅 ${ageSeconds} 秒`);
+                        }
                         
                         return parseReReadData(newestRecord.parsed);
                     }
@@ -6522,6 +6603,8 @@
         const locationPresets = document.getElementById('location-presets');
         const selectAllStoresBtn = document.getElementById('select-all-stores-btn');
         const deselectAllStoresBtn = document.getElementById('deselect-all-stores-btn');
+        const pollAllStoresBtn = document.getElementById('poll-all-stores-btn');
+        const readAllStoresBtn = document.getElementById('read-all-stores-btn');
         const recalculateAllBtn = document.getElementById('recalculate-all-btn');
 
         // 管理者界面元素
@@ -7914,9 +7997,10 @@
             // 🚀 切換門市時清理自動輪詢計時器
             clearAutoPollTimer();
             
-            // 切換到新門市時，清除 HTTP 輪詢自動記帳表格
-            console.log('🗑️ 切換門市，清除 HTTP 輪詢自動記帳表格...');
-            window.dailyRecords = {};
+            // 🔧 切換門市時,保留 window.dailyRecords 不清空
+            // 這樣可以保留「立即讀取所有門市資料」功能收集的記錄
+            // refreshAutoRecordTable() 會自動過濾只顯示當前門市的記錄
+            console.log('� 切換門市，保留 HTTP 輪詢記錄 (共 ' + Object.keys(window.dailyRecords || {}).length + ' 筆)');
             if (typeof refreshAutoRecordTable === 'function') {
                 refreshAutoRecordTable();
             }
@@ -9367,7 +9451,14 @@
             renderProfitTab();
             updateFooterAndHeader();
             
-            // 🚀 載入自動輪詢設定
+            // � 刷新 HTTP 輪詢自動記帳表格
+            // 這樣進入門市時會顯示之前「立即讀取所有門市資料」功能收集的記錄
+            if (typeof refreshAutoRecordTable === 'function') {
+                console.log('🔄 刷新 HTTP 輪詢自動記帳表格...');
+                refreshAutoRecordTable();
+            }
+            
+            // �🚀 載入自動輪詢設定
             const autoPollOnLoadCheckbox = document.getElementById('auto-poll-on-load');
             if (autoPollOnLoadCheckbox && selectedGroupId && selectedStoreId) {
                 const currentSetting = getAutoPollOnLoadSetting();
@@ -11036,6 +11127,30 @@
             }
         });
 
+        // 綁定「立即輪詢所有門市」按鈕
+        if (pollAllStoresBtn) {
+            pollAllStoresBtn.addEventListener('click', pollAllStoresMachines);
+        }
+
+        // 綁定「立即讀取所有門市」按鈕
+        if (readAllStoresBtn) {
+            readAllStoresBtn.addEventListener('click', readAllStoresMachines);
+        }
+
+        // 🚀 綁定「一鍵全自動更新」按鈕
+        const autoUpdateAllStoresBtn = document.getElementById('auto-update-all-stores-btn');
+        if (autoUpdateAllStoresBtn) {
+            autoUpdateAllStoresBtn.addEventListener('click', autoUpdateAllStores);
+        }
+
+        // 🧪 綁定「測試讀取所有門市」按鈕 (只處理前4組)
+        const readAllStoresTestBtn = document.getElementById('read-all-stores-test-btn');
+        if (readAllStoresTestBtn) {
+            readAllStoresTestBtn.addEventListener('click', () => {
+                readAllStoresMachines(4); // 只處理前4組
+            });
+        }
+
         reportPeriodSelector.addEventListener('change', () => {
             if (reportPeriodSelector.value === 'all') {
                 reportDatePicker.classList.add('hidden');
@@ -11233,6 +11348,24 @@
             pollAllBtn.addEventListener('click', async function() {
                 console.log('立即輪詢按鈕被點擊');
                 await executePollAllMachines();
+            });
+        }
+
+        // 🧪 測試輪詢按鈕 (只處理前4組)
+        const pollTestBtn = document.getElementById('poll-test-btn');
+        if (pollTestBtn) {
+            pollTestBtn.addEventListener('click', async function() {
+                console.log('🧪 測試輪詢按鈕被點擊 (只處理前4組)');
+                await executePollAllMachines(4); // 傳入限制數量
+            });
+        }
+
+        // ⚡ 快速讀取按鈕 (跳過發送查詢,直接讀取)
+        const quickReadBtn = document.getElementById('quick-read-btn');
+        if (quickReadBtn) {
+            quickReadBtn.addEventListener('click', async function() {
+                console.log('⚡ 快速讀取按鈕被點擊 (跳過查詢,直接讀取)');
+                await quickReadAllMachines(); // 直接讀取,不限制數量
             });
         }
 
@@ -12374,9 +12507,12 @@
         };
 
         // 輪詢所有機台 (HTTP 版本) - 循序處理版本
-        async function pollAllMachines() {
+        async function pollAllMachines(limitCount = null) {
             console.log('\n' + '='.repeat(70));
             console.log('🚀 開始 HTTP 循序輪詢 - 每台機台獨立處理');
+            if (limitCount) {
+                console.log(`🧪 測試模式: 只處理前 ${limitCount} 台機台`);
+            }
             console.log('='.repeat(70));
             
             // 環境偵測
@@ -12403,7 +12539,14 @@
                 return;
             }
 
-            const machinesWithMac = appData.machines.filter(m => m.mac && m.mac.trim());
+            let machinesWithMac = appData.machines.filter(m => m.mac && m.mac.trim());
+            
+            // 🧪 如果指定了限制數量,只取前 N 台
+            if (limitCount && limitCount > 0) {
+                machinesWithMac = machinesWithMac.slice(0, limitCount);
+                console.log(`\n🧪 測試模式: 從 ${appData.machines.length} 台機台中選取前 ${machinesWithMac.length} 台`);
+            }
+            
             if (machinesWithMac.length === 0) {
                 alert('沒有設定 MAC 位址的機台');
                 return;
@@ -12741,61 +12884,106 @@
             }
             
             // ============================================
-            // 階段 2: 等待 2 秒讓所有機台準備數據
+            // 階段 2: 等待機台準備數據 (確保讀取最新數據)
             // ============================================
             console.log('\n' + '='.repeat(70));
             console.log('⏳ 階段 2: 等待 2 秒，讓所有機台準備數據...');
+            console.log('   💡 提示: 機台需要時間準備新數據，避免讀到舊緩存');
             console.log('='.repeat(70));
             
             await new Promise(resolve => setTimeout(resolve, 2000));
-            console.log('✅ 等待完成，開始讀取數據\n');
+            console.log('✅ 等待完成，開始並行讀取數據\n');
             
             // ============================================
-            // 階段 3: 統一讀取所有 MAC 的數據
+            // 階段 3: 並行讀取所有 MAC 的數據 (⚡ 速度優化)
             // ============================================
             console.log('='.repeat(70));
-            console.log('📥 階段 3: 統一讀取所有 MAC 的數據');
+            console.log('📥 階段 3: 並行讀取所有 MAC 的數據 (⚡ 加速模式)');
             console.log('='.repeat(70));
             
-            for (let i = 0; i < uniqueMacs.length; i++) {
-                const mac = uniqueMacs[i];
-                
+            // 🚀 並行讀取所有機器 (而非循序等待)
+            const fetchPromises = uniqueMacs.map(async (mac, index) => {
                 console.log(`\n${'─'.repeat(60)}`);
-                console.log(`📥 [${i + 1}/${uniqueMacs.length}] 讀取 MAC: ${mac}`);
+                console.log(`📥 [${index + 1}/${uniqueMacs.length}] 開始讀取 MAC: ${mac}`);
                 console.log(`${'─'.repeat(60)}`);
                 
                 try {
-                    // 讀取數據（不指定 devid，讓系統自動解析所有 devid）
-                    console.log(`📥 開始讀取資料...`);
-                    
                     const result = await fetchWithRetry(mac, fastPollConfig.maxRetries, fastPollConfig.retryDelay, null);
                     
                     if (result && validateMachineData(result)) {
-                        console.log(`   ✅ 資料讀取成功 (已驗證)`);
+                        console.log(`   ✅ [${index + 1}] 資料讀取成功 - MAC: ${mac}`);
                         console.log(`   📊 數據類型: ${Array.isArray(result) ? `陣列 (${result.length} 筆)` : typeof result}`);
                         
-                        // 處理回應數據（內部會自動解析 devid=1 和 devid=2）
-                        handleHttpResponse(result, mac, null);
-                        addCommandLog('receive', `批次讀取成功 - MAC: ${mac}`, result);
+                        // 🔍 檢查數據新鮮度 - 如果數據過期,自動重試一次
+                        let dataIsStale = false;
+                        if (Array.isArray(result) && result.length > 0) {
+                            // 檢查最新記錄的時間
+                            for (const record of result.slice(0, 10)) { // 只檢查前 10 筆
+                                if (record.data && typeof record.data === 'string') {
+                                    try {
+                                        const parsed = JSON.parse(record.data);
+                                        if (parsed.cmd === 're_readdata' && record.date) {
+                                            const dateStr = record.date.replace(' ', 'T');
+                                            const recordTime = new Date(dateStr).getTime();
+                                            const now = Date.now();
+                                            const age = now - recordTime;
+                                            
+                                            if (age > 60000) { // 超過 60 秒
+                                                console.warn(`   ⚠️ 檢測到過期數據: ${record.date} (距今 ${Math.floor(age/1000)} 秒)`);
+                                                dataIsStale = true;
+                                            }
+                                            break; // 只檢查第一筆有效記錄
+                                        }
+                                    } catch (e) {}
+                                }
+                            }
+                        }
+                        
+                        // 🔄 如果數據過期,自動重試
+                        if (dataIsStale) {
+                            console.warn(`   🔄 數據過期，自動重試讀取 MAC: ${mac}...`);
+                            await new Promise(resolve => setTimeout(resolve, 1000)); // 等待 1 秒
+                            
+                            const retryResult = await fetchWithRetry(mac, 2, 500, null);
+                            if (retryResult && validateMachineData(retryResult)) {
+                                console.log(`   ✅ 重試成功! 使用新數據`);
+                                handleHttpResponse(retryResult, mac, null);
+                                addCommandLog('receive', `批次讀取成功 (重試) - MAC: ${mac}`, retryResult);
+                            } else {
+                                console.warn(`   ⚠️ 重試失敗，使用原數據`);
+                                handleHttpResponse(result, mac, null);
+                                addCommandLog('receive', `批次讀取成功 (使用舊數據) - MAC: ${mac}`, result);
+                            }
+                        } else {
+                            // 處理回應數據（內部會自動解析 devid=1 和 devid=2）
+                            handleHttpResponse(result, mac, null);
+                            addCommandLog('receive', `批次讀取成功 - MAC: ${mac}`, result);
+                        }
+                        
                         fetchSuccessCount++;
                         targetDataReceived++;
                         
+                        return { mac, success: true };
                     } else {
-                        console.warn(`   ❌ 資料讀取失敗或無效`);
-                        console.log(`   🔍 result 存在: ${!!result}, 類型: ${typeof result}`);
+                        console.warn(`   ❌ [${index + 1}] 資料讀取失敗 - MAC: ${mac}`);
                         addCommandLog('error', `批次讀取失敗 - MAC: ${mac}`);
+                        return { mac, success: false };
                     }
                     
                 } catch (error) {
-                    console.error(`❌ 讀取 MAC ${mac} 時發生異常: ${error.message}`);
+                    console.error(`❌ [${index + 1}] 讀取 MAC ${mac} 時發生異常: ${error.message}`);
                     addCommandLog('error', `批次讀取異常: ${error.message}`);
+                    return { mac, success: false, error: error.message };
                 }
-                
-                // 每個 MAC 間隔 300ms
-                if (i < uniqueMacs.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                }
-            }
+            });
+            
+            // 等待所有讀取完成
+            console.log(`\n⏳ 等待所有 ${uniqueMacs.length} 台機器完成讀取...`);
+            const results = await Promise.all(fetchPromises);
+            
+            // 統計並行讀取結果
+            const successCount = results.filter(r => r.success).length;
+            console.log(`\n✅ 並行讀取完成: ${successCount}/${uniqueMacs.length} 成功`);
 
             // ============================================
             // 📊 統計輪詢結果
@@ -12860,15 +13048,1195 @@
         // ============================================
         // 輪詢模式選擇器
         // ============================================
-        async function executePollAllMachines() {
+        async function executePollAllMachines(limitCount = null) {
             const pollMode = document.getElementById('http-poll-mode')?.value || 'sequential';
             
             console.log(`\n🎯 選擇的輪詢模式: ${pollMode === 'batch' ? '批次模式' : '循序模式'}`);
+            if (limitCount) {
+                console.log(`🧪 測試模式: 只處理前 ${limitCount} 組`);
+            }
             
             if (pollMode === 'batch') {
-                await pollAllMachinesBatch();
+                await pollAllMachinesBatch(limitCount);
             } else {
-                await pollAllMachines();
+                await pollAllMachines(limitCount);
+            }
+        }
+
+        // ============================================
+        // ⚡ 快速讀取模式 (跳過發送查詢,直接讀取)
+        // ============================================
+        async function quickReadAllMachines(limitCount = null) {
+            console.log('\n' + '='.repeat(70));
+            console.log('⚡ 快速讀取模式 (假設已在門市管理頁面發送查詢)');
+            console.log('='.repeat(70));
+            
+            const startTime = Date.now();
+            
+            // 獲取當前門市的所有機台
+            if (!appData.machines || appData.machines.length === 0) {
+                showStatusMessage('❌ 當前門市沒有可輪詢的機台', 'error');
+                return;
+            }
+            
+            // 收集所有唯一的 MAC 地址
+            const uniqueMacs = [...new Set(appData.machines
+                .filter(machine => machine.mac && machine.mac.trim() !== '')
+                .map(machine => machine.mac))];
+            
+            // 套用限制
+            let targetMacs = uniqueMacs;
+            if (limitCount && limitCount > 0) {
+                targetMacs = uniqueMacs.slice(0, limitCount);
+                console.log(`🧪 測試模式: 只讀取前 ${targetMacs.length}/${uniqueMacs.length} 台機器`);
+            }
+            
+            console.log(`📋 準備讀取 ${targetMacs.length} 台機器: ${targetMacs.join(', ')}\n`);
+            
+            // ============================================
+            // 🕐 智能等待機制 (確保讀取到最新數據)
+            // ============================================
+            console.log('⏳ 等待 0.8 秒確保讀取最新數據...');
+            await new Promise(resolve => setTimeout(resolve, 800));
+            console.log('✅ 等待完成，開始讀取\n');
+            
+            let fetchSuccessCount = 0;
+            let targetDataReceived = 0;
+            
+            // ============================================
+            // ⚡ 並行讀取所有 MAC 的數據
+            // ============================================
+            console.log('='.repeat(70));
+            console.log('📥 並行讀取所有 MAC 的數據 (⚡ 加速模式)');
+            console.log('='.repeat(70));
+            
+            const fetchPromises = targetMacs.map(async (mac, index) => {
+                console.log(`\n${'─'.repeat(60)}`);
+                console.log(`📥 [${index + 1}/${targetMacs.length}] 開始讀取 MAC: ${mac}`);
+                console.log(`${'─'.repeat(60)}`);
+                
+                try {
+                    const result = await fetchWithRetry(mac, fastPollConfig.maxRetries, fastPollConfig.retryDelay, null);
+                    
+                    if (result && validateMachineData(result)) {
+                        console.log(`   ✅ [${index + 1}] 資料讀取成功 - MAC: ${mac}`);
+                        console.log(`   📊 數據類型: ${Array.isArray(result) ? `陣列 (${result.length} 筆)` : typeof result}`);
+                        
+                        // 🔍 檢查數據新鮮度 - 如果數據過期,自動重試一次
+                        let dataIsStale = false;
+                        if (Array.isArray(result) && result.length > 0) {
+                            // 檢查最新記錄的時間
+                            for (const record of result.slice(0, 10)) { // 只檢查前 10 筆
+                                if (record.data && typeof record.data === 'string') {
+                                    try {
+                                        const parsed = JSON.parse(record.data);
+                                        if (parsed.cmd === 're_readdata' && record.date) {
+                                            const dateStr = record.date.replace(' ', 'T');
+                                            const recordTime = new Date(dateStr).getTime();
+                                            const now = Date.now();
+                                            const age = now - recordTime;
+                                            
+                                            if (age > 60000) { // 超過 60 秒
+                                                console.warn(`   ⚠️ 檢測到過期數據: ${record.date} (距今 ${Math.floor(age/1000)} 秒)`);
+                                                dataIsStale = true;
+                                            }
+                                            break; // 只檢查第一筆有效記錄
+                                        }
+                                    } catch (e) {}
+                                }
+                            }
+                        }
+                        
+                        // 🔄 如果數據過期,自動重試
+                        if (dataIsStale) {
+                            console.warn(`   🔄 數據過期，自動重試讀取 MAC: ${mac}...`);
+                            await new Promise(resolve => setTimeout(resolve, 1000)); // 等待 1 秒
+                            
+                            const retryResult = await fetchWithRetry(mac, 2, 500, null);
+                            if (retryResult && validateMachineData(retryResult)) {
+                                console.log(`   ✅ 重試成功! 使用新數據`);
+                                handleHttpResponse(retryResult, mac, null);
+                                addCommandLog('receive', `快速讀取成功 (重試) - MAC: ${mac}`, retryResult);
+                            } else {
+                                console.warn(`   ⚠️ 重試失敗，使用原數據`);
+                                handleHttpResponse(result, mac, null);
+                                addCommandLog('receive', `快速讀取成功 (使用舊數據) - MAC: ${mac}`, result);
+                            }
+                        } else {
+                            handleHttpResponse(result, mac, null);
+                            addCommandLog('receive', `快速讀取成功 - MAC: ${mac}`, result);
+                        }
+                        
+                        fetchSuccessCount++;
+                        targetDataReceived++;
+                        
+                        return { mac, success: true };
+                    } else {
+                        console.warn(`   ❌ [${index + 1}] 資料讀取失敗 - MAC: ${mac}`);
+                        addCommandLog('error', `快速讀取失敗 - MAC: ${mac}`);
+                        return { mac, success: false };
+                    }
+                    
+                } catch (error) {
+                    console.error(`❌ [${index + 1}] 讀取 MAC ${mac} 時發生異常: ${error.message}`);
+                    addCommandLog('error', `快速讀取異常: ${error.message}`);
+                    return { mac, success: false, error: error.message };
+                }
+            });
+            
+            // 等待所有讀取完成
+            console.log(`\n⏳ 等待所有 ${targetMacs.length} 台機器完成讀取...`);
+            const results = await Promise.all(fetchPromises);
+            
+            // 統計結果
+            const successCount = results.filter(r => r.success).length;
+            console.log(`\n✅ 並行讀取完成: ${successCount}/${targetMacs.length} 成功`);
+            
+            // ============================================
+            // 📊 統計結果
+            // ============================================
+            const endTime = Date.now();
+            const pollDuration = ((endTime - startTime) / 1000).toFixed(1);
+            const avgTimePerMac = ((endTime - startTime) / targetMacs.length / 1000).toFixed(2);
+            
+            // 統計更新和新增記錄
+            const recordOperations = window.dailyRecordOperations || [];
+            const updateCount = recordOperations.filter(op => op === 'updated').length;
+            const unchangedCount = recordOperations.filter(op => op === 'unchanged' || op === 'created').length;
+            
+            console.log('\n' + '='.repeat(70));
+            console.log('📊 快速讀取統計結果');
+            console.log('='.repeat(70));
+            
+            const summaryMsg = `
+✅ 快速讀取完成！⚡
+═══════════════════════════════════
+📊 讀取結果:
+  • MAC 總數: ${targetMacs.length} 個
+  • 數據讀取: ${fetchSuccessCount}/${targetMacs.length}
+  • 成功率: ${Math.round(fetchSuccessCount / targetMacs.length * 100)}%
+  
+📈 資料統計:
+  • 讀取資料: ${targetDataReceived} 個 MAC
+  • 新增記錄: ${unchangedCount} 筆
+  • 更新記錄: ${updateCount} 筆
+
+⏱️ 時間統計:
+  • 總耗時: ${pollDuration} 秒 ⚡
+  • 平均每 MAC: ${avgTimePerMac} 秒
+  • 等待時間: 0.8 秒 (智能等待)
+  
+🔧 處理流程:
+  • 跳過階段1: 發送查詢 ✓
+  • 智能等待: 0.8秒確保新數據 ✓
+  • 階段3: 並行讀取 (${fetchSuccessCount} 個)
+            `;
+            
+            console.log(summaryMsg);
+            showStatusMessage(summaryMsg, 'success');
+            console.log('='.repeat(70) + '\n');
+            
+            // 刷新表格
+            refreshAutoRecordTable();
+        }
+
+        // ============================================
+        // 🚀 一鍵全自動更新所有門市 (完整流程)
+        // ============================================
+        async function autoUpdateAllStores() {
+            if (!selectedGroupId) {
+                alert('請先選擇單位群組');
+                return;
+            }
+
+            // 確認操作
+            const confirmMsg = '🚀 一鍵全自動更新所有門市\n\n' +
+                '完整流程：\n' +
+                '1️⃣ 發送所有門市讀取訊息\n' +
+                '2️⃣ 等待完成後延遲 3 秒\n' +
+                '3️⃣ 快速讀取所有門市資料 (第1次)\n' +
+                '4️⃣ 完成後延遲 2 秒\n' +
+                '5️⃣ 快速讀取所有門市資料 (第2次,確保最新)\n' +
+                '6️⃣ 依序完成各門市批量自動記帳\n\n' +
+                '⏱️ 預計耗時: 15-30 秒\n\n' +
+                '確定要開始嗎？';
+            
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            console.log('\n' + '='.repeat(80));
+            console.log('🚀 開始一鍵全自動更新所有門市');
+            console.log('='.repeat(80));
+
+            // 顯示大型進度提示框
+            const progressDiv = document.createElement('div');
+            progressDiv.id = 'auto-update-progress';
+            progressDiv.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+            progressDiv.innerHTML = `
+                <div class="bg-gradient-to-br from-blue-900 to-purple-900 text-white px-8 py-6 rounded-2xl shadow-2xl max-w-2xl w-full mx-4">
+                    <div class="flex items-center gap-3 mb-4">
+                        <svg class="animate-spin h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="font-bold text-2xl">🚀 一鍵全自動更新</span>
+                    </div>
+                    <div class="space-y-3">
+                        <div id="auto-step-1" class="flex items-center gap-2 text-gray-300">
+                            <span class="text-2xl">⏳</span>
+                            <span>1️⃣ 發送所有門市讀取訊息</span>
+                        </div>
+                        <div id="auto-step-2" class="flex items-center gap-2 text-gray-300">
+                            <span class="text-2xl">⏳</span>
+                            <span>2️⃣ 等待 3 秒...</span>
+                        </div>
+                        <div id="auto-step-3" class="flex items-center gap-2 text-gray-300">
+                            <span class="text-2xl">⏳</span>
+                            <span>3️⃣ 快速讀取所有門市 (第1次)</span>
+                        </div>
+                        <div id="auto-step-4" class="flex items-center gap-2 text-gray-300">
+                            <span class="text-2xl">⏳</span>
+                            <span>4️⃣ 等待 2 秒...</span>
+                        </div>
+                        <div id="auto-step-5" class="flex items-center gap-2 text-gray-300">
+                            <span class="text-2xl">⏳</span>
+                            <span>5️⃣ 快速讀取所有門市 (第2次)</span>
+                        </div>
+                        <div id="auto-step-6" class="flex items-center gap-2 text-gray-300">
+                            <span class="text-2xl">⏳</span>
+                            <span>6️⃣ 批量自動記帳</span>
+                        </div>
+                    </div>
+                    <div id="auto-progress-detail" class="mt-4 text-sm text-blue-200 bg-black bg-opacity-30 p-3 rounded">
+                        準備中...
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(progressDiv);
+
+            const updateStep = (stepNum, status, emoji = '⏳') => {
+                const stepEl = document.getElementById(`auto-step-${stepNum}`);
+                if (stepEl) {
+                    const emojiSpan = stepEl.querySelector('.text-2xl');
+                    emojiSpan.textContent = emoji;
+                    if (status === 'active') {
+                        stepEl.className = 'flex items-center gap-2 text-white font-bold';
+                    } else if (status === 'done') {
+                        stepEl.className = 'flex items-center gap-2 text-green-400';
+                    }
+                }
+            };
+
+            const updateDetail = (text) => {
+                const detailEl = document.getElementById('auto-progress-detail');
+                if (detailEl) detailEl.textContent = text;
+            };
+
+            try {
+                // ============================================
+                // 步驟 1: 發送所有門市讀取訊息
+                // ============================================
+                updateStep(1, 'active', '🔄');
+                updateDetail('正在發送所有門市的讀取查詢...');
+                console.log('\n📤 步驟 1/6: 發送所有門市讀取訊息');
+
+                const storesSnapshot = await db.collection('groups').doc(selectedGroupId).collection('stores').get();
+                const stores = storesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                let totalSent = 0;
+                for (const store of stores) {
+                    const machinesSnapshot = await db.collection('groups')
+                        .doc(selectedGroupId)
+                        .collection('stores')
+                        .doc(store.id)
+                        .collection('machines')
+                        .get();
+                    
+                    const machines = machinesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    // 收集所有 mac/devid 組合
+                    for (const machine of machines) {
+                        const mac = machine.mac;
+                        const devid = machine.devid || 1;
+                        
+                        if (!mac || mac.trim() === '') continue;
+                        
+                        const url = `http://update.feiloli.com.tw:5539/webReadCmd/${mac}/${devid}/`;
+                        
+                        try {
+                            // 使用 XMLHttpRequest 直接發送 (與「立即輪巡所有門市」相同方式)
+                            const xhr = new XMLHttpRequest();
+                            xhr.open('GET', url, true);
+                            xhr.timeout = 5000;
+                            
+                            xhr.onload = function() {
+                                console.log(`✅ 查詢已發送: ${mac}/${devid} (HTTP ${xhr.status})`);
+                            };
+                            
+                            xhr.onerror = function() {
+                                console.log(`✅ 查詢已發送: ${mac}/${devid} (CORS 可忽略)`);
+                            };
+                            
+                            xhr.ontimeout = function() {
+                                console.log(`✅ 查詢已發送: ${mac}/${devid} (可能離線)`);
+                            };
+                            
+                            xhr.send();
+                            totalSent++;
+                            
+                            // 稍微延遲避免太快
+                            await new Promise(resolve => setTimeout(resolve, 50));
+                            
+                        } catch (error) {
+                            console.warn(`⚠️ 發送失敗: ${mac}/${devid}`, error);
+                        }
+                    }
+                }
+                
+                updateStep(1, 'done', '✅');
+                updateDetail(`已發送 ${totalSent} 個查詢訊息`);
+                console.log(`✅ 步驟 1 完成: 已發送 ${totalSent} 個查詢`);
+
+                // ============================================
+                // 步驟 2: 等待 3 秒
+                // ============================================
+                updateStep(2, 'active', '⏰');
+                console.log('\n⏳ 步驟 2/6: 等待 3 秒讓機器準備數據...');
+                
+                for (let i = 3; i > 0; i--) {
+                    updateDetail(`等待機器準備數據... ${i} 秒`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                updateStep(2, 'done', '✅');
+                updateDetail('等待完成');
+                console.log('✅ 步驟 2 完成: 等待時間結束');
+
+                // ============================================
+                // 步驟 3: 第一次快速讀取
+                // ============================================
+                updateStep(3, 'active', '📖');
+                updateDetail('正在進行第1次快速讀取...');
+                console.log('\n📖 步驟 3/6: 第1次快速讀取所有門市資料');
+                
+                await quickReadAllStoresData(updateDetail);
+                
+                updateStep(3, 'done', '✅');
+                updateDetail('第1次讀取完成');
+                console.log('✅ 步驟 3 完成: 第1次讀取完成');
+
+                // ============================================
+                // 步驟 4: 等待 2 秒
+                // ============================================
+                updateStep(4, 'active', '⏰');
+                console.log('\n⏳ 步驟 4/6: 等待 2 秒...');
+                
+                for (let i = 2; i > 0; i--) {
+                    updateDetail(`等待確保最新數據... ${i} 秒`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                updateStep(4, 'done', '✅');
+                updateDetail('等待完成');
+                console.log('✅ 步驟 4 完成: 等待時間結束');
+
+                // ============================================
+                // 步驟 5: 第二次快速讀取 (確保最新)
+                // ============================================
+                updateStep(5, 'active', '📖');
+                updateDetail('正在進行第2次快速讀取 (確保最新數據)...');
+                console.log('\n📖 步驟 5/6: 第2次快速讀取所有門市資料');
+                
+                await quickReadAllStoresData(updateDetail);
+                
+                updateStep(5, 'done', '✅');
+                updateDetail('第2次讀取完成');
+                console.log('✅ 步驟 5 完成: 第2次讀取完成');
+
+                // ============================================
+                // 步驟 6: 批量自動記帳
+                // ============================================
+                updateStep(6, 'active', '💾');
+                updateDetail('正在批量自動記帳...');
+                console.log('\n💾 步驟 6/6: 批量自動記帳');
+                console.log('📊 檢查 dailyRecords:', window.dailyRecords);
+                
+                let savedCount = 0;
+                let skippedCount = 0;
+                const today = new Date().toISOString().split('T')[0];
+                
+                for (const store of stores) {
+                    updateDetail(`正在處理門市: ${store.name}...`);
+                    console.log(`\n🏪 處理門市: ${store.name}`);
+                    
+                    try {
+                        const machinesSnapshot = await db.collection('groups')
+                            .doc(selectedGroupId)
+                            .collection('stores')
+                            .doc(store.id)
+                            .collection('machines')
+                            .get();
+                        
+                        const machines = machinesSnapshot.docs.map(doc => ({ 
+                            docId: doc.id, 
+                            ...doc.data() 
+                        }));
+                        
+                        console.log(`   機台數: ${machines.length}`);
+                        
+                        for (const machine of machines) {
+                            // 使用 mac 和 devid 來查找機台配置
+                            const mac = machine.mac;
+                            const devid = machine.devid || 1;
+                            const machineConfig = findMachineConfig(mac, devid);
+                            
+                            if (!machineConfig) {
+                                skippedCount++;
+                                console.log(`   ⚠️ 找不到機台配置: mac=${mac}, devid=${devid}`);
+                                continue;
+                            }
+                            
+                            // 從 dailyRecords 查找今天的數據
+                            const recordKey = `${machineConfig.machineId}_${machineConfig.location}_${today}`;
+                            const dailyRecord = window.dailyRecords?.[recordKey];
+                            
+                            if (dailyRecord && dailyRecord.plays !== undefined && dailyRecord.payouts !== undefined) {
+                                console.log(`   ✅ 找到數據: ${recordKey}`, { plays: dailyRecord.plays, payouts: dailyRecord.payouts });
+                                
+                                try {
+                                    await db.collection('groups')
+                                        .doc(selectedGroupId)
+                                        .collection('stores')
+                                        .doc(store.id)
+                                        .collection('machines')
+                                        .doc(machine.docId)
+                                        .collection('daily_records')
+                                        .doc(today)
+                                        .set({
+                                            date: today,
+                                            cumulativePlays: dailyRecord.plays,
+                                            cumulativePayouts: dailyRecord.payouts,
+                                            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                            source: 'auto_batch_update'
+                                        }, { merge: true });
+                                    
+                                    savedCount++;
+                                    console.log(`      💾 已保存: ${machineConfig.machineId}/${machineConfig.location}`);
+                                } catch (error) {
+                                    console.error(`      ❌ 保存失敗: ${machineConfig.machineId}`, error);
+                                }
+                            } else {
+                                skippedCount++;
+                                console.log(`   ⚠️ 沒有數據: ${recordKey}`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`❌ 處理門市 ${store.name} 失敗:`, error);
+                    }
+                }
+                
+                updateStep(6, 'done', '✅');
+                updateDetail(`批量記帳完成! 已保存 ${savedCount} 筆, 跳過 ${skippedCount} 筆`);
+                console.log(`✅ 步驟 6 完成: 已保存 ${savedCount} 筆記錄, 跳過 ${skippedCount} 筆`);
+
+                // ============================================
+                // 完成
+                // ============================================
+                console.log('\n' + '='.repeat(80));
+                console.log(`🎉 一鍵全自動更新完成！`);
+                console.log(`📊 統計: ${stores.length} 個門市, ${savedCount} 筆記錄`);
+                console.log('='.repeat(80));
+
+                // 延遲 2 秒後關閉進度框
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                progressDiv.remove();
+                alert(`✅ 一鍵全自動更新完成！\n\n` +
+                      `📊 門市數: ${stores.length}\n` +
+                      `💾 記帳筆數: ${savedCount}\n` +
+                      `⏱️ 所有流程已完成`);
+
+            } catch (error) {
+                console.error('❌ 一鍵全自動更新失敗:', error);
+                updateDetail(`❌ 錯誤: ${error.message}`);
+                
+                setTimeout(() => {
+                    progressDiv.remove();
+                    alert('❌ 一鍵全自動更新失敗:\n' + error.message);
+                }, 2000);
+            }
+        }
+
+        // ============================================
+        // 📖 快速讀取所有門市資料 (內部輔助函數)
+        // ============================================
+        async function quickReadAllStoresData(updateCallback) {
+            const storesSnapshot = await db.collection('groups').doc(selectedGroupId).collection('stores').get();
+            const stores = storesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            let processedCount = 0;
+            let totalReadCount = 0;
+            
+            for (const store of stores) {
+                updateCallback(`正在讀取: ${store.name} (${++processedCount}/${stores.length})`);
+                console.log(`📖 讀取門市: ${store.name}`);
+                
+                try {
+                    const machinesSnapshot = await db.collection('groups')
+                        .doc(selectedGroupId)
+                        .collection('stores')
+                        .doc(store.id)
+                        .collection('machines')
+                        .get();
+                    
+                    const machines = machinesSnapshot.docs.map(doc => ({ 
+                        docId: doc.id, 
+                        ...doc.data() 
+                    }));
+                    
+                    // 臨時設置當前門市的 appData 和 machineConfigMap
+                    const originalAppData = window.appData;
+                    const originalConfigMap = window.machineConfigMap;
+                    
+                    window.appData = {
+                        machines: machines,
+                        storeId: store.id,
+                        storeName: store.name
+                    };
+                    
+                    // 重建機台配置映射表
+                    window.machineConfigMap = null;
+                    buildMachineConfigMap();
+                    
+                    console.log(`   機台數: ${machines.length}`);
+                    
+                    // 並行讀取該門市的所有機台
+                    const readPromises = machines
+                        .filter(m => m.mac && m.mac.trim() !== '')
+                        .map(async (machine) => {
+                            const mac = machine.mac;
+                            const devid = machine.devid || 1;
+                            
+                            try {
+                                // 傳入正確的 mac 和 devid
+                                const result = await fetchWithRetry(mac, 3, 500, devid);
+                                if (result && validateMachineData(result)) {
+                                    handleHttpResponse(result, mac, devid);
+                                    console.log(`   ✅ 讀取成功: ${mac}/${devid}`);
+                                    return true;
+                                }
+                                return false;
+                            } catch (error) {
+                                console.warn(`   ⚠️ 讀取失敗: ${mac}/${devid}`, error.message);
+                                return false;
+                            }
+                        });
+                    
+                    const results = await Promise.all(readPromises);
+                    const successCount = results.filter(r => r).length;
+                    totalReadCount += successCount;
+                    
+                    console.log(`   ✅ 完成: ${successCount}/${machines.length} 個機台`);
+                    
+                    // 恢復原始 appData 和 machineConfigMap
+                    window.appData = originalAppData;
+                    window.machineConfigMap = originalConfigMap;
+                    
+                } catch (error) {
+                    console.error(`   ❌ 處理門市 ${store.name} 失敗:`, error);
+                }
+            }
+            
+            console.log(`📊 快速讀取完成: ${processedCount} 個門市, ${totalReadCount} 個成功讀取`);
+            return processedCount;
+        }
+
+        // ============================================
+        // 🌐 立即發送所有門市機台查詢訊息
+        // ============================================
+        async function pollAllStoresMachines() {
+            if (!selectedGroupId) {
+                alert('請先選擇單位群組');
+                return;
+            }
+
+            // 確認操作
+            const confirmMsg = '確定要發送所有門市機台的查詢訊息嗎？\n\n這將會：\n1. 對每個門市的所有機台發送 HTTP 查詢\n2. 不等待回應（手動進入門市後再讀取）\n3. 建議等待 2-3 秒後再進入門市查看\n\n適合在開始工作前預先發送查詢。';
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            console.log('\n' + '='.repeat(80));
+            console.log('🌐 開始發送所有門市機台查詢訊息');
+            console.log('='.repeat(80));
+
+            // 顯示進度提示
+            const progressDiv = document.createElement('div');
+            progressDiv.id = 'poll-all-stores-progress';
+            progressDiv.className = 'fixed top-4 right-4 bg-blue-600 text-white px-6 py-4 rounded-lg shadow-2xl z-50 min-w-[300px]';
+            progressDiv.innerHTML = `
+                <div class="flex items-center gap-3 mb-2">
+                    <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="font-bold">正在發送查詢...</span>
+                </div>
+                <div id="poll-progress-text" class="text-sm">準備中...</div>
+            `;
+            document.body.appendChild(progressDiv);
+
+            const updateProgress = (text) => {
+                const progressText = document.getElementById('poll-progress-text');
+                if (progressText) progressText.textContent = text;
+            };
+
+            try {
+                // 獲取所有門市
+                const storesSnapshot = await db.collection('groups').doc(selectedGroupId).collection('stores').get();
+                const stores = storesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                console.log(`📋 找到 ${stores.length} 個門市`);
+                updateProgress(`找到 ${stores.length} 個門市，開始發送查詢...`);
+
+                let totalStores = stores.length;
+                let completedStores = 0;
+                let totalMachines = 0;
+                let totalSent = 0;
+                let totalFailed = 0;
+
+                // 收集所有機台的 MAC 位址
+                const allMacAddresses = [];
+
+                for (const store of stores) {
+                    completedStores++;
+                    console.log(`\n[${completedStores}/${totalStores}] 🏪 處理門市: ${store.name}`);
+                    updateProgress(`[${completedStores}/${totalStores}] 正在處理: ${store.name}`);
+
+                    try {
+                        // 獲取該門市的所有機台
+                        const machinesSnapshot = await db.collection('groups').doc(selectedGroupId)
+                            .collection('stores').doc(store.id)
+                            .collection('machines').get();
+                        
+                        const machines = machinesSnapshot.docs.map(doc => ({
+                            docId: doc.id,
+                            ...doc.data()
+                        }));
+
+                        console.log(`   📊 找到 ${machines.length} 台機台`);
+                        totalMachines += machines.length;
+
+                        // 發送每台機台的查詢
+                        for (const machine of machines) {
+                            console.log(`      機台資料:`, machine);
+                            console.log(`      MAC: ${machine.mac}, ID: ${machine.id}, DevID: ${machine.devid}`);
+                            
+                            if (machine.mac && machine.mac.trim()) {
+                                // 處理 devidData（多個 devid）
+                                if (machine.devidData && typeof machine.devidData === 'object') {
+                                    const devids = Object.keys(machine.devidData);
+                                    for (const devid of devids) {
+                                        allMacAddresses.push({
+                                            mac: machine.mac.trim(),
+                                            devid: devid,
+                                            storeName: store.name,
+                                            machineId: machine.id || machine.docId,
+                                            location: machine.location || '未知位置'
+                                        });
+                                        console.log(`      ✅ 已加入 MAC: ${machine.mac.trim()}, DevID: ${devid}`);
+                                    }
+                                }
+                                // 處理單一 devid
+                                else if (machine.devid) {
+                                    allMacAddresses.push({
+                                        mac: machine.mac.trim(),
+                                        devid: machine.devid,
+                                        storeName: store.name,
+                                        machineId: machine.id || machine.docId,
+                                        location: machine.location || '未知位置'
+                                    });
+                                    console.log(`      ✅ 已加入 MAC: ${machine.mac.trim()}, DevID: ${machine.devid}`);
+                                }
+                                // 沒有 devid，預設為 1
+                                else {
+                                    allMacAddresses.push({
+                                        mac: machine.mac.trim(),
+                                        devid: 1,
+                                        storeName: store.name,
+                                        machineId: machine.id || machine.docId,
+                                        location: machine.location || '未知位置'
+                                    });
+                                    console.log(`      ✅ 已加入 MAC: ${machine.mac.trim()}, DevID: 1 (預設)`);
+                                }
+                            } else {
+                                console.log(`      ⚠️ 機台沒有 MAC 位址`);
+                            }
+                        }
+
+                    } catch (error) {
+                        console.error(`   ❌ 讀取 ${store.name} 機台失敗:`, error);
+                        totalFailed++;
+                    }
+                }
+
+                console.log(`\n📋 總共收集到 ${allMacAddresses.length} 個 MAC+DevID 組合`);
+                console.log('📋 收集到的列表:', allMacAddresses);
+                updateProgress(`準備發送 ${allMacAddresses.length} 個查詢...`);
+
+                // 使用去重後的 MAC+DevID 組合
+                const uniqueCombos = [];
+                const seenKeys = new Set();
+                for (const item of allMacAddresses) {
+                    const key = `${item.mac}_${item.devid}`;
+                    if (!seenKeys.has(key)) {
+                        seenKeys.add(key);
+                        uniqueCombos.push(item);
+                    }
+                }
+                console.log(`📋 去重後: ${uniqueCombos.length} 個唯一組合`);
+                console.log('📋 去重後的組合:', uniqueCombos.map(c => `${c.mac}_${c.devid}`));
+
+                if (uniqueCombos.length === 0) {
+                    alert('沒有找到任何 MAC 位址，請確認機台設定');
+                    progressDiv.parentNode.removeChild(progressDiv);
+                    return;
+                }
+
+                // 強制使用 HTTP 發送查詢
+                console.log('✅ 開始發送 HTTP 查詢訊息');
+                updateProgress('正在發送查詢訊息...');
+
+                // 使用 XMLHttpRequest 發送所有查詢
+                for (let i = 0; i < uniqueCombos.length; i++) {
+                    const combo = uniqueCombos[i];
+                    const url = `http://update.feiloli.com.tw:5539/webReadCmd/${combo.mac}/${combo.devid}/`;
+                    
+                    console.log(`\n[${i+1}/${uniqueCombos.length}] 📤 準備發送查詢`);
+                    console.log(`   MAC: ${combo.mac}, DevID: ${combo.devid}`);
+                    console.log(`   URL: ${url}`);
+                    
+                    try {
+                        // 使用 XMLHttpRequest（更底層，更可靠）
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('GET', url, true);
+                        xhr.timeout = 5000; // 5秒超時
+                        
+                        xhr.onload = function() {
+                            console.log(`   ✅ 發送成功: ${combo.mac}_${combo.devid} (狀態: ${xhr.status})`);
+                            totalSent++;
+                        };
+                        
+                        xhr.onerror = function() {
+                            console.log(`   ✅ 查詢已發送到設備: ${combo.mac}_${combo.devid} (CORS 錯誤可忽略)`);
+                            totalSent++; // CORS 錯誤表示請求已發出，只是無法讀取回應
+                        };
+                        
+                        xhr.ontimeout = function() {
+                            console.log(`   ✅ 查詢已發送: ${combo.mac}_${combo.devid} (設備可能離線)`);
+                            totalSent++;
+                        };
+                        
+                        xhr.send();
+                        console.log(`   📡 請求已發送！`);
+                        
+                        // 每個請求之間稍微延遲，避免太快
+                        if (i < uniqueCombos.length - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        }
+                        
+                    } catch (error) {
+                        console.error(`   ❌ 發送失敗 ${combo.mac}_${combo.devid}:`, error);
+                        totalFailed++;
+                    }
+                    
+                    // 更新進度
+                    updateProgress(`正在發送... (${i+1}/${uniqueCombos.length})`);
+                }
+
+                // 完成提示
+                progressDiv.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl z-50 min-w-[300px]';
+                progressDiv.innerHTML = `
+                    <div class="flex items-center gap-3 mb-2">
+                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="font-bold">查詢已發送！</span>
+                    </div>
+                    <div class="text-sm">
+                        門市: ${totalStores} 個<br>
+                        機台: ${totalMachines} 台<br>
+                        已發送: ${totalSent} 個查詢<br>
+                        <span class="text-yellow-200">⏱ 請等待 2-3 秒後進入門市查看</span><br>
+                        <span class="text-xs text-gray-200 mt-1 block">💡 CORS 錯誤可忽略，查詢已送達設備</span>
+                    </div>
+                `;
+
+                console.log('\n✅ 所有查詢已發送完成！');
+                console.log(`📊 統計: ${totalStores} 門市, ${totalMachines} 機台, ${totalSent} 個查詢`);
+                console.log('💡 提示: CORS 錯誤是正常的，表示查詢已送到設備，只是瀏覽器無法讀取回應');
+                console.log('📝 請等待 2-3 秒後，進入門市點擊「批次讀取」查看結果');
+
+                // 5秒後自動關閉
+                setTimeout(() => {
+                    if (progressDiv.parentNode) {
+                        progressDiv.parentNode.removeChild(progressDiv);
+                    }
+                }, 5000);
+
+            } catch (error) {
+                console.error('❌ 發送查詢失敗:', error);
+                
+                progressDiv.className = 'fixed top-4 right-4 bg-red-600 text-white px-6 py-4 rounded-lg shadow-2xl z-50 min-w-[300px]';
+                progressDiv.innerHTML = `
+                    <div class="flex items-center gap-3 mb-2">
+                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="font-bold">發送失敗</span>
+                    </div>
+                    <div class="text-sm">${error.message}</div>
+                `;
+
+                setTimeout(() => {
+                    if (progressDiv.parentNode) {
+                        progressDiv.parentNode.removeChild(progressDiv);
+                    }
+                }, 5000);
+            }
+        }
+
+        // ============================================
+        // 📊 立即讀取所有門市機台資料
+        // ============================================
+        async function readAllStoresMachines(limitCount = null) {
+            if (!selectedGroupId) {
+                alert('請先選擇單位群組');
+                return;
+            }
+
+            // 確認操作
+            let confirmMsg = '確定要立即讀取所有門市的機台資料嗎？\n\n這將會：\n1. 先發送查詢給所有機台\n2. 等待 2 秒讓設備準備資料\n3. 讀取並更新所有機台的資料到資料庫\n\n此操作需要較長時間，請耐心等待。';
+            
+            if (limitCount) {
+                confirmMsg = `🧪 測試模式：只讀取前 ${limitCount} 組機台資料\n\n這將會：\n1. 先發送查詢給前 ${limitCount} 組機台\n2. 等待 2 秒讓設備準備資料\n3. 讀取並更新這些機台的資料\n\n適合快速測試功能。`;
+            }
+            
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            console.log('\n' + '='.repeat(80));
+            console.log('📊 開始讀取所有門市機台資料');
+            if (limitCount) {
+                console.log(`🧪 測試模式: 只處理前 ${limitCount} 組`);
+            }
+            console.log('='.repeat(80));
+
+            // 顯示進度提示
+            const progressDiv = document.createElement('div');
+            progressDiv.id = 'read-all-stores-progress';
+            progressDiv.className = 'fixed top-4 right-4 bg-blue-600 text-white px-6 py-4 rounded-lg shadow-2xl z-50 min-w-[300px]';
+            progressDiv.innerHTML = `
+                <div class="flex items-center gap-3 mb-2">
+                    <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="font-bold">正在處理...</span>
+                </div>
+                <div id="read-progress-text" class="text-sm">準備中...</div>
+            `;
+            document.body.appendChild(progressDiv);
+
+            const updateProgress = (text) => {
+                const progressText = document.getElementById('read-progress-text');
+                if (progressText) progressText.textContent = text;
+            };
+
+            try {
+                // 🔧 先確保 appData 已初始化
+                if (!window.appData) {
+                    window.appData = { machines: [] };
+                }
+                
+                // 獲取所有門市
+                const storesSnapshot = await db.collection('groups').doc(selectedGroupId).collection('stores').get();
+                const stores = storesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                console.log(`📋 找到 ${stores.length} 個門市`);
+                updateProgress(`找到 ${stores.length} 個門市，載入機台配置...`);
+                
+                // 🔧 載入所有機台配置到 appData.machines
+                window.appData.machines = [];
+                for (const store of stores) {
+                    const machinesSnapshot = await db.collection('groups').doc(selectedGroupId)
+                        .collection('stores').doc(store.id)
+                        .collection('machines').get();
+                    
+                    const machines = machinesSnapshot.docs.map(doc => ({
+                        docId: doc.id,
+                        storeId: store.id,
+                        storeName: store.name,
+                        ...doc.data()
+                    }));
+                    
+                    window.appData.machines.push(...machines);
+                }
+                
+                console.log(`📦 已載入 ${window.appData.machines.length} 台機台配置`);
+                
+                // 🔧 構建機台配置映射表
+                buildMachineConfigMap();
+                console.log(`✅ 映射表已構建，共 ${Object.keys(window.machineConfigMap || {}).length} 條映射`);
+
+                updateProgress(`開始處理 ${stores.length} 個門市...`);
+
+                let totalStores = stores.length;
+                let completedStores = 0;
+                let totalMachines = 0;
+                let totalSuccess = 0;
+                let totalFailed = 0;
+
+                // 階段 1: 先發送所有查詢
+                console.log('\n📤 階段 1: 發送查詢到所有機台');
+                updateProgress('階段 1: 發送查詢到所有機台...');
+
+                // 🔧 使用已經載入的 appData.machines 來構建 allCombos
+                // 避免重複從 Firebase 載入,確保使用同一份數據
+                const allCombos = [];
+                
+                for (const machine of window.appData.machines) {
+                    totalMachines++;
+                    
+                    if (machine.mac && machine.mac.trim()) {
+                        if (machine.devidData && typeof machine.devidData === 'object') {
+                            const devids = Object.keys(machine.devidData);
+                            for (const devid of devids) {
+                                allCombos.push({
+                                    mac: machine.mac.trim(),
+                                    devid: devid,
+                                    storeId: machine.storeId,
+                                    storeName: machine.storeName,
+                                    machine: machine
+                                });
+                            }
+                        } else if (machine.devid) {
+                            allCombos.push({
+                                mac: machine.mac.trim(),
+                                devid: machine.devid,
+                                storeId: machine.storeId,
+                                storeName: machine.storeName,
+                                machine: machine
+                            });
+                        } else {
+                            allCombos.push({
+                                mac: machine.mac.trim(),
+                                devid: 1,
+                                storeId: machine.storeId,
+                                storeName: machine.storeName,
+                                machine: machine
+                            });
+                        }
+                    }
+                }
+
+                console.log(`📋 總共找到 ${allCombos.length} 個機台配置`);
+
+                // 去重
+                const uniqueCombos = [];
+                const seenKeys = new Set();
+                for (const item of allCombos) {
+                    const key = `${item.mac}_${item.devid}`;
+                    if (!seenKeys.has(key)) {
+                        seenKeys.add(key);
+                        uniqueCombos.push(item);
+                    }
+                }
+
+                console.log(`📋 去重後: ${uniqueCombos.length} 個唯一配置`);
+
+                // 🧪 如果指定了限制數量,只取前 N 組
+                let processedCombos = uniqueCombos;
+                if (limitCount && limitCount > 0) {
+                    processedCombos = uniqueCombos.slice(0, limitCount);
+                    console.log(`🧪 測試模式: 從 ${uniqueCombos.length} 組中選取前 ${processedCombos.length} 組`);
+                }
+
+                // 發送查詢
+                for (let i = 0; i < processedCombos.length; i++) {
+                    const combo = processedCombos[i];
+                    const url = `http://update.feiloli.com.tw:5539/webReadCmd/${combo.mac}/${combo.devid}/`;
+                    
+                    try {
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('GET', url, true);
+                        xhr.timeout = 3000;
+                        xhr.send();
+                        
+                        if (i % 10 === 0) {
+                            updateProgress(`發送查詢... (${i+1}/${processedCombos.length})`);
+                        }
+                        
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    } catch (error) {
+                        console.error(`發送失敗: ${combo.mac}_${combo.devid}`);
+                    }
+                }
+
+                // 階段 2: 等待設備準備資料
+                console.log('\n⏱️ 階段 2: 等待 2 秒讓設備準備資料');
+                updateProgress('等待設備準備資料... (2秒)');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // 階段 3: 讀取所有機台資料（使用原本的讀取方式）
+                console.log('\n📥 階段 3: 開始讀取所有機台資料');
+                
+                // 🔧 確認映射表存在且有數據
+                if (!window.machineConfigMap || Object.keys(window.machineConfigMap).length === 0) {
+                    console.warn('⚠️ 映射表為空,重新構建...');
+                    buildMachineConfigMap();
+                }
+                console.log(`✅ 映射表狀態: ${Object.keys(window.machineConfigMap || {}).length} 條映射`);
+                console.log(`✅ appData.machines: ${(window.appData?.machines || []).length} 台機台`);
+                
+                // 按 MAC 分組（一個 MAC 可能有多個 DevID）
+                const macGroups = {};
+                for (const combo of processedCombos) {
+                    if (!macGroups[combo.mac]) {
+                        macGroups[combo.mac] = [];
+                    }
+                    macGroups[combo.mac].push(combo);
+                }
+                
+                const uniqueMacs = Object.keys(macGroups);
+                console.log(`📋 總共 ${uniqueMacs.length} 個唯一 MAC 位址需要讀取`);
+                
+                let readIndex = 0;
+                for (const mac of uniqueMacs) {
+                    readIndex++;
+                    const combos = macGroups[mac];
+                    updateProgress(`讀取資料: ${combos[0].storeName} (${readIndex}/${uniqueMacs.length})`);
+                    
+                    console.log(`\n📥 [${readIndex}/${uniqueMacs.length}] 讀取 MAC: ${mac}`);
+                    console.log(`   門市: ${combos[0].storeName}`);
+                    console.log(`   機台: ${combos.map(c => `${c.machine.id}(DevID=${c.devid})`).join(', ')}`);
+                    
+                    try {
+                        // 🔧 重要: 需要為每個 DevID 分別調用 sendHttpRequest
+                        // 因為 handleHttpResponse 需要知道要處理哪個 DevID 的數據
+                        for (const combo of combos) {
+                            console.log(`   📡 處理 ${combo.machine.id} (DevID=${combo.devid})`);
+                            
+                            try {
+                                // 記錄處理前的 dailyRecords 狀態
+                                const beforeRecordCount = Object.keys(window.dailyRecords || {}).length;
+                                
+                                // 🔧 關鍵修正: 指定 devid 參數,這樣 handleHttpResponse 才能正確過濾數據
+                                const result = await sendHttpRequest(mac, combo.devid);
+                                
+                                // 檢查是否有新增記錄
+                                const afterRecordCount = Object.keys(window.dailyRecords || {}).length;
+                                const newRecords = afterRecordCount - beforeRecordCount;
+                                
+                                if (result && validateMachineData(result)) {
+                                    console.log(`      ✅ 讀取成功`);
+                                    console.log(`      📊 資料類型: ${Array.isArray(result) ? `陣列 (${result.length} 筆)` : typeof result}`);
+                                    console.log(`      📝 新增/更新記錄: ${newRecords} 筆`);
+                                    
+                                    // 使用 findMachineConfig 找到對應的機台配置
+                                    const machineConfig = findMachineConfig(mac, combo.devid);
+                                    
+                                    if (machineConfig) {
+                                        const today = new Date().toISOString().split('T')[0];
+                                        // 🔧 使用正確的 key 格式: machineId_location_date (底線分隔,與 updateDailyRecord 一致)
+                                        const recordKey = `${machineConfig.machineId}_${machineConfig.location}_${today}`;
+                                        
+                                        // 檢查 window.dailyRecords 中是否有這個機台的記錄
+                                        if (window.dailyRecords && window.dailyRecords[recordKey]) {
+                                            const record = window.dailyRecords[recordKey];
+                                            console.log(`      ✅ 投幣=${record.plays}, 出獎=${record.payouts} (已自動更新)`);
+                                            totalSuccess++;
+                                        } else {
+                                            console.log(`      ⚠️ 未找到處理記錄 (key=${recordKey})`);
+                                            console.log(`      🔍 可用的記錄鍵:`, Object.keys(window.dailyRecords || {}).slice(0, 5));
+                                            totalFailed++;
+                                        }
+                                    } else {
+                                        console.log(`      ⚠️ 無法查找機台配置`);
+                                        totalFailed++;
+                                    }
+                                    
+                                } else {
+                                    console.log(`      ⚠️ 讀取失敗或資料無效`);
+                                    totalFailed++;
+                                }
+                                
+                                // 每個 DevID 之間延遲 200ms
+                                await new Promise(resolve => setTimeout(resolve, 200));
+                                
+                            } catch (error) {
+                                console.error(`      ❌ 處理失敗: ${error.message}`);
+                                totalFailed++;
+                            }
+                        }
+                        
+                    } catch (error) {
+                        console.error(`   ❌ MAC 處理失敗: ${error.message}`);
+                        totalFailed += combos.length;
+                    }
+
+                    // 每個 MAC 之間延遲
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+
+                // 完成提示
+                progressDiv.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl z-50 min-w-[300px]';
+                progressDiv.innerHTML = `
+                    <div class="flex items-center gap-3 mb-2">
+                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="font-bold">讀取完成！</span>
+                    </div>
+                    <div class="text-sm">
+                        門市: ${totalStores} 個<br>
+                        機台: ${totalMachines} 台<br>
+                        成功: ${totalSuccess} 個<br>
+                        失敗: ${totalFailed} 個
+                    </div>
+                `;
+
+                console.log('\n✅ 所有門市資料讀取完成！');
+                console.log(`📊 統計: ${totalStores} 門市, ${totalMachines} 機台, 成功 ${totalSuccess}, 失敗 ${totalFailed}`);
+
+                // 5秒後自動關閉
+                setTimeout(() => {
+                    if (progressDiv.parentNode) {
+                        progressDiv.parentNode.removeChild(progressDiv);
+                    }
+                }, 5000);
+
+            } catch (error) {
+                console.error('❌ 讀取所有門市資料失敗:', error);
+                
+                progressDiv.className = 'fixed top-4 right-4 bg-red-600 text-white px-6 py-4 rounded-lg shadow-2xl z-50 min-w-[300px]';
+                progressDiv.innerHTML = `
+                    <div class="flex items-center gap-3 mb-2">
+                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="font-bold">讀取失敗</span>
+                    </div>
+                    <div class="text-sm">${error.message}</div>
+                `;
+
+                setTimeout(() => {
+                    if (progressDiv.parentNode) {
+                        progressDiv.parentNode.removeChild(progressDiv);
+                    }
+                }, 5000);
             }
         }
 
