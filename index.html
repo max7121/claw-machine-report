@@ -527,7 +527,7 @@
                                 </label>
                                 <label class="flex items-center space-x-2">
                                     <input type="checkbox" id="auto-poll-on-load" class="rounded bg-gray-700 border-gray-600 text-green-600 focus:ring-green-500">
-                                    <span class="text-sm text-gray-300">🚀 進入門市後自動輪詢兩次（間隔2秒）</span>
+                                    <span class="text-sm text-gray-300">🚀 進入門市後自動輪詢兩次（間隔1秒）</span>
                                 </label>
                                 <div class="flex items-center space-x-2">
                                     <label class="text-sm text-gray-300">間隔：</label>
@@ -712,7 +712,7 @@
                             <p>• <strong>出貨校正</strong>：輪詢得到的出貨數 + 校正值 = 實際填表數值</p>
                             <p>• <strong>使用方式</strong>：在下方表格的校正欄位直接輸入正數（加值）或負數（減值），系統會自動保存並應用於所有輪詢資料</p>
                             <p>• <strong>顯示標記</strong>：輪詢表格中有 📊 圖示表示該數值已應用校正</p>
-                            <p>• <strong>🚀 新功能</strong>：勾選「進入門市後自動輪詢兩次」可在每次開啟門市頁面時立即執行第一次輪詢，完成後等待2秒再執行第二次輪詢</p>
+                            <p>• <strong>🚀 新功能</strong>：勾選「進入門市後自動輪詢兩次」可在每次開啟門市頁面時立即執行第一次直接讀取（不發送訊息），完成後等待1秒再執行第二次直接讀取</p>
                         </div>
                     </div>
                     
@@ -1931,31 +1931,49 @@
         
         // ✅ 新增：智能重試函數
         async function fetchWithRetry(mac, maxRetries = 3, delayMs = 1500, devid = null) {
-            console.log(`\n🔄 開始智能重試: 最多 ${maxRetries} 次，間隔 ${delayMs}ms`);
+            // 精簡模式: 只記錄關鍵訊息
+            const isQuickMode = maxRetries === 1 && delayMs <= 500;
+            
+            if (!isQuickMode) {
+                console.log(`🔄 重試設定: 最多 ${maxRetries} 次，間隔 ${delayMs}ms`);
+            }
             
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
-                    console.log(`\n📤 重試 ${attempt}/${maxRetries}...`);
+                    if (!isQuickMode && attempt > 1) {
+                        console.log(`📤 重試 ${attempt}/${maxRetries}...`);
+                    }
+                    
                     const result = await sendHttpRequest(mac, devid);
                     
                     if (result && validateMachineData(result)) {
-                        console.log(`✅ 第 ${attempt} 次嘗試成功！`);
+                        if (!isQuickMode && attempt > 1) {
+                            console.log(`✅ 第 ${attempt} 次嘗試成功！`);
+                        }
                         return result;
                     } else {
-                        console.warn(`⚠️ 第 ${attempt} 次嘗試獲得無效數據`);
+                        if (!isQuickMode) {
+                            console.warn(`⚠️ 第 ${attempt} 次嘗試獲得無效數據`);
+                        }
                     }
                 } catch (error) {
-                    console.warn(`❌ 第 ${attempt} 次嘗試失敗: ${error.message}`);
+                    if (!isQuickMode || attempt === maxRetries) {
+                        console.warn(`❌ 第 ${attempt} 次嘗試失敗: ${error.message}`);
+                    }
                 }
                 
                 // 等待後重試
                 if (attempt < maxRetries) {
-                    console.log(`⏳ 等待 ${delayMs}ms 後進行下次重試...`);
+                    if (!isQuickMode) {
+                        console.log(`⏳ 等待 ${delayMs}ms 後進行下次重試...`);
+                    }
                     await new Promise(resolve => setTimeout(resolve, delayMs));
                 }
             }
             
-            console.error(`❌ 所有 ${maxRetries} 次重試都失敗了`);
+            if (!isQuickMode) {
+                console.error(`❌ 所有 ${maxRetries} 次重試都失敗了`);
+            }
             return null;
         }
         
@@ -6439,6 +6457,86 @@
             console.log(`💾 自動輪詢設定已保存: ${key} = ${enabled}`);
         }
         
+        // ⚡ 直接讀取所有機台數據 (不發送訊息,不等待,用於自動輪詢)
+        async function directReadAllMachines() {
+            console.log('\n' + '='.repeat(70));
+            console.log('⚡ 直接讀取模式 (不發送訊息,立即讀取)');
+            console.log('='.repeat(70));
+            
+            const startTime = Date.now();
+            
+            // 獲取當前門市的所有機台
+            if (!appData.machines || appData.machines.length === 0) {
+                showStatusMessage('❌ 當前門市沒有可輪詢的機台', 'error');
+                return;
+            }
+            
+            // 收集所有唯一的 MAC 地址
+            const uniqueMacs = [...new Set(appData.machines
+                .filter(machine => machine.mac && machine.mac.trim() !== '')
+                .map(machine => machine.mac))];
+            
+            console.log(`📋 準備直接讀取 ${uniqueMacs.length} 台機器`);
+            showStatusMessage(`🚀 開始直接讀取 ${uniqueMacs.length} 個 MAC 位址...`, 'info');
+            
+            let fetchSuccessCount = 0;
+            let targetDataReceived = 0;
+            
+            // ============================================
+            // ⚡ 並行讀取所有 MAC 的數據 (無等待,立即執行,減少重試)
+            // ============================================
+            const fetchPromises = uniqueMacs.map(async (mac, index) => {
+                try {
+                    // 使用較少的重試次數和較短的延遲,提升速度
+                    const result = await fetchWithRetry(mac, 1, 500, null); // 只重試1次,間隔500ms
+                    
+                    if (result && validateMachineData(result)) {
+                        console.log(`✅ [${index + 1}/${uniqueMacs.length}] ${mac} - 讀取成功`);
+                        
+                        handleHttpResponse(result, mac, null);
+                        addCommandLog('receive', `直接讀取成功 - MAC: ${mac}`, result);
+                        
+                        fetchSuccessCount++;
+                        targetDataReceived++;
+                        
+                        return { mac, success: true };
+                    } else {
+                        console.warn(`⚠️ [${index + 1}/${uniqueMacs.length}] ${mac} - 讀取失敗`);
+                        addCommandLog('error', `直接讀取失敗 - MAC: ${mac}`);
+                        return { mac, success: false };
+                    }
+                    
+                } catch (error) {
+                    console.error(`❌ [${index + 1}/${uniqueMacs.length}] ${mac} - 異常: ${error.message}`);
+                    addCommandLog('error', `直接讀取異常: ${error.message}`);
+                    return { mac, success: false, error: error.message };
+                }
+            });
+            
+            // 等待所有讀取完成
+            const results = await Promise.all(fetchPromises);
+            
+            // 統計結果
+            const successCount = results.filter(r => r.success).length;
+            
+            // ============================================
+            // 📊 統計結果
+            // ============================================
+            const endTime = Date.now();
+            const pollDuration = ((endTime - startTime) / 1000).toFixed(1);
+            
+            console.log('='.repeat(70));
+            console.log(`📊 直接讀取完成 - ${pollDuration}秒 - 成功: ${successCount}/${uniqueMacs.length}`);
+            console.log('='.repeat(70));
+            
+            const summaryMsg = `✅ 直接讀取完成！⚡ (${pollDuration}秒) - 成功: ${successCount}/${uniqueMacs.length}`;
+            
+            showStatusMessage(summaryMsg, 'success');
+            
+            // 刷新表格
+            refreshAutoRecordTable();
+        }
+        
     // 🚀 執行自動輪詢（門市進入後1秒觸發）
         function triggerAutoPollOnLoad() {
             console.log('🔍 triggerAutoPollOnLoad 被呼叫');
@@ -6462,53 +6560,63 @@
                 return;
             }
             
-            console.log(`🚀 準備立即執行自動輪詢（兩次）...`);
+            console.log(`🚀 準備立即執行自動讀取（兩次，不發送訊息）...`);
+            
+            // 顯示開始提示
+            showStatusMessage('🚀 開始自動輪詢讀取（第1次）...', 'info');
             
             // 清除之前的計時器
             if (autoPollOnLoadTimer) {
                 clearTimeout(autoPollOnLoadTimer);
             }
             
-            // 立即執行第一次輪詢，無需延遲
+            // 立即執行第一次讀取，無需延遲
             autoPollOnLoadTimer = setTimeout(async () => {
-                console.log('🎯 開始執行第一次自動輪詢（門市進入觸發）');
+                console.log('🎯 開始執行第一次自動讀取（門市進入觸發，跳過發送訊息）');
                 autoPollOnLoadTimer = null;
                 
                 try {
                     // 檢查是否有可用的機台
                     if (!appData || !appData.machines || appData.machines.length === 0) {
-                        console.log('⚠️ 沒有可用的機台，跳過自動輪詢');
+                        console.log('⚠️ 沒有可用的機台，跳過自動讀取');
+                        showStatusMessage('⚠️ 沒有可用的機台', 'warning');
                         return;
                     }
                     
-                    // 執行第一次輪詢
-                    console.log('🔄 執行第一次輪詢...');
-                    await executePollAllMachines();
-                    console.log('✅ 第一次自動輪詢執行完成');
+                    // 執行第一次直接讀取（不發送訊息）
+                    console.log('🔄 執行第一次直接讀取（不發送訊息）...');
+                    await directReadAllMachines();
+                    console.log('✅ 第一次自動讀取執行完成');
                     
                     // 顯示第一次完成通知
-                    showPollNotification('🚀 第一次自動輪詢已完成', 'green');
+                    showPollNotification('🚀 第一次自動讀取已完成', 'green');
                     
-                    // 等待2秒後執行第二次輪詢
-                    console.log('⏳ 等待 2 秒後執行第二次輪詢...');
+                    // 等待1秒後執行第二次讀取
+                    console.log('⏳ 等待 1 秒後執行第二次讀取...');
+                    showStatusMessage('⏳ 等待 1 秒後進行第二次讀取...', 'info');
+                    
                     setTimeout(async () => {
                         try {
-                            console.log('🔄 執行第二次輪詢...');
-                            await executePollAllMachines();
-                            console.log('✅ 第二次自動輪詢執行完成');
+                            console.log('🔄 執行第二次直接讀取（不發送訊息）...');
+                            showStatusMessage('🚀 開始自動輪詢讀取（第2次）...', 'info');
+                            
+                            await directReadAllMachines();
+                            console.log('✅ 第二次自動讀取執行完成');
                             
                             // 顯示第二次完成通知
-                            showPollNotification('✨ 第二次自動輪詢已完成', 'blue');
+                            showPollNotification('✨ 第二次自動讀取已完成', 'blue');
                             
                         } catch (error) {
-                            console.error('❌ 第二次自動輪詢執行失敗:', error);
-                            showPollNotification('❌ 第二次自動輪詢失敗', 'red');
+                            console.error('❌ 第二次自動讀取執行失敗:', error);
+                            showPollNotification('❌ 第二次自動讀取失敗', 'red');
+                            showStatusMessage('❌ 第二次自動讀取失敗', 'error');
                         }
-                    }, 2000); // 等待2秒
+                    }, 1000); // 等待1秒
                     
                 } catch (error) {
-                    console.error('❌ 第一次自動輪詢執行失敗:', error);
-                    showPollNotification('❌ 第一次自動輪詢失敗', 'red');
+                    console.error('❌ 第一次自動讀取執行失敗:', error);
+                    showPollNotification('❌ 第一次自動讀取失敗', 'red');
+                    showStatusMessage('❌ 第一次自動讀取失敗', 'error');
                 }
             }, 100); // 100ms 後立即開始（幾乎立即）
         }
