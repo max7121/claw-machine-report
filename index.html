@@ -13734,28 +13734,48 @@
             console.log(`✅ 等待完成\n`);
             
             // ============================================
-            // 階段3: 並行讀取所有數據
+            // 階段3: 並行讀取所有數據 (優化: 相同MAC只讀一次)
             // ============================================
             console.log('📥 階段3: 並行讀取所有機台數據\n');
             
-            const fetchPromises = machinesWithMac.map(async (machine, idx) => {
-                const devid = machine.devid || 1;
-                
+            // 🚀 優化: 按 MAC 分組,每個 MAC 只讀取一次
+            const macGroups = {};
+            machinesWithMac.forEach(machine => {
+                if (!macGroups[machine.mac]) {
+                    macGroups[machine.mac] = [];
+                }
+                macGroups[machine.mac].push(machine);
+            });
+            
+            console.log(`🔍 檢測到 ${Object.keys(macGroups).length} 個唯一 MAC (共 ${machinesWithMac.length} 台機台)`);
+            Object.entries(macGroups).forEach(([mac, machines]) => {
+                const devids = machines.map(m => m.devid || 1).join(', ');
+                console.log(`   MAC ${mac}: ${machines.length} 台機台 (devid: ${devids})`);
+            });
+            console.log('');
+            
+            // 🚀 並行讀取每個 MAC (而不是每台機台)
+            const fetchPromises = Object.entries(macGroups).map(async ([mac, machines], idx) => {
                 try {
-                    const result = await fetchWithRetry(machine.mac, fastPollConfig.maxRetries, fastPollConfig.retryDelay, devid);
+                    // 每個 MAC 只讀取一次 (不指定 devid,讀取完整數據)
+                    const result = await fetchWithRetry(mac, fastPollConfig.maxRetries, fastPollConfig.retryDelay, null);
                     
                     if (result && validateMachineData(result)) {
-                        handleHttpResponse(result, machine.mac, devid);
-                        fetchSuccessCount++;
-                        console.log(`✅ [${idx+1}] 讀取成功: ${machine.id}`);
-                        return { success: true, machine };
+                        // 為每個 devid 處理數據
+                        machines.forEach(machine => {
+                            const devid = machine.devid || 1;
+                            handleHttpResponse(result, mac, devid);
+                            fetchSuccessCount++;
+                            console.log(`✅ [MAC ${idx+1}] ${machine.id} (devid ${devid})`);
+                        });
+                        return { success: true, mac, machines };
                     } else {
-                        console.warn(`❌ [${idx+1}] 讀取失敗: ${machine.id}`);
-                        return { success: false, machine };
+                        console.warn(`❌ [MAC ${idx+1}] 讀取失敗: ${mac}`);
+                        return { success: false, mac, machines };
                     }
                 } catch (error) {
-                    console.error(`❌ [${idx+1}] 異常: ${machine.id} - ${error.message}`);
-                    return { success: false, machine, error };
+                    console.error(`❌ [MAC ${idx+1}] 異常: ${mac} - ${error.message}`);
+                    return { success: false, mac, machines, error };
                 }
             });
             
