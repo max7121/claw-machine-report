@@ -1569,6 +1569,29 @@
                 </div>
             </div>
             
+            <!-- 門市排序方式 -->
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-white mb-3">門市排序方式</h4>
+                <div class="space-y-2">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="store-sort-order" value="revenue-desc" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500" checked>
+                        <span class="text-gray-300">📊 營業額高到低</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="store-sort-order" value="revenue-asc" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500">
+                        <span class="text-gray-300">📉 營業額低到高</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="store-sort-order" value="name" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500">
+                        <span class="text-gray-300">🔤 依門市名稱</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="store-sort-order" value="custom" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500">
+                        <span class="text-gray-300">✋ 自訂順序 (勾選門市後可拖曳)</span>
+                    </label>
+                </div>
+            </div>
+            
             <!-- 快速選擇按鈕 -->
             <div class="mb-6">
                 <h4 class="text-lg font-semibold text-white mb-3">快速選擇</h4>
@@ -7008,6 +7031,7 @@
             const includeProfit = document.getElementById('store-include-profit').checked;
             const period = document.querySelector('input[name="store-report-period"]:checked').value;
             const date = document.getElementById('store-report-date').value;
+            const sortOrder = document.querySelector('input[name="store-sort-order"]:checked').value;
 
             // 檢查必要的全域變數
             if (!selectedGroupId) {
@@ -7018,7 +7042,7 @@
 
             console.log('自定義門市報表參數:', {
                 includeSummary, includeMachines, includePerformance, includeTopMachines, includePeriodSummary,
-                period, date, COIN_VALUE, selectedGroupId, selectedGroupName
+                period, date, sortOrder, COIN_VALUE, selectedGroupId, selectedGroupName
             });
 
             if (!includeSummary && !includeMachines && !includePerformance && !includeTopMachines && !includePeriodSummary && !includeProfit) {
@@ -7027,14 +7051,14 @@
             }
 
             // 檢查選中的門市
-            const selectedStoreCheckboxes = document.querySelectorAll('.store-checkbox:checked');
+            let selectedStoreCheckboxes = Array.from(document.querySelectorAll('.store-checkbox:checked'));
             if (selectedStoreCheckboxes.length === 0) {
                 alert('請先在門市列表中勾選要包含的門市！');
                 return;
             }
             
             console.log('選中的門市數量:', selectedStoreCheckboxes.length);
-            console.log('選中的門市資訊:', Array.from(selectedStoreCheckboxes).map(cb => ({
+            console.log('選中的門市資訊:', selectedStoreCheckboxes.map(cb => ({
                 value: cb.value,
                 storeName: cb.dataset.storeName
             })));
@@ -7309,6 +7333,26 @@
                         reportData.push(`資料獲取失敗: ${error.message}`);
                         reportData.push('');
                     }
+                }
+
+                // 根據排序方式重新排序 storeRevenueData
+                if (sortOrder === 'revenue-desc') {
+                    // 營業額高到低
+                    storeRevenueData.sort((a, b) => b.revenue - a.revenue);
+                } else if (sortOrder === 'revenue-asc') {
+                    // 營業額低到高
+                    storeRevenueData.sort((a, b) => a.revenue - b.revenue);
+                } else if (sortOrder === 'name') {
+                    // 依門市名稱排序
+                    storeRevenueData.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
+                } else if (sortOrder === 'custom') {
+                    // 自訂順序 - 按照勾選框在頁面上的順序
+                    const checkboxOrder = Array.from(selectedStoreCheckboxes).map(cb => cb.dataset.storeName);
+                    storeRevenueData.sort((a, b) => {
+                        const indexA = checkboxOrder.indexOf(a.name);
+                        const indexB = checkboxOrder.indexOf(b.name);
+                        return indexA - indexB;
+                    });
                 }
 
                 // 計算所有門市平均出貨成本
@@ -7594,6 +7638,10 @@
                         const datePicker = document.getElementById('preview-date-picker');
                         const period = periodSelector ? periodSelector.value : 'all';
                         const date = datePicker ? datePicker.value : '';
+                        
+                        // 取得排序方式
+                        const sortOrderElement = document.querySelector('input[name="store-sort-order"]:checked');
+                        const sortOrder = sortOrderElement ? sortOrderElement.value : 'revenue-desc';
 
                         const rows = [];
                         let totalRevenue = 0;
@@ -7614,6 +7662,26 @@
                                 });
                                 totalRevenue += s.totalRevenue;
                                 totalPayouts += s.totalPayouts;
+                        }
+
+                        // 根據排序方式重新排序 rows
+                        if (sortOrder === 'revenue-desc') {
+                            // 營業額高到低
+                            rows.sort((a, b) => b.revenue - a.revenue);
+                        } else if (sortOrder === 'revenue-asc') {
+                            // 營業額低到高
+                            rows.sort((a, b) => a.revenue - b.revenue);
+                        } else if (sortOrder === 'name') {
+                            // 依門市名稱排序
+                            rows.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
+                        } else if (sortOrder === 'custom') {
+                            // 自訂順序 - 按照勾選框在頁面上的順序
+                            const checkboxOrder = Array.from(selected).map(cb => cb.dataset.storeName);
+                            rows.sort((a, b) => {
+                                const indexA = checkboxOrder.indexOf(a.name);
+                                const indexB = checkboxOrder.indexOf(b.name);
+                                return indexA - indexB;
+                            });
                         }
 
                         const summary = {
