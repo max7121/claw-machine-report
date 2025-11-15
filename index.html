@@ -3028,8 +3028,142 @@
             console.log('💡 輸入 testEditButton() 測試修改按鈕功能');
             console.log('💡 輸入 checkDeploymentEnvironment() 檢查部署環境');
             console.log('💡 輸入 testCorsProxy() 測試 CORS 代理功能');
+            console.log('💡 輸入 backfillHistoryData() 補齊歷史記錄到 history 集合');
             console.log('💡 輸入 testHttpConnection() 測試 GitHub Pages HTTP 連接');
         }, 3000);
+        
+        // 🔥 補齊歷史數據到 history 集合
+        window.backfillHistoryData = async function(startDate = '2025-10-10', endDate = null) {
+            if (!selectedGroupId) {
+                console.error('❌ 請先選擇群組');
+                return;
+            }
+
+            console.log('\n' + '='.repeat(80));
+            console.log('🔥 開始補齊歷史數據到 history 集合');
+            console.log('='.repeat(80));
+            
+            const end = endDate ? new Date(endDate) : new Date();
+            const start = new Date(startDate);
+            
+            console.log(`📅 日期範圍: ${startDate} ~ ${end.toISOString().split('T')[0]}`);
+            console.log(`📊 群組: ${selectedGroupId}`);
+            console.log('');
+
+            try {
+                // 獲取所有門市
+                const storesSnapshot = await db.collection('groups').doc(selectedGroupId)
+                    .collection('stores').get();
+                
+                console.log(`✅ 找到 ${storesSnapshot.docs.length} 個門市`);
+                console.log('');
+
+                let totalProcessed = 0;
+                let totalSaved = 0;
+                let totalErrors = 0;
+
+                // 遍歷每個門市
+                for (const storeDoc of storesSnapshot.docs) {
+                    const storeId = storeDoc.id;
+                    const storeName = storeDoc.data().name || storeId;
+                    
+                    console.log(`\n${'─'.repeat(80)}`);
+                    console.log(`🏪 處理門市: ${storeName} (${storeId})`);
+                    console.log(`${'─'.repeat(80)}`);
+
+                    try {
+                        // 獲取該門市的所有機台
+                        const storeData = storeDoc.data();
+                        const machines = storeData.machines || [];
+                        
+                        if (machines.length === 0) {
+                            console.log('   ⚠️ 此門市沒有機台');
+                            continue;
+                        }
+
+                        console.log(`   找到 ${machines.length} 台機台`);
+
+                        // 為每一天創建記錄
+                        let currentDate = new Date(start);
+                        const storeRef = db.collection('groups').doc(selectedGroupId)
+                            .collection('stores').doc(storeId);
+                        const historyRef = storeRef.collection('history');
+
+                        while (currentDate <= end) {
+                            const dateStr = currentDate.toISOString().split('T')[0];
+                            
+                            // 檢查是否已存在
+                            const existingDoc = await historyRef.doc(dateStr).get();
+                            if (existingDoc.exists) {
+                                console.log(`   ⏭️  跳過 ${dateStr} (已存在)`);
+                                currentDate.setDate(currentDate.getDate() + 1);
+                                totalProcessed++;
+                                continue;
+                            }
+
+                            // 從 dailyRecords 中獲取該日期的數據
+                            let dayTotalNewPlays = 0;
+                            let dayTotalNewPayouts = 0;
+                            let dayTotalPlays = 0;
+                            let dayTotalPayouts = 0;
+                            let foundData = false;
+
+                            machines.forEach(machine => {
+                                const recordKey = `${machine.id}_${machine.location}_${dateStr}`;
+                                const record = window.dailyRecords?.[recordKey];
+                                
+                                if (record) {
+                                    dayTotalPlays += record.plays || 0;
+                                    dayTotalPayouts += record.payouts || 0;
+                                    foundData = true;
+                                }
+                            });
+
+                            // 計算新增值 (簡化版: 假設等於當日總數)
+                            dayTotalNewPlays = dayTotalPlays;
+                            dayTotalNewPayouts = dayTotalPayouts;
+
+                            // 如果有數據,保存到 history
+                            if (foundData && (dayTotalNewPlays > 0 || dayTotalNewPayouts > 0)) {
+                                await historyRef.doc(dateStr).set({
+                                    date: dateStr,
+                                    newPlays: dayTotalNewPlays,
+                                    newPayouts: dayTotalNewPayouts,
+                                    totalPlays: dayTotalPlays,
+                                    totalPayouts: dayTotalPayouts,
+                                    backfilled: true,
+                                    backfilledAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                    source: 'dailyRecords'
+                                });
+                                
+                                console.log(`   ✅ ${dateStr}: newPlays=${dayTotalNewPlays}, newPayouts=${dayTotalNewPayouts}`);
+                                totalSaved++;
+                            } else {
+                                console.log(`   ⊝  ${dateStr}: 無數據`);
+                            }
+
+                            totalProcessed++;
+                            currentDate.setDate(currentDate.getDate() + 1);
+                        }
+
+                    } catch (error) {
+                        console.error(`   ❌ 處理門市 ${storeName} 時發生錯誤:`, error);
+                        totalErrors++;
+                    }
+                }
+
+                console.log('\n' + '='.repeat(80));
+                console.log('📊 補齊完成統計');
+                console.log('='.repeat(80));
+                console.log(`✅ 處理天數: ${totalProcessed}`);
+                console.log(`💾 保存記錄: ${totalSaved}`);
+                console.log(`❌ 錯誤數量: ${totalErrors}`);
+                console.log('='.repeat(80) + '\n');
+
+            } catch (error) {
+                console.error('❌ 補齊歷史數據失敗:', error);
+            }
+        };
         
         // 🧪 校正功能測試函數
         window.testCalibration = function(machineId, location, testPlays = 100, testPayouts = 50) {
@@ -3162,6 +3296,11 @@
                 window.dailyRecords[recordKey] = todayRecord;
                 console.log(`✅ 新建輪詢臨時記錄 - 機台: ${machineId}/${location}, 日期: ${recordDate}, plays: ${calibratedPlays}, payouts: ${calibratedPayouts}`);
 
+                // 🔥 自動保存到 Firebase history (新增記錄時)
+                saveDailyRecordToHistory(machineId, location, recordDate, calibratedPlays, calibratedPayouts, rawPlays, rawPayouts, playsCalibration, payoutsCalibration).catch(err => {
+                    console.error('❌ 保存 history 失敗:', err);
+                });
+
                 return { status: 'created', record: todayRecord, playsChanged: false, payoutsChanged: false };
             }
 
@@ -3219,6 +3358,11 @@
                 console.log(`✅ 已更新輪詢臨時記錄 - 機台: ${machineId}/${location}, plays: ${calibratedPlays}, payouts: ${calibratedPayouts}, 更新次數: ${todayRecord.updateCount}`);
                 console.log(`   📊 更新統計: plays變化=${playsChanged}, payouts變化=${payoutsChanged}, 歷史記錄數=${todayRecord.history.length}`);
 
+                // 🔥 自動保存到 Firebase history (數據變化時)
+                saveDailyRecordToHistory(machineId, location, recordDate, calibratedPlays, calibratedPayouts, rawPlays, rawPayouts, playsCalibration, payoutsCalibration).catch(err => {
+                    console.error('❌ 保存 history 失敗:', err);
+                });
+
                 return { status: 'updated', record: todayRecord, playsChanged, payoutsChanged, playsDelta, payoutsDelta };
             } else {
                 // 數據相同，不更新
@@ -3228,6 +3372,59 @@
                 todayRecord.playsCalibration = playsCalibration;
                 todayRecord.payoutsCalibration = payoutsCalibration;
                 return { status: 'unchanged', record: todayRecord, playsChanged: false, payoutsChanged: false, playsDelta: 0, payoutsDelta: 0 };
+            }
+        }
+        
+        // 🔥 保存每日記錄到 Firebase history 集合
+        async function saveDailyRecordToHistory(machineId, location, date, plays, payouts, rawPlays, rawPayouts, playsCalibration, payoutsCalibration) {
+            if (!selectedGroupId || !selectedStoreId) {
+                console.warn('⚠️ 未選擇門市,無法保存 history');
+                return;
+            }
+
+            try {
+                const storeRef = db.collection('groups').doc(selectedGroupId)
+                    .collection('stores').doc(selectedStoreId);
+                const historyRef = storeRef.collection('history');
+                
+                // 計算新增值 (當日累積 - 前一天累積)
+                const prevDateObj = new Date(date);
+                prevDateObj.setDate(prevDateObj.getDate() - 1);
+                const prevDate = prevDateObj.toISOString().split('T')[0];
+                
+                // 查詢前一天的記錄
+                const prevDayDoc = await historyRef.doc(prevDate).get();
+                let newPlays = plays;
+                let newPayouts = payouts;
+                
+                if (prevDayDoc.exists) {
+                    const prevData = prevDayDoc.data();
+                    const prevTotalPlays = (prevData.totalPlays || 0) + (prevData.newPlays || 0);
+                    const prevTotalPayouts = (prevData.totalPayouts || 0) + (prevData.newPayouts || 0);
+                    newPlays = Math.max(0, plays - prevTotalPlays);
+                    newPayouts = Math.max(0, payouts - prevTotalPayouts);
+                }
+                
+                // 保存或更新當天記錄
+                await historyRef.doc(date).set({
+                    date: date,
+                    machineId: machineId,
+                    location: location,
+                    newPlays: newPlays,          // 當日新增投幣數
+                    newPayouts: newPayouts,      // 當日新增出貨數
+                    totalPlays: plays,           // 累積投幣數
+                    totalPayouts: payouts,       // 累積出貨數
+                    rawPlays: rawPlays,
+                    rawPayouts: rawPayouts,
+                    playsCalibration: playsCalibration,
+                    payoutsCalibration: payoutsCalibration,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                
+                console.log(`💾 已保存到 history: ${date}, 機台: ${machineId}/${location}, newPlays: ${newPlays}, newPayouts: ${newPayouts}`);
+            } catch (error) {
+                console.error('❌ 保存 history 失敗:', error);
+                throw error;
             }
         }
         
@@ -7865,9 +8062,10 @@
                     const start = new Date(startDate);
                     const end = new Date(endDate);
                     
-                    // 調整起始日為該週的週日
+                    // 調整起始日為該週的週五 (5 = Friday)
                     const startDay = start.getDay();
-                    start.setDate(start.getDate() - startDay);
+                    const daysToFriday = (startDay + 7 - 5) % 7; // 計算到上一個週五的天數
+                    start.setDate(start.getDate() - daysToFriday);
                     
                     // ===== 優化關鍵：一次性讀取所有數據 =====
                     const storeRef = db.collection('groups').doc(selectedGroupId)
@@ -7883,20 +8081,76 @@
                         .where('date', '<=', endDateStr)
                         .get();
                     
+                    console.log(`📊 [周報計算] 門市: ${storeId}`);
+                    console.log(`   日期範圍: ${startDateStr} ~ ${endDateStr}`);
+                    console.log(`   找到 ${historySnapshot.docs.length} 天的歷史記錄`);
+                    
+                    // Debug: 顯示前5筆和後5筆資料的日期
+                    if (historySnapshot.docs.length > 0) {
+                        const dates = historySnapshot.docs.map(doc => doc.data().date).sort();
+                        console.log(`   最早日期: ${dates[0]}`);
+                        console.log(`   最晚日期: ${dates[dates.length - 1]}`);
+                        if (dates.length > 10) {
+                            console.log(`   前5筆: ${dates.slice(0, 5).join(', ')}`);
+                            console.log(`   後5筆: ${dates.slice(-5).join(', ')}`);
+                        }
+                    }
+                    
                     // 建立日期到數據的映射表
                     const dateDataMap = {};
+                    let totalFoundPlays = 0;
+                    let totalFoundPayouts = 0;
+                    let recordsInRange = 0;
+                    let recordsOutOfRange = 0;
+                    
                     historySnapshot.docs.forEach(doc => {
                         const data = doc.data();
-                        dateDataMap[data.date] = {
-                            plays: Number(data.newPlays) || 0,
-                            payouts: Number(data.newPayouts) || 0,
-                            revenue: (Number(data.newPlays) || 0) * COIN_VALUE
-                        };
+                        const dateStr = data.date;
+                        
+                        // 檢查日期是否在範圍內
+                        if (dateStr < startDateStr || dateStr > endDateStr) {
+                            recordsOutOfRange++;
+                            console.warn(`   ⚠️ 範圍外的資料: ${dateStr}`);
+                            return; // 跳過範圍外的資料
+                        }
+                        
+                        recordsInRange++;
+                        const plays = Number(data.newPlays) || 0;
+                        const payouts = Number(data.newPayouts) || 0;
+                        
+                        // 如果該日期已存在,累加數據 (因為是多台機器)
+                        if (dateDataMap[dateStr]) {
+                            dateDataMap[dateStr].plays += plays;
+                            dateDataMap[dateStr].payouts += payouts;
+                            dateDataMap[dateStr].revenue += plays * COIN_VALUE;
+                        } else {
+                            dateDataMap[dateStr] = {
+                                plays: plays,
+                                payouts: payouts,
+                                revenue: plays * COIN_VALUE
+                            };
+                        }
+                        
+                        totalFoundPlays += plays;
+                        totalFoundPayouts += payouts;
                     });
+                    
+                    if (recordsOutOfRange > 0) {
+                        console.warn(`   ⚠️ 發現 ${recordsOutOfRange} 筆範圍外的資料已排除`);
+                    }
+                    console.log(`   範圍內資料: ${recordsInRange} 筆記錄`)
+                    console.log(`   不重複天數: ${Object.keys(dateDataMap).length} 天`);
+                    
+                    console.log(`   總投幣數: ${totalFoundPlays.toLocaleString()}`);
+                    console.log(`   總出貨數: ${totalFoundPayouts.toLocaleString()}`);
+                    console.log(`   總營業額: ${(totalFoundPlays * COIN_VALUE).toLocaleString()} 元`);
                     
                     // ===== 按周分組計算 =====
                     const weeks = [];
                     let currentWeekStart = new Date(start);
+                    let weekNumber = 1;
+                    
+                    console.log(`📅 開始按週分組，起始日期: ${currentWeekStart.toISOString().split('T')[0]}`);
                     
                     while (currentWeekStart <= end) {
                         const weekEnd = new Date(currentWeekStart);
@@ -7909,6 +8163,7 @@
                         let weekRevenue = 0;
                         let weekPayouts = 0;
                         let weekPlays = 0;
+                        let daysWithData = 0;
                         
                         let currentDate = new Date(currentWeekStart);
                         while (currentDate <= actualWeekEnd) {
@@ -7918,12 +8173,18 @@
                                 weekRevenue += dayData.revenue;
                                 weekPayouts += dayData.payouts;
                                 weekPlays += dayData.plays;
+                                daysWithData++;
                             }
                             currentDate.setDate(currentDate.getDate() + 1);
                         }
                         
                         // 計算該週的天數
                         const daysInWeek = Math.ceil((actualWeekEnd - currentWeekStart) / (1000 * 60 * 60 * 24)) + 1;
+                        
+                        console.log(`   週${weekNumber}: ${currentWeekStart.toISOString().split('T')[0]} ~ ${actualWeekEnd.toISOString().split('T')[0]}`);
+                        console.log(`      有資料天數: ${daysWithData}/${daysInWeek} 天, 營業額: ${weekRevenue.toLocaleString()} 元`);
+                        
+                        weekNumber++;
                         
                         weeks.push({
                             weekStart: new Date(currentWeekStart),
@@ -8303,6 +8564,13 @@
                 function calculateCombinedWeeklyData(storesData) {
                     if (storesData.length === 0) return [];
                     
+                    console.log('📊 [多門市合併] 開始計算...');
+                    console.log(`   門市數量: ${storesData.length}`);
+                    storesData.forEach(store => {
+                        const storeTotalRevenue = store.weeks.reduce((sum, w) => sum + w.revenue, 0);
+                        console.log(`   ${store.storeName}: ${store.weeks.length} 周, 總計 ${storeTotalRevenue.toLocaleString()} 元`);
+                    });
+                    
                     // 使用第一個門市的周次作為基準
                     const baseWeeks = storesData[0].weeks;
                     const combinedWeeks = [];
@@ -8371,6 +8639,14 @@
                         weeksCount: combinedWeeks.length,
                         storesCount: storesData.length
                     });
+                    
+                    // 🔍 偵錯輸出
+                    console.log('📊 多門市周報統計計算:');
+                    console.log('   分析周數:', combinedWeeks.length);
+                    console.log('   門市數量:', storesData.length);
+                    console.log('   各周營業額:', combinedWeeks.map((w, i) => `第${i+1}周: ${w.revenue.toLocaleString()}`));
+                    console.log('   期間總營業額:', totalRevenue.toLocaleString());
+                    console.log('   平均周營業額:', avgWeeklyRevenue.toLocaleString());
                     
                     let html = '<!DOCTYPE html>\n';
                     html += '<html lang="zh-Hant">\n';
@@ -8456,7 +8732,7 @@
                     html += '    <div class="chart-section">\n';
                     html += '      <h3>📋 加總周報詳細數據</h3>\n';
                     html += '      <table id="weekTable">\n';
-                    html += '        <thead><tr><th>周次</th><th>總營業額</th><th>周比變化</th><th>PSD (日均)</th><th>周比變化</th><th>總出貨次數</th><th>周比變化</th><th>平均出貨成本</th></tr></thead>\n';
+                    html += '        <thead><tr><th>周次</th><th>該周總營業額</th><th>周比變化</th><th>PSD (日均)</th><th>周比變化</th><th>總出貨次數</th><th>周比變化</th><th>平均出貨成本</th></tr></thead>\n';
                     html += '        <tbody></tbody>\n';
                     html += '      </table>\n';
                     html += '    </div>\n';
@@ -8470,7 +8746,7 @@
                     html += '    const money = n => "NT$ " + nt(Math.round(n || 0));\n';
                     html += '    const percent = n => (n >= 0 ? "+" : "") + n.toFixed(1) + "%";\n';
                     html += '    function buildCSV(){\n';
-                    html += '      const header = ["周次","總營業額","營業額周比變化(%)","PSD(日均)","PSD周比變化(%)","總出貨次數","出貨次數周比變化(%)","平均出貨成本"];\n';
+                    html += '      const header = ["周次","該周總營業額","營業額周比變化(%)","PSD(日均)","PSD周比變化(%)","總出貨次數","出貨次數周比變化(%)","平均出貨成本"];\n';
                     html += '      const lines = [header.join(",")].concat(combinedWeeks.map((w,i) => [\n';
                     html += '        w.weekLabel,\n';
                     html += '        w.revenue,\n';
@@ -8498,8 +8774,8 @@
                     html += '      [\n';
                     html += '        { label:"包含門市數", value: nt(summary.storesCount) + " 家" },\n';
                     html += '        { label:"分析周數", value: nt(summary.weeksCount) + " 周" },\n';
-                    html += '        { label:"總營業額", value: money(summary.totalRevenue) },\n';
-                    html += '        { label:"總出貨次數", value: nt(summary.totalPayouts) + " 次" },\n';
+                    html += '        { label:"期間總營業額", value: money(summary.totalRevenue) },\n';
+                    html += '        { label:"期間總出貨次數", value: nt(summary.totalPayouts) + " 次" },\n';
                     html += '        { label:"平均周營業額", value: money(summary.avgWeeklyRevenue) }\n';
                     html += '      ].forEach(k=>{\n';
                     html += '        const el = document.createElement("div");\n';
@@ -8555,7 +8831,7 @@
                     html += '      });\n';
                     html += '      new Chart(document.getElementById("totalRevenueChart"), {\n';
                     html += '        type:"line",\n';
-                    html += '        data:{ labels, datasets:[{ label:"總營業額", data:combinedWeeks.map(w=>w.revenue), borderColor:"#5aa9ff", backgroundColor:"rgba(90,169,255,.1)", tension:0.3, fill:true }] },\n';
+                    html += '        data:{ labels, datasets:[{ label:"該周總營業額", data:combinedWeeks.map(w=>w.revenue), borderColor:"#5aa9ff", backgroundColor:"rgba(90,169,255,.1)", tension:0.3, fill:true }] },\n';
                     html += '        options:{ responsive:true, plugins:{ legend:{ display:false }},\n';
                     html += '          scales:{ x:{ ticks:{ color:"#9fb0c0" }, grid:{ color:"rgba(255,255,255,.05)" }}, y:{ ticks:{ color:"#9fb0c0", callback:v=>"NT$ "+v }, grid:{ color:"rgba(255,255,255,.05)" }}}\n';
                     html += '        }\n';
@@ -8799,7 +9075,10 @@
                                 .orderBy('checkoutDate', 'desc').limit(1).get();
 
                             if (!lastCheckoutSnapshot.empty) {
-                                lastCheckoutRevenue = lastCheckoutSnapshot.docs[0].data().checkoutAmount || 0;
+                                const lastCheckout = lastCheckoutSnapshot.docs[0].data();
+                                // 使用結帳時的累計總營業額,而非本次結帳金額
+                                lastCheckoutRevenue = lastCheckout.cumulativeRevenueAtCheckout || 0;
+                                console.log(`📊 ${store.name} 最後結帳累計營業額: ${lastCheckoutRevenue.toLocaleString()}`);
                             }
                         } catch (checkoutError) {
                             console.warn(`無法獲取 ${store.name} 的結帳記錄:`, checkoutError);
@@ -9012,7 +9291,7 @@
                     // 更新總計列
                     const totalRow = document.querySelector('.sales-total-row');
                     if (totalRow) {
-                        const totalRevenue = document.querySelectorAll('.sales-row').reduce((sum, row) => {
+                        const totalRevenue = Array.from(document.querySelectorAll('.sales-row')).reduce((sum, row) => {
                             return sum + parseFloat(row.dataset[isTotal ? 'totalRevenue' : 'checkoutRevenue']);
                         }, 0);
                         const totalCell = totalRow.querySelector('.sales-total-revenue');
@@ -9023,13 +9302,13 @@
                     
                     // 更新雙摘要顯示
                     if (isTotal) {
-                        const totalSum = document.querySelectorAll('.sales-row').reduce((sum, row) => {
+                        const totalSum = Array.from(document.querySelectorAll('.sales-row')).reduce((sum, row) => {
                             return sum + parseFloat(row.dataset.totalRevenue);
                         }, 0);
                         const totalCell = document.querySelector('.total-summary-total');
                         if (totalCell) totalCell.textContent = totalSum.toLocaleString();
                     } else {
-                        const pendingSum = document.querySelectorAll('.sales-row').reduce((sum, row) => {
+                        const pendingSum = Array.from(document.querySelectorAll('.sales-row')).reduce((sum, row) => {
                             return sum + parseFloat(row.dataset.checkoutRevenue);
                         }, 0);
                         const pendingCell = document.querySelector('.total-summary-pending');
