@@ -8591,6 +8591,10 @@
                             }
                         });
                         
+                        // 計算平均 PSD: (總營業額 / 天數) / 門市數量
+                        const avgPSD = totalDays > 0 && storesData.length > 0 ? 
+                            totalRevenue / totalDays / storesData.length : 0;
+                        
                         combinedWeeks.push({
                             weekStart: baseWeek.weekStart,
                             weekEnd: baseWeek.weekEnd,
@@ -8600,7 +8604,7 @@
                             plays: totalPlays,
                             avgCost: totalPayouts > 0 ? totalRevenue / totalPayouts : 0,
                             days: totalDays,
-                            psd: totalRevenue / totalDays  // 平均每日銷售
+                            psd: avgPSD  // 平均每日銷售 (已除以門市數量)
                         });
                     });
                     
