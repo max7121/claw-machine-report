@@ -4214,18 +4214,15 @@
                     changeInfo += '</small>';
                 }
                 
-                // 🔧 應用校正值計算顯示數值
-                const calibratedData = applyMachineCalibration(record.machineId, record.location, record.plays, record.payouts);
+                // 📊 輪詢表格只顯示原始值,不套用校正
+                // 校正值僅在儲存到 Firebase 時使用
+                const playsDisplay = `${record.plays.toLocaleString()}`;
+                const payoutsDisplay = `${record.payouts.toLocaleString()}`;
                 
-                // 顯示校正後的數值，如果有校正則顯示提示
-                let playsDisplay = `${calibratedData.plays.toLocaleString()}`;
-                let payoutsDisplay = `${calibratedData.payouts.toLocaleString()}`;
-                
-                if (calibratedData.playsCalibration !== 0) {
-                    playsDisplay += ` <small style="color: #fbbf24; font-size: 0.7rem;" title="原始值: ${record.plays}">📊</small>`;
-                }
-                if (calibratedData.payoutsCalibration !== 0) {
-                    payoutsDisplay += ` <small style="color: #fbbf24; font-size: 0.7rem;" title="原始值: ${record.payouts}">📊</small>`;
+                // 如果有設定校正值,在 Console 中記錄提示
+                const machine = appData?.machines?.find(m => m.id === record.machineId && m.location === record.location);
+                if (machine && (machine.playsCalibration || machine.payoutsCalibration)) {
+                    console.log(`📊 機台 ${record.machineId}/${record.location} 有校正值設定: plays=${machine.playsCalibration}, payouts=${machine.payoutsCalibration} (輪詢表格顯示原始值)`);
                 }
                 
                 row.innerHTML = `
@@ -8648,8 +8645,20 @@
                     console.log('📊 多門市周報統計計算:');
                     console.log('   分析周數:', combinedWeeks.length);
                     console.log('   門市數量:', storesData.length);
-                    console.log('   各周營業額:', combinedWeeks.map((w, i) => `第${i+1}周: ${w.revenue.toLocaleString()}`));
+                    console.log('   各周詳細資料:');
+                    combinedWeeks.forEach((w, i) => {
+                        console.log(`   第${i+1}周 (${w.weekLabel}):`);
+                        console.log(`      營業額: ${w.revenue.toLocaleString()} 元`);
+                        console.log(`      PSD: ${w.psd.toLocaleString()} 元/天/門市`);
+                        console.log(`      出貨: ${w.payouts.toLocaleString()} 次`);
+                        console.log(`      平均成本: ${w.avgCost.toLocaleString()} 元/次`);
+                        if (i > 0) {
+                            console.log(`      營業額周比: ${w.revenueChange.toFixed(1)}%`);
+                            console.log(`      PSD周比: ${w.psdChange.toFixed(1)}%`);
+                        }
+                    });
                     console.log('   期間總營業額:', totalRevenue.toLocaleString());
+                    console.log('   期間總出貨:', totalPayouts.toLocaleString());
                     console.log('   平均周營業額:', avgWeeklyRevenue.toLocaleString());
                     
                     let html = '<!DOCTYPE html>\n';
@@ -11261,9 +11270,12 @@
                 switch(period) {
                     case 'weekly': 
                         const d = new Date(curr.date);
-                        const day = d.getDay();
-                        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-                        key = new Date(d.setDate(diff)).toISOString().split('T')[0];
+                        const day = d.getDay();  // 0=週日, 1=週一, ..., 5=週五, 6=週六
+                        // 計算到上一個週五的天數
+                        const daysToFriday = (day + 7 - 5) % 7;
+                        const weekStartDate = new Date(d);
+                        weekStartDate.setDate(d.getDate() - daysToFriday);
+                        key = weekStartDate.toISOString().split('T')[0];
                         break;
                     case 'monthly': key = curr.date.substring(0, 7); break;
                     case 'quarterly': 
