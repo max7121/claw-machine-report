@@ -937,6 +937,62 @@
                         </div>
                         <div id="trend-chart-content" class="w-full"></div>
                     </div>
+
+                    <!-- 機台營收趨勢圖 -->
+                    <div class="bg-gray-900/50 rounded-xl p-6 mb-6">
+                        <h3 class="text-xl font-bold text-white mb-6">📈 機台營收趨勢圖</h3>
+                        
+                        <!-- 機台選擇區 -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-300 mb-3">選擇要查看的機台：</label>
+                            <div class="flex flex-wrap gap-2" id="machine-trend-selector">
+                                <!-- 動態生成機台按鈕 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 日期範圍選擇 -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">起始日期</label>
+                                <input type="date" id="trend-start-date" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">結束日期</label>
+                                <input type="date" id="trend-end-date" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div class="flex items-end">
+                                <button id="update-trend-chart" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                                    更新圖表
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 趨勢圖表 -->
+                        <div class="bg-gray-800 rounded-lg p-4">
+                            <canvas id="machine-trend-canvas" width="1200" height="400"></canvas>
+                        </div>
+                        
+                        <!-- 統計摘要 -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                            <div class="bg-gray-800 rounded-lg p-4">
+                                <div class="text-gray-400 text-sm">期間總營收</div>
+                                <div id="trend-total-revenue" class="text-2xl font-bold text-blue-400">-- 元</div>
+                            </div>
+                            <div class="bg-gray-800 rounded-lg p-4">
+                                <div class="text-gray-400 text-sm">日均營收</div>
+                                <div id="trend-avg-revenue" class="text-2xl font-bold text-green-400">-- 元</div>
+                            </div>
+                            <div class="bg-gray-800 rounded-lg p-4">
+                                <div class="text-gray-400 text-sm">最高單日</div>
+                                <div id="trend-max-revenue" class="text-2xl font-bold text-yellow-400">-- 元</div>
+                            </div>
+                            <div class="bg-gray-800 rounded-lg p-4">
+                                <div class="text-gray-400 text-sm">最低單日</div>
+                                <div id="trend-min-revenue" class="text-2xl font-bold text-red-400">-- 元</div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
                 <div id="statistics" class="tab-content hidden">
                     <!-- 統計範圍選擇 (已隱藏) -->
@@ -1001,6 +1057,171 @@
                             <tbody id="details-table-body" class="divide-y divide-gray-700"></tbody>
                         </table>
                     </div>
+
+                    <!-- 📊 機台協定資料查看器 (F58A) -->
+                    <div class="bg-gray-900/50 rounded-xl p-6 mt-8">
+                        <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                            </svg>
+                            📊 機台協定資料查看器 (F58A)
+                        </h3>
+                        
+                        <!-- 機台選擇 -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-300 mb-3">選擇要查看的機台：</label>
+                            <select id="protocol-machine-selector" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">請選擇機台...</option>
+                            </select>
+                        </div>
+                        
+                        <!-- 協定資料顯示區 -->
+                        <div id="protocol-data-viewer" class="hidden">
+                            <!-- 資料來源說明 -->
+                            <div class="mb-4 p-3 bg-blue-900/30 border border-blue-500/50 rounded-lg">
+                                <p class="text-blue-300 text-sm flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span id="protocol-data-source">資料來源：等待選擇機台</span>
+                                </p>
+                            </div>
+                            
+                            <!-- 基本參數 & 營運數據 -->
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                                <!-- 基本參數設定 -->
+                                <div class="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+                                    <div class="bg-gray-700 p-3 border-b border-gray-600">
+                                        <h4 class="font-bold text-white text-sm">⚙️ 基本參數設定</h4>
+                                    </div>
+                                    <div class="p-4 space-y-3 text-sm">
+                                        <div class="flex justify-between items-center border-b border-dashed border-gray-700 pb-2">
+                                            <span class="text-gray-400">遊戲模式</span>
+                                            <span id="protocol-game-mode" class="font-semibold px-2 py-1 rounded text-xs bg-green-100 text-green-700">--</span>
+                                        </div>
+                                        <div class="flex justify-between items-center border-b border-dashed border-gray-700 pb-2">
+                                            <span class="text-gray-400">1投幾元</span>
+                                            <span id="protocol-coin-insert" class="font-mono font-bold text-white">-- 元</span>
+                                        </div>
+                                        <div class="flex justify-between items-center border-b border-dashed border-gray-700 pb-2">
+                                            <span class="text-gray-400">每局幾元</span>
+                                            <span id="protocol-coin-game" class="font-mono font-bold text-white">-- 元</span>
+                                        </div>
+                                        <div class="flex justify-between items-center border-b border-dashed border-gray-700 pb-2">
+                                            <span class="text-gray-400">遊戲時間</span>
+                                            <span id="protocol-game-time" class="font-mono font-bold text-white">-- 秒</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-gray-400">禮品售價</span>
+                                            <span id="protocol-gift-price" class="font-mono font-bold text-red-400 text-lg">--</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 營運計數統計 -->
+                                <div class="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+                                    <div class="bg-gray-700 p-3 border-b border-gray-600">
+                                        <h4 class="font-bold text-white text-sm">🎮 營運計數統計</h4>
+                                    </div>
+                                    <div class="p-4 grid grid-cols-2 gap-3">
+                                        <div class="bg-indigo-900/30 p-3 rounded-lg text-center border border-indigo-700">
+                                            <div class="text-xs text-indigo-300 mb-1">投幣遊戲次數</div>
+                                            <div id="protocol-game-count" class="text-xl font-bold text-white">--</div>
+                                        </div>
+                                        <div class="bg-pink-900/30 p-3 rounded-lg text-center border border-pink-700">
+                                            <div class="text-xs text-pink-300 mb-1">禮品出獎次數</div>
+                                            <div id="protocol-prize-count" class="text-xl font-bold text-white">--</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 爪力電壓設定 -->
+                                <div class="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+                                    <div class="bg-gray-700 p-3 border-b border-gray-600">
+                                        <h4 class="font-bold text-white text-sm">⚡ 爪力電壓設定</h4>
+                                    </div>
+                                    <div class="p-4 flex flex-col gap-3">
+                                        <div class="bg-orange-900/30 p-3 rounded-lg flex justify-between items-center border border-orange-700">
+                                            <span class="text-sm font-semibold text-orange-300">強電壓</span>
+                                            <div class="flex items-end gap-1">
+                                                <span id="protocol-voltage-strong" class="text-2xl font-bold text-orange-400">--</span>
+                                                <span class="text-xs text-orange-300 mb-1">V</span>
+                                            </div>
+                                        </div>
+                                        <div class="bg-yellow-900/30 p-3 rounded-lg flex justify-between items-center border border-yellow-700">
+                                            <span class="text-sm font-semibold text-yellow-300">中電壓</span>
+                                            <div class="flex items-end gap-1">
+                                                <span id="protocol-voltage-mid" class="text-2xl font-bold text-yellow-400">--</span>
+                                                <span class="text-xs text-yellow-300 mb-1">V</span>
+                                            </div>
+                                        </div>
+                                        <div class="bg-green-900/30 p-3 rounded-lg flex justify-between items-center border border-green-700">
+                                            <span class="text-sm font-semibold text-green-300">弱電壓</span>
+                                            <div class="flex items-end gap-1">
+                                                <span id="protocol-voltage-weak" class="text-2xl font-bold text-green-400">--</span>
+                                                <span class="text-xs text-green-300 mb-1">V</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 累加金額查詢 (C4) -->
+                            <div class="bg-gray-800 rounded-xl shadow-md border border-blue-700 overflow-hidden mb-6">
+                                <div class="bg-gradient-to-r from-blue-600 to-blue-500 p-4 text-white">
+                                    <h4 class="text-lg font-bold">💰 C4. 累加金額查詢紀錄 (近10筆)</h4>
+                                </div>
+                                <div class="p-6">
+                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4" id="protocol-c4-history">
+                                        <!-- 動態生成 10 個卡片 -->
+                                    </div>
+                                    <p class="text-right text-xs text-gray-400 mt-4">* 數值格式為 Little Endian (低位在前)</p>
+                                </div>
+                            </div>
+                            
+                            <!-- 馬達速度設定 -->
+                            <div class="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+                                <div class="bg-gray-700 p-3 border-b border-gray-600">
+                                    <h4 class="font-bold text-white text-sm">🎛️ 馬達速度設定 (%)</h4>
+                                </div>
+                                <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                                    <div class="bg-purple-900/30 p-3 rounded border border-purple-700 text-center">
+                                        <div class="text-xs text-purple-300 font-semibold mb-1">E1 往前</div>
+                                        <div id="protocol-motor-e1" class="text-lg font-bold text-white">--</div>
+                                    </div>
+                                    <div class="bg-purple-900/30 p-3 rounded border border-purple-700 text-center">
+                                        <div class="text-xs text-purple-300 font-semibold mb-1">E2 往後</div>
+                                        <div id="protocol-motor-e2" class="text-lg font-bold text-white">--</div>
+                                    </div>
+                                    <div class="bg-purple-900/30 p-3 rounded border border-purple-700 text-center">
+                                        <div class="text-xs text-purple-300 font-semibold mb-1">E3 往左</div>
+                                        <div id="protocol-motor-e3" class="text-lg font-bold text-white">--</div>
+                                    </div>
+                                    <div class="bg-purple-900/30 p-3 rounded border border-purple-700 text-center">
+                                        <div class="text-xs text-purple-300 font-semibold mb-1">E4 往右</div>
+                                        <div id="protocol-motor-e4" class="text-lg font-bold text-white">--</div>
+                                    </div>
+                                    <div class="bg-purple-900/30 p-3 rounded border border-purple-700 text-center">
+                                        <div class="text-xs text-purple-300 font-semibold mb-1">E5 往上</div>
+                                        <div id="protocol-motor-e5" class="text-lg font-bold text-white">--</div>
+                                    </div>
+                                    <div class="bg-purple-900/30 p-3 rounded border border-purple-700 text-center">
+                                        <div class="text-xs text-purple-300 font-semibold mb-1">E6 往下</div>
+                                        <div id="protocol-motor-e6" class="text-lg font-bold text-white">--</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 無資料提示 -->
+                        <div id="protocol-no-data" class="text-center py-12 text-gray-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <p>請先選擇機台並執行輪詢，才能查看協定資料</p>
+                        </div>
+                    </div>
+
                 </div>
                 <div id="summary" class="tab-content hidden">
                     <div class="flex justify-center mb-6 bg-gray-900/50 p-2 rounded-lg">
@@ -3279,6 +3500,7 @@
                     playsChanged: false,
                     payoutsChanged: false,
                     isPollingRecord: true, // ✅ 標記為輪詢記錄
+                    isPersisted: false,     // ✅ 標記為未持久化（尚未寫入 Firebase）
                     history: [{
                         timestamp: nowTimeString,
                         plays: calibratedPlays,
@@ -3295,11 +3517,7 @@
                 };
                 window.dailyRecords[recordKey] = todayRecord;
                 console.log(`✅ 新建輪詢臨時記錄 - 機台: ${machineId}/${location}, 日期: ${recordDate}, plays: ${calibratedPlays}, payouts: ${calibratedPayouts}`);
-
-                // 🔥 自動保存到 Firebase history (新增記錄時)
-                saveDailyRecordToHistory(machineId, location, recordDate, calibratedPlays, calibratedPayouts, rawPlays, rawPayouts, playsCalibration, payoutsCalibration).catch(err => {
-                    console.error('❌ 保存 history 失敗:', err);
-                });
+                console.log(`   📌 記錄狀態: isPersisted=false (等待批次更新)`);
 
                 return { status: 'created', record: todayRecord, playsChanged: false, payoutsChanged: false };
             }
@@ -3353,15 +3571,12 @@
                 todayRecord.payoutsChanged = payoutsChanged;  // ✅ 標記出貨數量是否變化
                 todayRecord.updatedAt = nowString;
                 todayRecord.updateCount = (todayRecord.updateCount || 0) + 1;
+                todayRecord.isPersisted = false; // ✅ 重置持久化標記（數據已變更，需要重新保存）
 
                 window.dailyRecords[recordKey] = todayRecord;
                 console.log(`✅ 已更新輪詢臨時記錄 - 機台: ${machineId}/${location}, plays: ${calibratedPlays}, payouts: ${calibratedPayouts}, 更新次數: ${todayRecord.updateCount}`);
                 console.log(`   📊 更新統計: plays變化=${playsChanged}, payouts變化=${payoutsChanged}, 歷史記錄數=${todayRecord.history.length}`);
-
-                // 🔥 自動保存到 Firebase history (數據變化時)
-                saveDailyRecordToHistory(machineId, location, recordDate, calibratedPlays, calibratedPayouts, rawPlays, rawPayouts, playsCalibration, payoutsCalibration).catch(err => {
-                    console.error('❌ 保存 history 失敗:', err);
-                });
+                console.log(`   📌 記錄狀態: isPersisted=false (等待批次更新)`);
 
                 return { status: 'updated', record: todayRecord, playsChanged, payoutsChanged, playsDelta, payoutsDelta };
             } else {
@@ -4156,12 +4371,16 @@
             
             console.log(`🔍 當前門市機台: ${Array.from(currentMachineIds).join(', ')}`);
             
-            // 過濾出當前門市的記錄
+            // 過濾出當前門市的記錄（只顯示未持久化的輪詢記錄）
             const currentStoreRecords = Object.values(window.dailyRecords)
-                .filter(record => currentMachineIds.has(record.machineId));
+                .filter(record => 
+                    currentMachineIds.has(record.machineId) &&
+                    record.isPollingRecord === true &&
+                    record.isPersisted !== true  // ✅ 排除已持久化的記錄
+                );
             
             console.log(`📊 全部記錄: ${Object.keys(window.dailyRecords).length} 筆`);
-            console.log(`📊 當前門市記錄: ${currentStoreRecords.length} 筆`);
+            console.log(`📊 當前門市未持久化記錄: ${currentStoreRecords.length} 筆`);
             
             if (currentStoreRecords.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">此門市暫無記錄</td></tr>';
@@ -4396,6 +4615,14 @@
                 
                 for (let [recordKey, record] of batch) {
                     try {
+                        // ✅ 檢查是否已持久化，跳過已處理的記錄
+                        if (record.isPersisted === true) {
+                            console.log(`⏭️  [跳過] ${recordKey} - 已持久化的記錄，不重複處理`);
+                            unchangedCount++;
+                            processedCount++;
+                            continue;
+                        }
+                        
                         processedCount++;
                         console.log(`🔄 [${processedCount}/${totalRecords}] 處理輪詢記錄: ${recordKey}`);
                         console.log(`📊 輪詢記錄詳情:`, {
@@ -4691,6 +4918,11 @@
                                             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                                         });
                                     console.log(`✅ 已更新歷史記錄: ${docId}, 日增量 plays=${dailyPlays}, payouts=${dailyPayouts}`);
+                                    
+                                    // ✅ 標記為已持久化
+                                    record.isPersisted = true;
+                                    record.docId = docId;
+                                    console.log(`📌 已標記為持久化: ${recordKey}`);
                                 } else {
                                     // 新增新記錄
                                     console.log(`📝 準備新增歷史記錄:`, {
@@ -4715,6 +4947,11 @@
                                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
                                         });
                                     console.log(`✅ 已新增歷史記錄: ${addResult.id}, 日增量 plays=${dailyPlays}, payouts=${dailyPayouts}`);
+                                    
+                                    // ✅ 標記為已持久化
+                                    record.isPersisted = true;
+                                    record.docId = addResult.id;
+                                    console.log(`📌 已標記為持久化: ${recordKey}`);
                                 }
                             }
                             
@@ -4922,7 +5159,7 @@
                 if (devid !== null && devid !== undefined) {
                     // ✅ 優先按指定的 devid 解析
                     console.log(`⭐ 優先解析指定的 devid: ${devid}`);
-                    const parsedData = parseHttpData(data, devid);
+                    const parsedData = parseHttpData(data, devid, mac);
                     
                     if (parsedData && parsedData.plays !== null) {
                         window.machineDataByDevid[devid] = parsedData;
@@ -4996,7 +5233,7 @@
                         console.log(`   時間: ${latestRecord.date}`);
                         console.log(`   parm: ${latestRecord.parsed.parm?.substring(0, 40)}...`);
                         
-                        const parsedData = parseHttpData(data, devid);
+                        const parsedData = parseHttpData(data, devid, mac);
                         
                         if (parsedData && parsedData.plays !== null) {
                             window.machineDataByDevid[devid] = parsedData;
@@ -5035,7 +5272,7 @@
                 window.lastParsedMachineData = window.machineDataByDevid;
             } else {
                 // 單個數據處理
-                const parsedData = parseHttpData(data, devid);
+                const parsedData = parseHttpData(data, devid, mac);
                 
                 // 如果成功解析，記錄提取的數據
                 if (parsedData) {
@@ -5063,7 +5300,8 @@
         }
         
         // 解析 HTTP 回應數據 - 支持多種格式和多個 devid
-        function parseHttpData(data, targetDevid = null) {
+        function parseHttpData(data, targetDevid = null, realMac = null) {
+            console.log('🔄 parseHttpData - targetDevid:', targetDevid, 'realMac:', realMac);
             try {
                 console.log('📥 開始解析數據，類型:', typeof data, targetDevid ? `，目標 devid: ${targetDevid}` : '');
                 
@@ -5140,7 +5378,7 @@
                             console.warn(`⚠️ 數據可能過期! 記錄時間: ${newestRecord.date}, 距今 ${ageSeconds} 秒`);
                             console.warn(`   建議: 此 MAC 可能需要重試讀取`);
                             // 在返回的數據中添加標記
-                            const result = parseReReadData(newestRecord.parsed);
+                            const result = parseReReadData(newestRecord.parsed, realMac);
                             result._isStale = true;
                             result._dataAge = ageSeconds;
                             return result;
@@ -5148,7 +5386,7 @@
                             console.log(`✅ 數據新鮮: 距今僅 ${ageSeconds} 秒`);
                         }
                         
-                        return parseReReadData(newestRecord.parsed);
+                        return parseReReadData(newestRecord.parsed, realMac);
                     }
                     
                     // 如果指定了 devid 但沒找到，記錄
@@ -5191,7 +5429,7 @@
                     // 首先檢查是否是 re_readdata 命令
                     if (jsonData.cmd === 're_readdata' && jsonData.parm) {
                         console.log('🔍 檢測到 re_readdata 命令，解析 parm 字段...');
-                        return parseReReadData(jsonData);
+                        return parseReReadData(jsonData, targetDevid);
                     }
                     // 否則使用通用 JSON 解析
                     return extractMachineData(jsonData);
@@ -5205,9 +5443,10 @@
         }
         
         // 解析 re_readdata 命令的 parm 十六進位字段
-        function parseReReadData(jsonData) {
+        function parseReReadData(jsonData, realMac = null) {
             console.log('⚙️ 解析 re_readdata 協議數據...');
             console.log('🔍 [DEBUG] jsonData:', JSON.stringify(jsonData));
+            console.log('🔍 [DEBUG] realMac 參數:', realMac);
             
             const result = {
                 raw: jsonData,
@@ -5230,11 +5469,34 @@
                 console.log('📊 parm 字符串長度: ' + parm.length + ' 字符 (' + (parm.length / 2) + ' 字節)');
                 console.log('🔍 [DEBUG] parm 前 100 字符:', parm.substring(0, 100));
                 console.log('🔍 [DEBUG] parm 完整內容:', parm);
+                console.log('🔍 [DEBUG] jsonData.devid:', jsonData.devid, '類型:', typeof jsonData.devid);
+                console.log('🔍 [DEBUG] jsonData.mac:', jsonData.mac);
+                console.log('🔍 [DEBUG] realMac 參數:', realMac);
+                console.log('🔍 [DEBUG] jsonData 完整內容:', JSON.stringify(jsonData).substring(0, 200));
                 
-                // 保存到全局變數便於查詢
+                // 保存到全局變數便於查詢（優先使用 realMac，其次使用 jsonData.mac）
                 if (!window.parmByDevid) window.parmByDevid = {};
-                window.parmByDevid[jsonData.devid] = parm;
-                console.log(`💾 已保存到 window.parmByDevid[${jsonData.devid}]`);
+                if (!window.parmByMac) window.parmByMac = {};
+                
+                const devIdKey = String(jsonData.devid);
+                // 優先使用 realMac 參數（真實 MAC），如果沒有才使用 jsonData.mac
+                const macKey = realMac ? String(realMac).toUpperCase() : (jsonData.mac ? String(jsonData.mac).toUpperCase() : null);
+                const compositeKey = macKey ? `${macKey}_${devIdKey}` : devIdKey;
+                
+                console.log('🔑 使用的 MAC:', macKey, '(來源:', realMac ? 'realMac 參數' : 'jsonData.mac', ')');
+                console.log('🔑 組合鍵:', compositeKey);
+                
+                // 同時保存到兩個索引：compositeKey (主要) 和 devid (向後兼容)
+                window.parmByDevid[compositeKey] = parm;
+                if (macKey) {
+                    if (!window.parmByMac[macKey]) window.parmByMac[macKey] = {};
+                    window.parmByMac[macKey][devIdKey] = parm;
+                }
+                
+                console.log(`💾 已保存到 window.parmByDevid["${compositeKey}"]，parm 長度: ${parm.length}`);
+                if (macKey) {
+                    console.log(`💾 已保存到 window.parmByMac["${macKey}"]["${devIdKey}"]`);
+                }
                 
                 // 將十六進位字符串轉換為字節陣列
                 const bytes = [];
@@ -12904,6 +13166,613 @@
 
         // 初始化批次狀態顯示
         updateBatchStatusDisplay();
+
+        // ============================================
+        // 📊 F58A 協定解析器
+        // ============================================
+        const F58AProtocolParser = {
+            // 投幣金額映射表
+            coinMap: {
+                0: 1, 1: 5, 2: 10, 3: 20, 4: 30, 5: 40, 
+                6: 50, 7: 60, 8: 70, 9: 90, 10: 100
+            },
+            
+            // 安全解析 Hex
+            safeParseHex(str) {
+                const val = parseInt(str, 16);
+                return isNaN(val) ? 0 : val;
+            },
+            
+            // Little Endian Hex 轉數值
+            hexToDecLE(hexStr) {
+                if (!hexStr || hexStr.length !== 4) return 0;
+                const low = hexStr.substring(0, 2);
+                const high = hexStr.substring(2, 4);
+                const val = parseInt(high + low, 16);
+                return isNaN(val) ? 0 : val;
+            },
+            
+            // 馬達速度映射
+            getMotorSpeed(hexVal) {
+                if (isNaN(hexVal)) return "未知";
+                if (hexVal > 0x0E) return "未知";
+                return 30 + (hexVal * 5);
+            },
+            
+            // 主解析函數
+            parse(parmHex) {
+                if (!parmHex || parmHex.length < 112) {
+                    throw new Error(`Hex 字串長度不足 (${parmHex.length})，需要至少 112 字元`);
+                }
+                
+                // 輔助函數：取得指定 Byte 的資料
+                const getBytes = (startByte, length = 1) => {
+                    const startIdx = (startByte - 8) * 2;
+                    if (startIdx >= parmHex.length) return "";
+                    return parmHex.substring(startIdx, startIdx + (length * 2));
+                };
+                
+                // A1. 投幣器設定
+                const coinPerInsertVal = this.safeParseHex(getBytes(8));
+                const coinPerGameVal = this.safeParseHex(getBytes(9));
+                
+                // A2. 遊戲時間
+                const gameTime = this.safeParseHex(getBytes(10));
+                
+                // A3. 禮品售價
+                const giftPrice = this.hexToDecLE(getBytes(11, 2));
+                
+                // C2. 投幣遊戲次數
+                const gameCount = this.hexToDecLE(getBytes(40, 2));
+                
+                // C3. 禮品出獎次數
+                const prizeCount = this.hexToDecLE(getBytes(42, 2));
+                
+                // C4. 累加金額查詢 (10筆)
+                const c4History = [];
+                for (let i = 0; i < 10; i++) {
+                    const startByte = 44 + (i * 2);
+                    const valHex = getBytes(startByte, 2);
+                    const valDec = this.hexToDecLE(valHex);
+                    c4History.push({
+                        id: i + 1,
+                        hex: valHex || "0000",
+                        value: valDec
+                    });
+                }
+                
+                // 遊戲模式
+                const modeVal = this.safeParseHex(getBytes(65));
+                const modeMap = { 0: "營業模式", 1: "免費模式", 2: "測試模式" };
+                
+                // 馬達速度
+                const motors = {
+                    e1: this.getMotorSpeed(this.safeParseHex(getBytes(66))),
+                    e2: this.getMotorSpeed(this.safeParseHex(getBytes(67))),
+                    e3: this.getMotorSpeed(this.safeParseHex(getBytes(68))),
+                    e4: this.getMotorSpeed(this.safeParseHex(getBytes(69))),
+                    e5: this.getMotorSpeed(this.safeParseHex(getBytes(70))),
+                    e6: this.getMotorSpeed(this.safeParseHex(getBytes(71)))
+                };
+                
+                // 電壓設定
+                const voltage = {
+                    strong: this.safeParseHex(getBytes(33)),
+                    mid: this.safeParseHex(getBytes(34)),
+                    weak: this.safeParseHex(getBytes(35))
+                };
+                
+                return {
+                    basic: {
+                        coinPerInsert: this.coinMap[coinPerInsertVal] || `未知(0x${coinPerInsertVal.toString(16)})`,
+                        coinPerGame: this.coinMap[coinPerGameVal] || `未知(0x${coinPerGameVal.toString(16)})`,
+                        gameTime: gameTime,
+                        giftPrice: giftPrice,
+                        mode: modeMap[modeVal] || "未知",
+                        gameCount,
+                        prizeCount
+                    },
+                    voltage,
+                    c4History,
+                    motors
+                };
+            }
+        };
+
+        // 初始化協定查看器
+        function initProtocolViewer() {
+            const machineSelector = document.getElementById('protocol-machine-selector');
+            const dataViewer = document.getElementById('protocol-data-viewer');
+            const noDataDiv = document.getElementById('protocol-no-data');
+            
+            if (!machineSelector) return;
+            
+            // 載入機台選項
+            function loadMachineOptions() {
+                machineSelector.innerHTML = '<option value="">請選擇機台...</option>';
+                
+                if (!appData.machines || appData.machines.length === 0) {
+                    machineSelector.innerHTML = '<option value="">尚無機台資料</option>';
+                    return;
+                }
+                
+                appData.machines.forEach((machine, index) => {
+                    const option = document.createElement('option');
+                    // 使用索引作為 value，確保唯一性
+                    option.value = index;
+                    option.textContent = `${machine.id} (${machine.location}) [devid:${machine.devid}] ${machine.mac ? '- ' + machine.mac : ''}`;
+                    option.dataset.machineId = machine.id;
+                    option.dataset.location = machine.location;
+                    option.dataset.mac = machine.mac || '';
+                    option.dataset.devid = String(machine.devid || '1');
+                    option.dataset.index = index;
+                    machineSelector.appendChild(option);
+                });
+                
+                console.log('📋 已載入機台選項，總數:', appData.machines.length);
+            }
+            
+            // 顯示協定資料
+            function displayProtocolData(data, machineInfo, dataSource = '') {
+                if (!data) {
+                    dataViewer.classList.add('hidden');
+                    noDataDiv.classList.remove('hidden');
+                    return;
+                }
+                
+                dataViewer.classList.remove('hidden');
+                noDataDiv.classList.add('hidden');
+                
+                // 更新資料來源說明
+                const sourceEl = document.getElementById('protocol-data-source');
+                if (sourceEl) {
+                    const sourceInfo = dataSource ? ` - 資料來源: ${dataSource}` : '';
+                    sourceEl.innerHTML = `資料來源：機台 <strong>${machineInfo.id}</strong> (${machineInfo.location}) [devid:${machineInfo.devid}]${sourceInfo} - 輪詢時間: ${new Date().toLocaleString()}`;
+                }
+                
+                // 基本參數
+                document.getElementById('protocol-game-mode').textContent = data.basic.mode;
+                document.getElementById('protocol-game-mode').className = `font-semibold px-2 py-1 rounded text-xs ${
+                    data.basic.mode === '營業模式' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                }`;
+                document.getElementById('protocol-coin-insert').textContent = `${data.basic.coinPerInsert} 元`;
+                document.getElementById('protocol-coin-game').textContent = `${data.basic.coinPerGame} 元`;
+                document.getElementById('protocol-game-time').textContent = `${data.basic.gameTime} 秒`;
+                document.getElementById('protocol-gift-price').textContent = data.basic.giftPrice;
+                
+                // 營運計數
+                document.getElementById('protocol-game-count').textContent = data.basic.gameCount;
+                document.getElementById('protocol-prize-count').textContent = data.basic.prizeCount;
+                
+                // 電壓設定
+                document.getElementById('protocol-voltage-strong').textContent = data.voltage.strong;
+                document.getElementById('protocol-voltage-mid').textContent = data.voltage.mid;
+                document.getElementById('protocol-voltage-weak').textContent = data.voltage.weak;
+                
+                // C4 累加金額
+                const c4Container = document.getElementById('protocol-c4-history');
+                c4Container.innerHTML = '';
+                data.c4History.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-blue-900/30 rounded-lg p-4 border border-blue-700 flex flex-col items-center justify-center relative group hover:shadow-md transition-all';
+                    card.innerHTML = `
+                        <span class="absolute top-2 left-2 text-xs font-bold text-blue-400">#${item.id}</span>
+                        <span class="text-3xl font-bold text-white my-2">${item.value}</span>
+                        <span class="text-xs text-gray-400 font-mono">Hex: ${item.hex.substring(0,2)} ${item.hex.substring(2,4)}</span>
+                    `;
+                    c4Container.appendChild(card);
+                });
+                
+                // 馬達速度
+                document.getElementById('protocol-motor-e1').textContent = data.motors.e1;
+                document.getElementById('protocol-motor-e2').textContent = data.motors.e2;
+                document.getElementById('protocol-motor-e3').textContent = data.motors.e3;
+                document.getElementById('protocol-motor-e4').textContent = data.motors.e4;
+                document.getElementById('protocol-motor-e5').textContent = data.motors.e5;
+                document.getElementById('protocol-motor-e6').textContent = data.motors.e6;
+            }
+            
+            // 機台選擇事件
+            machineSelector.addEventListener('change', async (e) => {
+                const selectedOption = e.target.selectedOptions[0];
+                if (!selectedOption || !selectedOption.value) {
+                    dataViewer.classList.add('hidden');
+                    noDataDiv.classList.remove('hidden');
+                    return;
+                }
+                
+                const machineInfo = {
+                    id: selectedOption.dataset.machineId,
+                    location: selectedOption.dataset.location,
+                    mac: selectedOption.dataset.mac ? String(selectedOption.dataset.mac).toUpperCase() : null,
+                    devid: String(selectedOption.dataset.devid), // 確保是字串
+                    index: selectedOption.dataset.index
+                };
+                
+                const compositeKey = machineInfo.mac ? `${machineInfo.mac}_${machineInfo.devid}` : machineInfo.devid;
+                
+                console.log('📊 查詢機台協定資料:', machineInfo);
+                console.log('🔍 組合鍵:', compositeKey);
+                console.log('🔍 當前 window.parmByDevid:', window.parmByDevid);
+                console.log('🔍 可用的鍵值:', window.parmByDevid ? Object.keys(window.parmByDevid) : []);
+                console.log('🔍 當前 window.parmByMac:', window.parmByMac);
+                
+                // 從 window.parmByDevid 或 window.machineDataByDevid 取得資料
+                let parmData = null;
+                let dataSource = '';
+                
+                // 方案1: 使用 MAC+devid 組合鍵（最優先）
+                if (window.parmByDevid && window.parmByDevid[compositeKey]) {
+                    parmData = window.parmByDevid[compositeKey];
+                    dataSource = `parmByDevid["${compositeKey}"]`;
+                    console.log(`✅ 從 ${dataSource} 取得資料，長度: ${parmData.length}`);
+                }
+                // 方案2: 從 parmByMac[MAC][devid] 取得
+                else if (window.parmByMac && machineInfo.mac && window.parmByMac[machineInfo.mac] && window.parmByMac[machineInfo.mac][machineInfo.devid]) {
+                    parmData = window.parmByMac[machineInfo.mac][machineInfo.devid];
+                    dataSource = `parmByMac["${machineInfo.mac}"]["${machineInfo.devid}"]`;
+                    console.log(`✅ 從 ${dataSource} 取得資料，長度: ${parmData.length}`);
+                }
+                // 方案3: 從 parmByDevid 取得原始 parm 資料（使用 devid，向後兼容）
+                else if (window.parmByDevid && window.parmByDevid[machineInfo.devid]) {
+                    parmData = window.parmByDevid[machineInfo.devid];
+                    dataSource = `parmByDevid["${machineInfo.devid}"] (向後兼容)`;
+                    console.log(`⚠️ 從 ${dataSource} 取得資料，長度: ${parmData.length}`);
+                    console.log(`⚠️ 警告：使用舊格式資料，可能不正確！建議重新輪詢`);
+                }
+                // 方案4: 嘗試使用 index+1 作為 devid（有些系統是這樣設計的）
+                else if (window.parmByDevid && window.parmByDevid[String(parseInt(machineInfo.index) + 1)]) {
+                    const altDevId = String(parseInt(machineInfo.index) + 1);
+                    parmData = window.parmByDevid[altDevId];
+                    dataSource = `parmByDevid["${altDevId}"] (使用 index+1)`;
+                    console.log(`✅ 從 ${dataSource} 取得資料，長度: ${parmData.length}`);
+                }
+                // 方案5: 從 machineDataByDevid 取得已解析的資料
+                else if (window.machineDataByDevid && window.machineDataByDevid[compositeKey]) {
+                    const machineData = window.machineDataByDevid[compositeKey];
+                    if (machineData.rawHex) {
+                        parmData = machineData.rawHex;
+                        dataSource = `machineDataByDevid["${compositeKey}"].rawHex`;
+                        console.log(`✅ 從 ${dataSource} 取得資料，長度: ${parmData.length}`);
+                    }
+                }
+                // 方案6: 從 appData.machines 中的該機台物件取得（如果有存 parm）
+                else {
+                    const machine = appData.machines[parseInt(machineInfo.index)];
+                    if (machine && machine.parm) {
+                        parmData = machine.parm;
+                        dataSource = `appData.machines[${machineInfo.index}].parm`;
+                        console.log(`✅ 從 ${dataSource} 取得資料，長度: ${parmData.length}`);
+                    }
+                }
+                
+                if (!parmData) {
+                    console.warn('❌ 找不到機台資料');
+                    console.warn('   查詢的組合鍵:', compositeKey);
+                    console.warn('   查詢的 MAC:', machineInfo.mac);
+                    console.warn('   查詢的 devid:', machineInfo.devid, '(類型:', typeof machineInfo.devid, ')');
+                    console.warn('   可用的鍵值:', Object.keys(window.parmByDevid || {}));
+                    console.warn('   可用的 MAC:', Object.keys(window.parmByMac || {}));
+                    console.warn('   機台索引:', machineInfo.index);
+                    showStatusMessage(`機台 ${machineInfo.id} (MAC: ${machineInfo.mac}) 尚無輪詢資料，請先執行輪詢`, 'warning');
+                    dataViewer.classList.add('hidden');
+                    noDataDiv.classList.remove('hidden');
+                    return;
+                }
+                
+                try {
+                    console.log(`🔧 開始解析 parm 資料，長度: ${parmData.length}，來源: ${dataSource}`);
+                    // 解析協定資料
+                    const parsedData = F58AProtocolParser.parse(parmData);
+                    console.log('✅ 協定解析成功:', parsedData);
+                    
+                    // 顯示資料
+                    displayProtocolData(parsedData, machineInfo, dataSource);
+                    showStatusMessage(`成功載入機台 ${machineInfo.id} 的協定資料`, 'success');
+                    
+                } catch (error) {
+                    console.error('❌ 協定解析失敗:', error);
+                    showStatusMessage(`解析失敗: ${error.message}`, 'error');
+                    dataViewer.classList.add('hidden');
+                    noDataDiv.classList.remove('hidden');
+                }
+            });
+            
+            // 初始載入機台選項
+            loadMachineOptions();
+            
+            // 當機台資料更新時重新載入選項
+            window.addEventListener('machinesUpdated', loadMachineOptions);
+        }
+
+        // 在切換到「機台營業明細」標籤時初始化
+        const detailsTabBtn = document.querySelector('[data-tab="details"]');
+        if (detailsTabBtn) {
+            detailsTabBtn.addEventListener('click', () => {
+                setTimeout(() => {
+                    initProtocolViewer();
+                }, 100);
+            });
+        }
+
+        // ============================================
+        // 📈 機台營收趨勢圖功能
+        // ============================================
+        let selectedMachineForTrend = null;
+        let machineTrendChart = null;
+
+        // 初始化日期範圍（預設最近30天）
+        function initTrendDateRange() {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+            
+            const trendStartInput = document.getElementById('trend-start-date');
+            const trendEndInput = document.getElementById('trend-end-date');
+            
+            if (trendStartInput) trendStartInput.value = startDate.toISOString().split('T')[0];
+            if (trendEndInput) trendEndInput.value = endDate.toISOString().split('T')[0];
+        }
+
+        // 載入機台選擇按鈕
+        function loadMachineTrendSelector() {
+            const selectorContainer = document.getElementById('machine-trend-selector');
+            if (!selectorContainer) return;
+            
+            selectorContainer.innerHTML = '';
+            
+            if (!appData.machines || appData.machines.length === 0) {
+                selectorContainer.innerHTML = '<p class="text-gray-400">尚無機台資料</p>';
+                return;
+            }
+            
+            appData.machines.forEach((machine, index) => {
+                const button = document.createElement('button');
+                button.className = `px-4 py-2 rounded-lg font-medium transition ${
+                    selectedMachineForTrend === machine.docId 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`;
+                button.textContent = `${machine.id} (${machine.location})`;
+                button.dataset.machineId = machine.docId;
+                
+                button.addEventListener('click', () => {
+                    selectedMachineForTrend = machine.docId;
+                    loadMachineTrendSelector(); // 重新渲染按鈕狀態
+                    updateMachineTrendChart();
+                });
+                
+                selectorContainer.appendChild(button);
+                
+                // 預設選擇第一台機台
+                if (index === 0 && !selectedMachineForTrend) {
+                    selectedMachineForTrend = machine.docId;
+                }
+            });
+        }
+
+        // 更新機台營收趨勢圖
+        async function updateMachineTrendChart() {
+            if (!selectedMachineForTrend || !selectedGroupId || !selectedStoreId) {
+                return;
+            }
+            
+            const startDateInput = document.getElementById('trend-start-date');
+            const endDateInput = document.getElementById('trend-end-date');
+            
+            if (!startDateInput || !endDateInput) return;
+            
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+            
+            if (!startDate || !endDate) {
+                alert('請選擇日期範圍');
+                return;
+            }
+            
+            // 取得選中的機台資訊
+            const selectedMachine = appData.machines.find(m => m.docId === selectedMachineForTrend);
+            if (!selectedMachine) return;
+            
+            try {
+                showStatusMessage('正在載入趨勢資料...', 'info');
+                
+                // 從 Firebase 取得歷史記錄（只用 date 條件，避免需要複合索引）
+                const historySnapshot = await db.collection('groups')
+                    .doc(selectedGroupId)
+                    .collection('stores')
+                    .doc(selectedStoreId)
+                    .collection('history')
+                    .where('date', '>=', startDate)
+                    .where('date', '<=', endDate)
+                    .orderBy('date', 'asc')
+                    .get();
+                
+                // 在前端過濾特定機台的資料
+                const historyData = historySnapshot.docs
+                    .map(doc => doc.data())
+                    .filter(h => h.machineId === selectedMachine.id && h.location === selectedMachine.location);
+                
+                // 準備圖表資料
+                const labels = historyData.map(h => h.date);
+                const revenueData = historyData.map(h => (h.newPlays || 0) * COIN_VALUE);
+                
+                // 計算統計數據
+                const totalRevenue = revenueData.reduce((sum, val) => sum + val, 0);
+                const avgRevenue = revenueData.length > 0 ? totalRevenue / revenueData.length : 0;
+                const maxRevenue = Math.max(...revenueData, 0);
+                const minRevenue = Math.min(...revenueData.filter(v => v > 0), 0) || 0;
+                
+                // 更新統計摘要
+                const totalElem = document.getElementById('trend-total-revenue');
+                const avgElem = document.getElementById('trend-avg-revenue');
+                const maxElem = document.getElementById('trend-max-revenue');
+                const minElem = document.getElementById('trend-min-revenue');
+                
+                if (totalElem) totalElem.textContent = `${totalRevenue.toLocaleString()} 元`;
+                if (avgElem) avgElem.textContent = `${Math.round(avgRevenue).toLocaleString()} 元`;
+                if (maxElem) maxElem.textContent = `${maxRevenue.toLocaleString()} 元`;
+                if (minElem) minElem.textContent = `${minRevenue.toLocaleString()} 元`;
+                
+                // 繪製圖表
+                renderMachineTrendChart(labels, revenueData, selectedMachine);
+                
+                showStatusMessage('趨勢資料載入完成', 'success');
+                
+            } catch (error) {
+                console.error('載入趨勢資料失敗:', error);
+                showStatusMessage('載入趨勢資料失敗，請稍後再試', 'error');
+            }
+        }
+
+        // 繪製機台趨勢圖表
+        function renderMachineTrendChart(labels, data, machine) {
+            const canvas = document.getElementById('machine-trend-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // 清空畫布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (data.length === 0) {
+                ctx.fillStyle = '#9CA3AF';
+                ctx.font = '16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('選定期間內無資料', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+            
+            const padding = 60;
+            const chartWidth = canvas.width - padding * 2;
+            const chartHeight = canvas.height - padding * 2;
+            const maxValue = Math.max(...data, 100); // 至少 100 避免除以 0
+            
+            // 繪製背景格線
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (chartHeight / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(canvas.width - padding, y);
+                ctx.stroke();
+                
+                // Y軸標籤
+                const value = Math.round(maxValue * (1 - i / 5));
+                ctx.fillStyle = '#9CA3AF';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(`${value}元`, padding - 10, y + 4);
+            }
+            
+            // 繪製座標軸
+            ctx.strokeStyle = '#4B5563';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, canvas.height - padding);
+            ctx.lineTo(canvas.width - padding, canvas.height - padding);
+            ctx.stroke();
+            
+            // 繪製折線圖
+            if (data.length > 0) {
+                const stepX = chartWidth / (data.length - 1 || 1);
+                
+                // 繪製區域填充
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+                ctx.beginPath();
+                ctx.moveTo(padding, canvas.height - padding);
+                
+                data.forEach((value, index) => {
+                    const x = padding + index * stepX;
+                    const y = canvas.height - padding - (value / maxValue) * chartHeight;
+                    ctx.lineTo(x, y);
+                });
+                
+                ctx.lineTo(padding + (data.length - 1) * stepX, canvas.height - padding);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 繪製折線
+                ctx.strokeStyle = '#3B82F6';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                
+                data.forEach((value, index) => {
+                    const x = padding + index * stepX;
+                    const y = canvas.height - padding - (value / maxValue) * chartHeight;
+                    
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                
+                ctx.stroke();
+                
+                // 繪製數據點
+                ctx.fillStyle = '#3B82F6';
+                data.forEach((value, index) => {
+                    const x = padding + index * stepX;
+                    const y = canvas.height - padding - (value / maxValue) * chartHeight;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 繪製外圈
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                });
+                
+                // 繪製 X 軸日期標籤（每隔幾個顯示）
+                const labelStep = Math.max(1, Math.floor(labels.length / 10));
+                ctx.fillStyle = '#9CA3AF';
+                ctx.font = '11px sans-serif';
+                ctx.textAlign = 'center';
+                
+                labels.forEach((label, index) => {
+                    if (index % labelStep === 0 || index === labels.length - 1) {
+                        const x = padding + index * stepX;
+                        const y = canvas.height - padding + 20;
+                        ctx.save();
+                        ctx.translate(x, y);
+                        ctx.rotate(-Math.PI / 4);
+                        ctx.fillText(label, 0, 0);
+                        ctx.restore();
+                    }
+                });
+            }
+            
+            // 繪製圖表標題
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 18px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${machine.id} (${machine.location}) - 營收趨勢`, canvas.width / 2, 30);
+        }
+
+        // 綁定更新按鈕事件
+        const updateTrendBtn = document.getElementById('update-trend-chart');
+        if (updateTrendBtn) {
+            updateTrendBtn.addEventListener('click', updateMachineTrendChart);
+        }
+
+        // 在切換到圖表分析標籤時初始化
+        const chartsTabBtn = document.querySelector('[data-tab="charts"]');
+        if (chartsTabBtn) {
+            chartsTabBtn.addEventListener('click', () => {
+                setTimeout(() => {
+                    initTrendDateRange();
+                    loadMachineTrendSelector();
+                    if (selectedMachineForTrend) {
+                        updateMachineTrendChart();
+                    }
+                }, 100);
+            });
+        }
 
         // 發送讀取命令按鈕（使用 HTTP）
         const sendReadCmd = document.getElementById('send-read-command');
